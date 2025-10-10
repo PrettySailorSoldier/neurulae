@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Clock } from 'lucide-react';
+import { Play, Pause, RotateCcw, Clock, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TimerState } from '@/types';
+import { TimerHub } from './TimerHub';
+import { TimerState, TimerSession } from '@/types';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const PRESETS = [
   { label: '25 min', minutes: 25 },
@@ -16,6 +18,8 @@ export function FocusTimer() {
     timeRemaining: 25 * 60,
     totalTime: 25 * 60,
   });
+  const [hubOpen, setHubOpen] = useState(false);
+  const [sessions, setSessions] = useLocalStorage<TimerSession[]>('neuroflow-timer-sessions', []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -57,6 +61,10 @@ export function FocusTimer() {
       timeRemaining: seconds,
       totalTime: seconds,
     });
+  };
+
+  const handleSaveSession = (session: TimerSession) => {
+    setSessions([session, ...sessions]);
   };
 
   const progress = ((timer.totalTime - timer.timeRemaining) / timer.totalTime) * 100;
@@ -123,12 +131,27 @@ export function FocusTimer() {
           </Button>
         </div>
 
+        <Button
+          onClick={() => setHubOpen(true)}
+          variant="outline"
+          className="w-full"
+        >
+          <Maximize2 className="h-4 w-4 mr-2" />
+          Advanced Timers
+        </Button>
+
         {timer.currentTaskId && (
           <div className="text-sm text-muted-foreground text-center">
             Current Task: Focus Session
           </div>
         )}
       </CardContent>
+
+      <TimerHub
+        open={hubOpen}
+        onOpenChange={setHubOpen}
+        onSaveSession={handleSaveSession}
+      />
     </Card>
   );
 }

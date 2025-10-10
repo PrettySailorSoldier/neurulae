@@ -46,3 +46,22 @@ export interface ScheduledTask {
   startTime?: string; // optional specific time within block
   estimatedMinutes?: number;
 }
+
+export interface TimedTask {
+  id: string;
+  title: string;
+  estimatedMinutes: number;
+  completed: boolean;
+  order: number;
+  linkedTaskId?: string;
+}
+
+export interface TimerSession {
+  id: string;
+  taskId?: string;
+  startTime: string;
+  endTime?: string;
+  actualMinutes?: number;
+  date: string;
+  timerType: 'interval' | 'sequence' | 'flowtime' | 'chime' | 'tomato';
+}
