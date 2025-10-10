@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { FocusTimer } from '@/components/FocusTimer';
 import { TodaysPriorities } from '@/components/TodaysPriorities';
-import { TaskList } from '@/components/TaskList';
 import { ProjectsTab } from '@/components/ProjectsTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -107,17 +106,12 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         {/* Top Widgets Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <FocusTimer />
           <TodaysPriorities
             priorities={priorities}
             onToggleComplete={handleToggleComplete}
             onAddPriority={handleAddPriority}
-          />
-          <TaskList
-            tasks={tasks}
-            onToggleComplete={handleToggleComplete}
-            onAddTask={handleAddTask}
           />
         </div>
 
