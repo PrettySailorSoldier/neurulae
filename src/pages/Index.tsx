@@ -5,15 +5,19 @@ import { FocusTimer } from '@/components/FocusTimer';
 import { TodaysPriorities } from '@/components/TodaysPriorities';
 import { TaskList } from '@/components/TaskList';
 import { ProjectsTab } from '@/components/ProjectsTab';
+import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Task, Project, Theme } from '@/types';
+import { Task, Project, Theme, TimeBlock, ScheduledTask } from '@/types';
 import { Brain } from 'lucide-react';
+import { getTodayString } from '@/lib/timeUtils';
 
 const Index = () => {
   const [theme, setTheme] = useLocalStorage<Theme>('neuroflow-theme', 'orchid');
   const [tasks, setTasks] = useLocalStorage<Task[]>('neuroflow-tasks', []);
   const [priorities, setPriorities] = useLocalStorage<Task[]>('neuroflow-priorities', []);
   const [projects, setProjects] = useLocalStorage<Project[]>('neuroflow-projects', []);
+  const [timeBlocks, setTimeBlocks] = useLocalStorage<TimeBlock[]>('neuroflow-timeblocks', []);
+  const [scheduledTasks, setScheduledTasks] = useLocalStorage<ScheduledTask[]>('neuroflow-scheduled-tasks', []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -62,6 +66,26 @@ const Index = () => {
     setProjects([...projects, newProject]);
   };
 
+  const handleAddTimeBlock = (blockData: Omit<TimeBlock, 'id' | 'createdAt'>) => {
+    const newBlock: TimeBlock = {
+      ...blockData,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    setTimeBlocks([...timeBlocks, newBlock]);
+  };
+
+  const handleUpdateTimeBlock = (id: string, blockData: Omit<TimeBlock, 'id' | 'createdAt'>) => {
+    setTimeBlocks(timeBlocks.map(block => 
+      block.id === id ? { ...block, ...blockData } : block
+    ));
+  };
+
+  const handleDeleteTimeBlock = (id: string) => {
+    setTimeBlocks(timeBlocks.filter(block => block.id !== id));
+    setScheduledTasks(scheduledTasks.filter(task => task.blockId !== id));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -107,10 +131,52 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid gap-6">
-              <div className="text-center py-12 bg-card rounded-lg border border-border">
-                <h3 className="text-xl font-semibold mb-2">Daily Flow Timeline</h3>
-                <p className="text-muted-foreground">Coming soon: Visualize your day with draggable time blocks</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Daily Flow Timeline - Left 40% */}
+              <div className="lg:col-span-1">
+                <DailyFlowTimeline
+                  timeBlocks={timeBlocks}
+                  scheduledTasks={scheduledTasks}
+                  tasks={tasks}
+                  onAddBlock={handleAddTimeBlock}
+                  onUpdateBlock={handleUpdateTimeBlock}
+                  onDeleteBlock={handleDeleteTimeBlock}
+                  onToggleComplete={handleToggleComplete}
+                />
+              </div>
+
+              {/* Today's Schedule & Unscheduled Tasks - Right 60% */}
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="text-lg font-semibold mb-4">Today's Schedule</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Scheduled tasks will appear here
+                  </p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="text-lg font-semibold mb-4">Unscheduled Tasks</h3>
+                  <div className="space-y-2">
+                    {tasks
+                      .filter(task => !scheduledTasks.some(st => st.taskId === task.id))
+                      .map(task => (
+                        <div
+                          key={task.id}
+                          className="flex items-center gap-2 p-2 bg-card/50 border border-border rounded-md hover:bg-card transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={task.completed}
+                            onChange={() => handleToggleComplete(task.id)}
+                            className="rounded border-border"
+                          />
+                          <span className={task.completed ? 'line-through text-muted-foreground' : ''}>
+                            {task.title}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               </div>
             </div>
           </TabsContent>

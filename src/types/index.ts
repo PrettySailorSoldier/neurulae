@@ -18,14 +18,6 @@ export interface Project {
   createdAt: string;
 }
 
-export interface TimeBlock {
-  id: string;
-  startTime: string;
-  endTime: string;
-  taskId?: string;
-  title?: string;
-}
-
 export type Theme = 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy';
 
 export interface TimerState {
@@ -33,4 +25,24 @@ export interface TimerState {
   timeRemaining: number;
   totalTime: number;
   currentTaskId?: string;
+}
+
+export interface TimeBlock {
+  id: string;
+  title: string;
+  startTime: string; // "HH:MM" format (e.g., "07:00")
+  endTime: string;   // "HH:MM" format (e.g., "21:00")
+  type: 'main' | 'dedicated'; // left side vs right side of timeline
+  scheduleType: 'weekday' | 'weekend' | 'everyday';
+  color?: string; // optional custom color
+  createdAt: string;
+}
+
+export interface ScheduledTask {
+  id: string;
+  taskId: string; // links to Task.id
+  blockId: string; // which TimeBlock it belongs to
+  date: string; // YYYY-MM-DD format
+  startTime?: string; // optional specific time within block
+  estimatedMinutes?: number;
 }
