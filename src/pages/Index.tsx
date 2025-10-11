@@ -75,14 +75,75 @@ const Index = () => {
         const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         root.style.setProperty(cssVar, value);
       });
+
+      // Apply background image settings
+      if (customTheme.backgroundImage && customTheme.backgroundImage.url) {
+        const bg = customTheme.backgroundImage;
+        const body = document.body;
+        
+        // Create filter string
+        const filterValue = `
+          grayscale(${bg.filter.grayscale}%)
+          sepia(${bg.filter.sepia}%)
+          brightness(${bg.filter.brightness}%)
+          contrast(${bg.filter.contrast}%)
+          saturate(${bg.filter.saturate}%)
+          blur(${bg.blur}px)
+        `.trim();
+
+        // Apply background styles
+        body.style.backgroundImage = `url(${bg.url})`;
+        body.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
+        body.style.backgroundPosition = bg.position.replace('-', ' ');
+        body.style.backgroundRepeat = bg.repeat;
+        body.style.backgroundAttachment = bg.attachment;
+        body.style.opacity = (bg.opacity / 100).toString();
+        body.style.filter = filterValue;
+        
+        // Create overlay
+        const overlayId = 'custom-theme-overlay';
+        let overlay = document.getElementById(overlayId);
+        
+        if (bg.overlayOpacity > 0) {
+          if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = overlayId;
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '-1';
+            document.body.appendChild(overlay);
+          }
+          overlay.style.backgroundColor = `hsl(${bg.overlayColor} / ${bg.overlayOpacity}%)`;
+        } else if (overlay) {
+          overlay.remove();
+        }
+      }
     } else if (theme !== 'custom') {
       // Remove custom theme variables when switching to preset theme
       const root = document.documentElement;
+      const body = document.body;
       const colorKeys = ['background', 'foreground', 'card', 'cardForeground', 'primary', 'primaryForeground', 'secondary', 'secondaryForeground', 'accent', 'accentForeground', 'muted', 'mutedForeground', 'border', 'input'];
       colorKeys.forEach((key) => {
         const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         root.style.removeProperty(cssVar);
       });
+
+      // Remove background image styles
+      body.style.backgroundImage = '';
+      body.style.backgroundSize = '';
+      body.style.backgroundPosition = '';
+      body.style.backgroundRepeat = '';
+      body.style.backgroundAttachment = '';
+      body.style.opacity = '';
+      body.style.filter = '';
+
+      // Remove overlay
+      const overlay = document.getElementById('custom-theme-overlay');
+      if (overlay) overlay.remove();
     }
   }, [theme, customTheme]);
 

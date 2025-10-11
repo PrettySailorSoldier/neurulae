@@ -39,6 +39,24 @@ export interface CustomTheme {
     border: string;
     input: string;
   };
+  backgroundImage?: {
+    url: string;
+    size: 'cover' | 'contain' | 'auto' | 'stretch';
+    position: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+    repeat: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y' | 'space' | 'round';
+    attachment: 'scroll' | 'fixed';
+    opacity: number;
+    blur: number;
+    overlayColor: string;
+    overlayOpacity: number;
+    filter: {
+      grayscale: number;
+      sepia: number;
+      brightness: number;
+      contrast: number;
+      saturate: number;
+    };
+  };
 }
 
 export interface TimerState {
