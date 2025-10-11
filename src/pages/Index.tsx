@@ -7,7 +7,7 @@ import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant } from '@/types';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
 import { Brain, Plus } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetDisplay } from '@/components/ReminderWidgetDisplay';
@@ -22,6 +22,7 @@ import { ParallelUniverseWidget as ParallelUniverseWidgetDisplay } from '@/compo
 import { ParallelUniverseWidgetEditor } from '@/components/ParallelUniverseWidgetEditor';
 import { SoundSignatureWidget as SoundSignatureWidgetDisplay } from '@/components/SoundSignatureWidget';
 import { SoundSignatureWidgetEditor } from '@/components/SoundSignatureWidgetEditor';
+import { CustomThemeBuilder } from '@/components/CustomThemeBuilder';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
@@ -59,11 +60,31 @@ const Index = () => {
   const [editingSoundSignatureWidget, setEditingSoundSignatureWidget] = useState<SoundSignatureWidget | undefined>();
   const [soundSignatureWidgetEditorOpen, setSoundSignatureWidgetEditorOpen] = useState(false);
   
+  const [customTheme, setCustomTheme] = useLocalStorage<CustomTheme | null>('neuroflow-custom-theme', null);
+  const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
+  
   const { toast } = useToast();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    
+    // Apply custom theme if selected
+    if (theme === 'custom' && customTheme) {
+      const root = document.documentElement;
+      Object.entries(customTheme.colors).forEach(([key, value]) => {
+        const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+        root.style.setProperty(cssVar, value);
+      });
+    } else if (theme !== 'custom') {
+      // Remove custom theme variables when switching to preset theme
+      const root = document.documentElement;
+      const colorKeys = ['background', 'foreground', 'card', 'cardForeground', 'primary', 'primaryForeground', 'secondary', 'secondaryForeground', 'accent', 'accentForeground', 'muted', 'mutedForeground', 'border', 'input'];
+      colorKeys.forEach((key) => {
+        const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+        root.style.removeProperty(cssVar);
+      });
+    }
+  }, [theme, customTheme]);
 
   const handleAddTask = (title: string) => {
     const newTask: Task = {
@@ -560,6 +581,20 @@ const Index = () => {
     toast({ title: "Sound session logged", description: `${soundType} - ${productivity}/10` });
   };
 
+  // Custom Theme handlers
+  const handleOpenCustomThemeBuilder = () => {
+    setCustomThemeBuilderOpen(true);
+  };
+
+  const handleSaveCustomTheme = (newTheme: CustomTheme) => {
+    setCustomTheme(newTheme);
+    setTheme('custom');
+    toast({ 
+      title: "Custom theme saved", 
+      description: `${newTheme.name} has been applied` 
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -573,7 +608,11 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">Your AuDHD Life Management Hub</p>
               </div>
             </div>
-            <ThemeSwitcher currentTheme={theme} onThemeChange={setTheme} />
+            <ThemeSwitcher 
+              currentTheme={theme} 
+              onThemeChange={setTheme}
+              onCustomThemeClick={handleOpenCustomThemeBuilder}
+            />
           </div>
         </div>
       </header>
@@ -865,6 +904,13 @@ const Index = () => {
         onOpenChange={setSoundSignatureWidgetEditorOpen}
         widget={editingSoundSignatureWidget}
         onSave={handleSaveSoundSignatureWidget}
+      />
+      
+      <CustomThemeBuilder
+        open={customThemeBuilderOpen}
+        onOpenChange={setCustomThemeBuilderOpen}
+        onSave={handleSaveCustomTheme}
+        existingTheme={customTheme || undefined}
       />
     </div>
   );

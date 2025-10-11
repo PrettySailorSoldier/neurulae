@@ -1,12 +1,13 @@
-import { Palette } from 'lucide-react';
+import { Palette, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Theme } from '@/types';
+import type { Theme } from '@/types';
 
 const themes: { value: Theme; label: string; colors: string }[] = [
   { value: 'orchid', label: 'Orchid Velvet', colors: 'bg-gradient-to-r from-purple-600 to-pink-600' },
@@ -22,9 +23,10 @@ const themes: { value: Theme; label: string; colors: string }[] = [
 interface ThemeSwitcherProps {
   currentTheme: Theme;
   onThemeChange: (theme: Theme) => void;
+  onCustomThemeClick?: () => void;
 }
 
-export function ThemeSwitcher({ currentTheme, onThemeChange }: ThemeSwitcherProps) {
+export function ThemeSwitcher({ currentTheme, onThemeChange, onCustomThemeClick }: ThemeSwitcherProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -45,6 +47,27 @@ export function ThemeSwitcher({ currentTheme, onThemeChange }: ThemeSwitcherProp
             </span>
           </DropdownMenuItem>
         ))}
+        {onCustomThemeClick && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onCustomThemeClick}
+              className="flex items-center gap-3 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Custom Theme</span>
+            </DropdownMenuItem>
+            {currentTheme === 'custom' && (
+              <DropdownMenuItem
+                onClick={() => onThemeChange('custom')}
+                className="flex items-center gap-3 cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded bg-gradient-to-r from-primary to-secondary" />
+                <span className="font-semibold">Custom Theme</span>
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

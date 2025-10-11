@@ -19,7 +19,27 @@ export interface Project {
   createdAt: string;
 }
 
-export type Theme = 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy';
+export type Theme = 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | 'custom';
+
+export interface CustomTheme {
+  name: string;
+  colors: {
+    background: string;
+    foreground: string;
+    card: string;
+    cardForeground: string;
+    primary: string;
+    primaryForeground: string;
+    secondary: string;
+    secondaryForeground: string;
+    accent: string;
+    accentForeground: string;
+    muted: string;
+    mutedForeground: string;
+    border: string;
+    input: string;
+  };
+}
 
 export interface TimerState {
   isRunning: boolean;
