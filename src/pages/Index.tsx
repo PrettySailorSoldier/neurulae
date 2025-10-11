@@ -4,9 +4,10 @@ import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { FocusTimer } from '@/components/FocusTimer';
 import { TodaysPriorities } from '@/components/TodaysPriorities';
 import { ProjectsTab } from '@/components/ProjectsTab';
+import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Task, Project, Theme, TimeBlock, ScheduledTask } from '@/types';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook } from '@/types';
 import { Brain } from 'lucide-react';
 import { getTodayString } from '@/lib/timeUtils';
 
@@ -17,6 +18,7 @@ const Index = () => {
   const [projects, setProjects] = useLocalStorage<Project[]>('neuroflow-projects', []);
   const [timeBlocks, setTimeBlocks] = useLocalStorage<TimeBlock[]>('neuroflow-timeblocks', []);
   const [scheduledTasks, setScheduledTasks] = useLocalStorage<ScheduledTask[]>('neuroflow-scheduled-tasks', []);
+  const [playbooks, setPlaybooks] = useLocalStorage<Playbook[]>('neuroflow-playbooks', []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -83,6 +85,23 @@ const Index = () => {
   const handleDeleteTimeBlock = (id: string) => {
     setTimeBlocks(timeBlocks.filter(block => block.id !== id));
     setScheduledTasks(scheduledTasks.filter(task => task.blockId !== id));
+  };
+
+  const handleAddPlaybook = (playbookData: Omit<Playbook, 'id' | 'createdAt'>) => {
+    const newPlaybook: Playbook = {
+      ...playbookData,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    setPlaybooks([...playbooks, newPlaybook]);
+  };
+
+  const handleUpdatePlaybook = (id: string, playbookData: Omit<Playbook, 'id' | 'createdAt'>) => {
+    setPlaybooks(playbooks.map(p => p.id === id ? { ...p, ...playbookData } : p));
+  };
+
+  const handleDeletePlaybook = (id: string) => {
+    setPlaybooks(playbooks.filter(p => p.id !== id));
   };
 
   return (
@@ -180,10 +199,12 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="playbooks">
-            <div className="text-center py-12 bg-card rounded-lg border border-border">
-              <h3 className="text-xl font-semibold mb-2">Playbooks</h3>
-              <p className="text-muted-foreground">Pre-written guides for complex goals coming soon</p>
-            </div>
+            <PlaybooksTab
+              playbooks={playbooks}
+              onAddPlaybook={handleAddPlaybook}
+              onUpdatePlaybook={handleUpdatePlaybook}
+              onDeletePlaybook={handleDeletePlaybook}
+            />
           </TabsContent>
 
           <TabsContent value="care">

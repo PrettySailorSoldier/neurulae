@@ -8,6 +8,7 @@ export interface Task {
   recurring?: 'none' | 'daily' | 'weekly';
   colorTag?: string;
   createdAt: string;
+  linkedPlaybookId?: string;
 }
 
 export interface Project {
@@ -64,4 +65,26 @@ export interface TimerSession {
   actualMinutes?: number;
   date: string;
   timerType: 'interval' | 'sequence' | 'flowtime' | 'chime' | 'tomato';
+}
+
+export interface PlaybookStep {
+  id: string;
+  title: string;
+  description: string;
+  estimatedMinutes?: number;
+  completed: boolean;
+  order: number;
+  tips?: string[];
+}
+
+export interface Playbook {
+  id: string;
+  title: string;
+  description?: string;
+  category: string;
+  steps: PlaybookStep[];
+  isTemplate: boolean;
+  linkedTaskIds: string[];
+  resetOnRecurrence: boolean;
+  createdAt: string;
 }
