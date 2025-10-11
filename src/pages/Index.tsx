@@ -757,15 +757,14 @@ const Index = () => {
                   <div className="space-y-3">
                     {scheduledTasks
                       .filter(task => task.date === getTodayString())
-                      .sort((a, b) => a.time.localeCompare(b.time))
                       .map(scheduledTask => {
                         const task = tasks.find(t => t.id === scheduledTask.taskId);
                         return task ? (
                           <ScheduledTaskCard
                             key={scheduledTask.id}
                             task={task}
-                            scheduledTask={scheduledTask}
                             onToggleComplete={() => handleToggleComplete(task.id)}
+                            estimatedMinutes={scheduledTask.estimatedMinutes}
                           />
                         ) : null;
                       })}
@@ -787,42 +786,6 @@ const Index = () => {
                     onAddTask={handleAddTask}
                     onToggleComplete={handleToggleComplete}
                   />
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-              {/* Today's Schedule & Unscheduled Tasks - Right 60% */}
-              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-card border border-border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-4">Today's Schedule</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Scheduled tasks will appear here
-                  </p>
-                </div>
-
-                <div className="bg-card border border-border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-4">Unscheduled Tasks</h3>
-                  <div className="space-y-2">
-                    {tasks
-                      .filter(task => !scheduledTasks.some(st => st.taskId === task.id))
-                      .map(task => (
-                        <div
-                          key={task.id}
-                          className="flex items-center gap-2 p-2 bg-card/50 border border-border rounded-md hover:bg-card transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={task.completed}
-                            onChange={() => handleToggleComplete(task.id)}
-                            className="rounded border-border"
-                          />
-                          <span className={task.completed ? 'line-through text-muted-foreground' : ''}>
-                            {task.title}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
                 </div>
               </div>
             </div>

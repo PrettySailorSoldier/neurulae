@@ -1,22 +1,30 @@
 import { useState, useEffect } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Play, Square } from 'lucide-react';
 
 export function TimeChime() {
-  const [chimeInterval, setChimeInterval] = useState(15);
-  const [isRunning, setIsRunning] = useState(false);
-  const [chimeCount, setChimeCount] = useState(0);
-  const [nextChimeIn, setNextChimeIn] = useState(0);
+  const { toast } = useToast();
+  const [chimeInterval, setChimeInterval] = useLocalStorage('neuroflow-chime-interval', 15);
+  const [isRunning, setIsRunning] = useLocalStorage('neuroflow-chime-running', false);
+  const [chimeCount, setChimeCount] = useLocalStorage('neuroflow-chime-count', 0);
+  const [nextChimeIn, setNextChimeIn] = useLocalStorage('neuroflow-chime-countdown', 0);
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning || nextChimeIn <= 0) return;
 
     const countdown = setInterval(() => {
       setNextChimeIn(prev => {
         if (prev <= 1) {
           playChime();
           setChimeCount(c => c + 1);
+          // Show notification
+          toast({
+            title: "🔔 Time Chime",
+            description: `Chime #${chimeCount + 1} - ${chimeInterval} minutes elapsed`,
+          });
           return chimeInterval * 60;
         }
         return prev - 1;
@@ -24,7 +32,7 @@ export function TimeChime() {
     }, 1000);
 
     return () => clearInterval(countdown);
-  }, [isRunning, chimeInterval]);
+  }, [isRunning, chimeInterval, nextChimeIn]);
 
   const playChime = () => {
     // Create a simple beep sound
