@@ -7,12 +7,17 @@ import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget } from '@/types';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage } from '@/types';
 import { Brain, Plus } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetDisplay } from '@/components/ReminderWidgetDisplay';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
+import { EnergyTaskWidget as EnergyTaskWidgetDisplay } from '@/components/EnergyTaskWidget';
+import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
+import { FutureSelfMessengerWidget as FutureSelfMessengerWidgetDisplay } from '@/components/FutureSelfMessengerWidget';
+import { FutureSelfMessengerEditor } from '@/components/FutureSelfMessengerEditor';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [theme, setTheme] = useLocalStorage<Theme>('neuroflow-theme', 'orchid');
@@ -25,6 +30,17 @@ const Index = () => {
   const [reminderWidgets, setReminderWidgets] = useLocalStorage<ReminderWidget[]>('neuroflow-widgets', []);
   const [editingWidget, setEditingWidget] = useState<ReminderWidget | undefined>();
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false);
+  
+  const [energyWidgets, setEnergyWidgets] = useLocalStorage<EnergyTaskWidget[]>('neuroflow-energy-widgets', []);
+  const [editingEnergyWidget, setEditingEnergyWidget] = useState<EnergyTaskWidget | undefined>();
+  const [energyWidgetEditorOpen, setEnergyWidgetEditorOpen] = useState(false);
+  
+  const [messengerWidgets, setMessengerWidgets] = useLocalStorage<FutureSelfMessengerWidget[]>('neuroflow-messenger-widgets', []);
+  const [editingMessengerWidget, setEditingMessengerWidget] = useState<FutureSelfMessengerWidget | undefined>();
+  const [messengerWidgetEditorOpen, setMessengerWidgetEditorOpen] = useState(false);
+  const [messengerEditorMode, setMessengerEditorMode] = useState<'settings' | 'message'>('settings');
+  
+  const { toast } = useToast();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -210,6 +226,131 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Energy Widget handlers
+  const handleAddEnergyWidget = () => {
+    setEditingEnergyWidget(undefined);
+    setEnergyWidgetEditorOpen(true);
+  };
+
+  const handleEditEnergyWidget = (widgetId: string) => {
+    const widget = energyWidgets.find(w => w.id === widgetId);
+    setEditingEnergyWidget(widget);
+    setEnergyWidgetEditorOpen(true);
+  };
+
+  const handleSaveEnergyWidget = (widgetData: Omit<EnergyTaskWidget, 'id'> & { id?: string }) => {
+    if (widgetData.id) {
+      setEnergyWidgets(energyWidgets.map(w =>
+        w.id === widgetData.id ? { ...w, ...widgetData } : w
+      ));
+    } else {
+      const newWidget: EnergyTaskWidget = {
+        ...widgetData,
+        id: crypto.randomUUID(),
+      };
+      setEnergyWidgets([...energyWidgets, newWidget]);
+    }
+    toast({ title: "Energy widget saved", description: "Your energy tracking widget has been updated." });
+  };
+
+  const handleLogEnergy = (widgetId: string, category: string, level: number) => {
+    setEnergyWidgets(energyWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        return {
+          ...widget,
+          energyLogs: [
+            ...widget.energyLogs,
+            {
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              level,
+              category: category as any,
+            }
+          ].slice(-100), // Keep last 100 logs
+        };
+      }
+      return widget;
+    }));
+    toast({ 
+      title: "Energy logged", 
+      description: `${category.charAt(0).toUpperCase() + category.slice(1)} energy: ${level}/10` 
+    });
+  };
+
+  // Future Self Messenger handlers
+  const handleAddMessengerWidget = () => {
+    setEditingMessengerWidget(undefined);
+    setMessengerEditorMode('settings');
+    setMessengerWidgetEditorOpen(true);
+  };
+
+  const handleEditMessengerWidget = (widgetId: string) => {
+    const widget = messengerWidgets.find(w => w.id === widgetId);
+    setEditingMessengerWidget(widget);
+    setMessengerEditorMode('settings');
+    setMessengerWidgetEditorOpen(true);
+  };
+
+  const handleCreateMessage = (widgetId: string) => {
+    const widget = messengerWidgets.find(w => w.id === widgetId);
+    setEditingMessengerWidget(widget);
+    setMessengerEditorMode('message');
+    setMessengerWidgetEditorOpen(true);
+  };
+
+  const handleSaveMessengerWidget = (widgetData: Omit<FutureSelfMessengerWidget, 'id'> & { id?: string }) => {
+    if (widgetData.id) {
+      setMessengerWidgets(messengerWidgets.map(w =>
+        w.id === widgetData.id ? { ...w, ...widgetData } : w
+      ));
+    } else {
+      const newWidget: FutureSelfMessengerWidget = {
+        ...widgetData,
+        id: crypto.randomUUID(),
+      };
+      setMessengerWidgets([...messengerWidgets, newWidget]);
+    }
+    toast({ title: "Messenger widget saved" });
+  };
+
+  const handleSaveMessage = (message: Omit<FutureSelfMessage, 'id'>) => {
+    if (!editingMessengerWidget) return;
+    
+    const newMessage: FutureSelfMessage = {
+      ...message,
+      id: crypto.randomUUID(),
+    };
+
+    setMessengerWidgets(messengerWidgets.map(widget => {
+      if (widget.id === editingMessengerWidget.id) {
+        return {
+          ...widget,
+          messages: [...widget.messages, newMessage],
+        };
+      }
+      return widget;
+    }));
+    
+    toast({ 
+      title: "Message scheduled", 
+      description: "Your future self will receive this message at the right time." 
+    });
+  };
+
+  const handleViewMessage = (widgetId: string, messageId: string) => {
+    setMessengerWidgets(messengerWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        return {
+          ...widget,
+          messages: widget.messages.map(msg => 
+            msg.id === messageId ? { ...msg, delivered: true, deliveredAt: new Date().toISOString() } : msg
+          ),
+        };
+      }
+      return widget;
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -250,6 +391,61 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Productivity Enhancement Widgets */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">🎯 Productivity Enhancements</h2>
+                <div className="flex gap-2">
+                  <Button onClick={handleAddEnergyWidget} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Energy Tracker
+                  </Button>
+                  <Button onClick={handleAddMessengerWidget} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Future Self Messenger
+                  </Button>
+                </div>
+              </div>
+              
+              {energyWidgets.length === 0 && messengerWidgets.length === 0 ? (
+                <div className="bg-card border border-border rounded-lg p-8 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    Transform your productivity with intelligent widgets that adapt to your energy levels and help you stay motivated
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={handleAddEnergyWidget} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Energy-Task Harmony
+                    </Button>
+                    <Button onClick={handleAddMessengerWidget} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Future Self Messenger
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {energyWidgets.map(widget => (
+                    <EnergyTaskWidgetDisplay
+                      key={widget.id}
+                      widget={widget}
+                      onLogEnergy={(category, level) => handleLogEnergy(widget.id, category, level)}
+                      onEdit={() => handleEditEnergyWidget(widget.id)}
+                    />
+                  ))}
+                  {messengerWidgets.map(widget => (
+                    <FutureSelfMessengerWidgetDisplay
+                      key={widget.id}
+                      widget={widget}
+                      onCreateMessage={() => handleCreateMessage(widget.id)}
+                      onViewMessage={(msgId) => handleViewMessage(widget.id, msgId)}
+                      onEdit={() => handleEditMessengerWidget(widget.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Reminder Widgets */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -357,12 +553,28 @@ const Index = () => {
         </Tabs>
       </main>
 
-      {/* Widget Editor Dialog */}
+      {/* Widget Editor Dialogs */}
       <ReminderWidgetEditor
         open={widgetEditorOpen}
         onClose={() => setWidgetEditorOpen(false)}
         widget={editingWidget}
         onSave={handleSaveWidget}
+      />
+      
+      <EnergyTaskWidgetEditor
+        open={energyWidgetEditorOpen}
+        onClose={() => setEnergyWidgetEditorOpen(false)}
+        widget={editingEnergyWidget}
+        onSave={handleSaveEnergyWidget}
+      />
+      
+      <FutureSelfMessengerEditor
+        open={messengerWidgetEditorOpen}
+        onClose={() => setMessengerWidgetEditorOpen(false)}
+        widget={editingMessengerWidget}
+        mode={messengerEditorMode}
+        onSave={handleSaveMessengerWidget}
+        onSaveMessage={handleSaveMessage}
       />
     </div>
   );

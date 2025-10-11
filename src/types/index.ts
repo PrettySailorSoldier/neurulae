@@ -105,3 +105,50 @@ export interface ReminderItem {
   completed: boolean;
   order: number;
 }
+
+// Energy-Task Harmony Widget
+export interface EnergyLog {
+  id: string;
+  timestamp: string;
+  level: number; // 1-10
+  category: 'mental' | 'physical' | 'creative' | 'social';
+  note?: string;
+}
+
+export interface EnergyTaskWidget {
+  id: string;
+  type: 'energy-task-harmony';
+  title: string;
+  energyLogs: EnergyLog[];
+  taskSuggestionsEnabled: boolean;
+  notificationsEnabled: boolean;
+  trackedCategories: Array<'mental' | 'physical' | 'creative' | 'social'>;
+  linkedTasks: Array<{
+    taskId: string;
+    taskTitle: string;
+    optimalEnergy: number;
+    preferredCategory: 'mental' | 'physical' | 'creative' | 'social';
+  }>;
+}
+
+// Future-Self Messenger Widget
+export interface FutureSelfMessage {
+  id: string;
+  content: string;
+  type: 'text' | 'note';
+  createdAt: string;
+  deliveryTrigger: 'date' | 'achievement' | 'condition';
+  deliveryDate?: string;
+  deliveryCondition?: string;
+  delivered: boolean;
+  deliveredAt?: string;
+  tags: string[];
+}
+
+export interface FutureSelfMessengerWidget {
+  id: string;
+  type: 'future-self-messenger';
+  title: string;
+  messages: FutureSelfMessage[];
+  aiDeliveryEnabled: boolean;
+}
