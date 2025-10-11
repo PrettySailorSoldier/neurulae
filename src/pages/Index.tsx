@@ -6,26 +6,25 @@ import { TodaysPriorities } from '@/components/TodaysPriorities';
 import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
+import { WidgetPanel } from '@/components/WidgetPanel';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus } from 'lucide-react';
+import { Brain, Plus, X } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
-import { ReminderWidgetDisplay } from '@/components/ReminderWidgetDisplay';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
-import { EnergyTaskWidget as EnergyTaskWidgetDisplay } from '@/components/EnergyTaskWidget';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
-import { FutureSelfMessengerWidget as FutureSelfMessengerWidgetDisplay } from '@/components/FutureSelfMessengerWidget';
 import { FutureSelfMessengerEditor } from '@/components/FutureSelfMessengerEditor';
-import { MoodGardenWidget as MoodGardenWidgetDisplay } from '@/components/MoodGardenWidget';
 import { MoodGardenWidgetEditor } from '@/components/MoodGardenWidgetEditor';
-import { ParallelUniverseWidget as ParallelUniverseWidgetDisplay } from '@/components/ParallelUniverseWidget';
 import { ParallelUniverseWidgetEditor } from '@/components/ParallelUniverseWidgetEditor';
-import { SoundSignatureWidget as SoundSignatureWidgetDisplay } from '@/components/SoundSignatureWidget';
 import { SoundSignatureWidgetEditor } from '@/components/SoundSignatureWidgetEditor';
 import { CustomThemeBuilder } from '@/components/CustomThemeBuilder';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { TaskList } from '@/components/TaskList';
+import { ScheduledTaskCard } from '@/components/ScheduledTaskCard';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 const Index = () => {
   const [theme, setTheme] = useLocalStorage<Theme>('neuroflow-theme', 'orchid');
@@ -64,39 +63,28 @@ const Index = () => {
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
   
+  // Custom Tabs
+  const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neuroflow-custom-tabs', []);
+  const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
+  const [newTabName, setNewTabName] = useState('');
+  
   const { toast } = useToast();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    const body = document.body;
+    const root = document.documentElement;
     
     // Apply custom theme if selected
     if (theme === 'custom' && customTheme) {
-      const root = document.documentElement;
       Object.entries(customTheme.colors).forEach(([key, value]) => {
         const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         root.style.setProperty(cssVar, value);
       });
 
-      // Apply background image settings using a dedicated background layer
+      // Apply background image directly to body
       if (customTheme.backgroundImage && customTheme.backgroundImage.url) {
         const bg = customTheme.backgroundImage;
-        
-        // Create or update background layer
-        const bgLayerId = 'custom-theme-bg-layer';
-        let bgLayer = document.getElementById(bgLayerId) as HTMLDivElement;
-        
-        if (!bgLayer) {
-          bgLayer = document.createElement('div');
-          bgLayer.id = bgLayerId;
-          bgLayer.style.position = 'fixed';
-          bgLayer.style.top = '0';
-          bgLayer.style.left = '0';
-          bgLayer.style.width = '100%';
-          bgLayer.style.height = '100%';
-          bgLayer.style.pointerEvents = 'none';
-          bgLayer.style.zIndex = '-2';
-          document.body.appendChild(bgLayer);
-        }
         
         // Create filter string
         const filterValue = `
@@ -105,56 +93,41 @@ const Index = () => {
           brightness(${bg.filter.brightness}%)
           contrast(${bg.filter.contrast}%)
           saturate(${bg.filter.saturate}%)
-          blur(${bg.blur}px)
         `.trim();
 
-        // Apply background styles to the layer
-        bgLayer.style.backgroundImage = `url(${bg.url})`;
-        bgLayer.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
-        bgLayer.style.backgroundPosition = bg.position.replace('-', ' ');
-        bgLayer.style.backgroundRepeat = bg.repeat;
-        bgLayer.style.backgroundAttachment = bg.attachment;
-        bgLayer.style.opacity = (bg.opacity / 100).toString();
-        bgLayer.style.filter = filterValue;
+        // Apply background styles
+        body.style.backgroundImage = `url(${bg.url})`;
+        body.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
+        body.style.backgroundPosition = bg.position.replace('-', ' ');
+        body.style.backgroundRepeat = bg.repeat;
+        body.style.backgroundAttachment = bg.attachment;
+        body.style.filter = filterValue;
         
-        // Create overlay
-        const overlayId = 'custom-theme-overlay';
-        let overlay = document.getElementById(overlayId);
-        
-        if (bg.overlayOpacity > 0) {
-          if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = overlayId;
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0';
-            overlay.style.left = '0';
-            overlay.style.width = '100%';
-            overlay.style.height = '100%';
-            overlay.style.pointerEvents = 'none';
-            overlay.style.zIndex = '-1';
-            document.body.appendChild(overlay);
-          }
-          overlay.style.backgroundColor = `hsl(${bg.overlayColor} / ${bg.overlayOpacity}%)`;
-        } else if (overlay) {
-          overlay.remove();
-        }
+        root.style.setProperty('--bg-blur', `${bg.blur}px`);
+        root.style.setProperty('--bg-opacity', `${bg.opacity / 100}`);
+        root.style.setProperty('--overlay-color', bg.overlayColor);
+        root.style.setProperty('--overlay-opacity', `${bg.overlayOpacity}%`);
       }
     } else if (theme !== 'custom') {
       // Remove custom theme variables when switching to preset theme
-      const root = document.documentElement;
       const colorKeys = ['background', 'foreground', 'card', 'cardForeground', 'primary', 'primaryForeground', 'secondary', 'secondaryForeground', 'accent', 'accentForeground', 'muted', 'mutedForeground', 'border', 'input'];
       colorKeys.forEach((key) => {
         const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         root.style.removeProperty(cssVar);
       });
 
-      // Remove background layer
-      const bgLayer = document.getElementById('custom-theme-bg-layer');
-      if (bgLayer) bgLayer.remove();
-
-      // Remove overlay
-      const overlay = document.getElementById('custom-theme-overlay');
-      if (overlay) overlay.remove();
+      // Remove background styles from body
+      body.style.backgroundImage = '';
+      body.style.backgroundSize = '';
+      body.style.backgroundPosition = '';
+      body.style.backgroundRepeat = '';
+      body.style.backgroundAttachment = '';
+      body.style.filter = '';
+      
+      root.style.removeProperty('--bg-blur');
+      root.style.removeProperty('--bg-opacity');
+      root.style.removeProperty('--overlay-color');
+      root.style.removeProperty('--overlay-opacity');
     }
   }, [theme, customTheme]);
 
@@ -679,6 +652,24 @@ const Index = () => {
     });
   };
 
+  const handleAddCustomTab = () => {
+    if (newTabName.trim()) {
+      const newTab = {
+        id: crypto.randomUUID(),
+        name: newTabName.trim(),
+      };
+      setCustomTabs([...customTabs, newTab]);
+      setNewTabName('');
+      setNewTabDialogOpen(false);
+      toast({ title: "Tab created", description: `${newTab.name} has been added` });
+    }
+  };
+
+  const handleDeleteCustomTab = (tabId: string) => {
+    setCustomTabs(customTabs.filter(tab => tab.id !== tabId));
+    toast({ title: "Tab removed" });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -717,166 +708,35 @@ const Index = () => {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 md:grid-cols-4">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="playbooks">Playbooks</TabsTrigger>
-            <TabsTrigger value="care">Care</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 md:auto-cols-auto" style={{ gridTemplateColumns: `repeat(${4 + customTabs.length}, minmax(0, 1fr))` }}>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="projects">Projects</TabsTrigger>
+              <TabsTrigger value="playbooks">Playbooks</TabsTrigger>
+              <TabsTrigger value="care">Care</TabsTrigger>
+              {customTabs.map(tab => (
+                <TabsTrigger key={tab.id} value={tab.id} className="group relative">
+                  {tab.name}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCustomTab(tab.id);
+                    }}
+                    className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <Button size="sm" variant="outline" onClick={() => setNewTabDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
 
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Productivity Enhancement Widgets */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">🎯 Productivity Enhancements</h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Widget
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Productivity Widgets</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={handleAddEnergyWidget}>
-                      ⚡ Energy-Task Harmony
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleAddMessengerWidget}>
-                      ✉️ Future Self Messenger
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleAddMoodGardenWidget}>
-                      🌱 Mood Garden
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleAddParallelUniverseWidget}>
-                      🌌 Parallel Universe
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleAddSoundSignatureWidget}>
-                      🎵 Sound Signature
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Custom</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={handleAddWidget}>
-                      ➕ Custom Reminder Widget
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              
-              {energyWidgets.length === 0 && messengerWidgets.length === 0 && 
-               moodGardenWidgets.length === 0 && parallelUniverseWidgets.length === 0 && 
-               soundSignatureWidgets.length === 0 ? (
-                <div className="bg-card border border-border rounded-lg p-8 text-center">
-                  <p className="text-muted-foreground mb-4">
-                    Transform your productivity with intelligent widgets that adapt to your energy levels and help you stay motivated
-                  </p>
-                  <div className="flex gap-2 justify-center">
-                    <Button onClick={handleAddEnergyWidget} variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Energy-Task Harmony
-                    </Button>
-                    <Button onClick={handleAddMessengerWidget} variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Future Self Messenger
-                    </Button>
-                    <Button onClick={handleAddMoodGardenWidget} variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Mood Garden
-                    </Button>
-                    <Button onClick={handleAddParallelUniverseWidget} variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Parallel Universe
-                    </Button>
-                    <Button onClick={handleAddSoundSignatureWidget} variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Sound Signature
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {energyWidgets.map(widget => (
-                    <EnergyTaskWidgetDisplay
-                      key={widget.id}
-                      widget={widget}
-                      onLogEnergy={(category, level) => handleLogEnergy(widget.id, category, level)}
-                      onEdit={() => handleEditEnergyWidget(widget.id)}
-                    />
-                  ))}
-                  {messengerWidgets.map(widget => (
-                    <FutureSelfMessengerWidgetDisplay
-                      key={widget.id}
-                      widget={widget}
-                      onCreateMessage={() => handleCreateMessage(widget.id)}
-                      onViewMessage={(msgId) => handleViewMessage(widget.id, msgId)}
-                      onEdit={() => handleEditMessengerWidget(widget.id)}
-                    />
-                  ))}
-                  {moodGardenWidgets.map(widget => (
-                    <MoodGardenWidgetDisplay
-                      key={widget.id}
-                      widget={widget}
-                      onLogMood={(emotion, intensity, note) => handleLogMood(widget.id, emotion, intensity, note)}
-                      onEdit={() => handleEditMoodGardenWidget(widget.id)}
-                    />
-                  ))}
-                  {parallelUniverseWidgets.map(widget => (
-                    <ParallelUniverseWidgetDisplay
-                      key={widget.id}
-                      widget={widget}
-                      onLogDecision={(q, c, a, ctx) => handleLogDecision(widget.id, q, c, a, ctx)}
-                      onGenerateOutcome={(decId) => handleGenerateOutcome(widget.id, decId)}
-                      onEdit={() => handleEditParallelUniverseWidget(widget.id)}
-                    />
-                  ))}
-                  {soundSignatureWidgets.map(widget => (
-                    <SoundSignatureWidgetDisplay
-                      key={widget.id}
-                      widget={widget}
-                      onLogSession={(s, d, p, m, a) => handleLogSoundSession(widget.id, s, d, p, m, a)}
-                      onEdit={() => handleEditSoundSignatureWidget(widget.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Reminder Widgets */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Custom Reminders</h2>
-                <Button onClick={handleAddWidget} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Widget
-                </Button>
-              </div>
-              
-              {reminderWidgets.length === 0 ? (
-                <div className="bg-card border border-border rounded-lg p-8 text-center">
-                  <p className="text-muted-foreground mb-4">
-                    Create custom reminder widgets to track daily routines, care checklists, or any recurring tasks
-                  </p>
-                  <Button onClick={handleAddWidget}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Widget
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {reminderWidgets.map(widget => (
-                    <ReminderWidgetDisplay
-                      key={widget.id}
-                      widget={widget}
-                      onToggleItem={handleToggleWidgetItem}
-                      onEdit={handleEditWidget}
-                      onReset={handleResetWidget}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Daily Flow Timeline - Left 40% */}
+              {/* Daily Flow Timeline - Left */}
               <div className="lg:col-span-1">
                 <DailyFlowTimeline
                   timeBlocks={timeBlocks}
@@ -888,6 +748,49 @@ const Index = () => {
                   onToggleComplete={handleToggleComplete}
                 />
               </div>
+
+              {/* Today's Schedule & Unscheduled Tasks - Right */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Today's Schedule */}
+                <div className="bg-card rounded-lg border border-border p-4">
+                  <h3 className="text-lg font-semibold mb-4">📅 Today's Schedule</h3>
+                  <div className="space-y-3">
+                    {scheduledTasks
+                      .filter(task => task.date === getTodayString())
+                      .sort((a, b) => a.time.localeCompare(b.time))
+                      .map(scheduledTask => {
+                        const task = tasks.find(t => t.id === scheduledTask.taskId);
+                        return task ? (
+                          <ScheduledTaskCard
+                            key={scheduledTask.id}
+                            task={task}
+                            scheduledTask={scheduledTask}
+                            onToggleComplete={() => handleToggleComplete(task.id)}
+                          />
+                        ) : null;
+                      })}
+                    {scheduledTasks.filter(task => task.date === getTodayString()).length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">
+                        No tasks scheduled for today. Add time blocks to schedule tasks.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Unscheduled Tasks */}
+                <div className="bg-card rounded-lg border border-border p-4">
+                  <h3 className="text-lg font-semibold mb-4">📋 Unscheduled Tasks</h3>
+                  <TaskList
+                    tasks={tasks.filter(
+                      task => !scheduledTasks.some(st => st.taskId === task.id && st.date === getTodayString())
+                    )}
+                    onAddTask={handleAddTask}
+                    onToggleComplete={handleToggleComplete}
+                  />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
               {/* Today's Schedule & Unscheduled Tasks - Right 60% */}
               <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -944,8 +847,79 @@ const Index = () => {
               <p className="text-muted-foreground">Daily care routines coming soon</p>
             </div>
           </TabsContent>
+
+          {customTabs.map(tab => (
+            <TabsContent key={tab.id} value={tab.id}>
+              <div className="text-center py-12 bg-card rounded-lg border border-border">
+                <h3 className="text-xl font-semibold mb-2">{tab.name}</h3>
+                <p className="text-muted-foreground">Custom content for this tab</p>
+              </div>
+            </TabsContent>
+          ))}
         </Tabs>
       </main>
+
+      {/* Widget Panel */}
+      <WidgetPanel
+        reminderWidgets={reminderWidgets}
+        energyWidgets={energyWidgets}
+        messengerWidgets={messengerWidgets}
+        moodGardenWidgets={moodGardenWidgets}
+        parallelUniverseWidgets={parallelUniverseWidgets}
+        soundSignatureWidgets={soundSignatureWidgets}
+        onAddWidget={handleAddWidget}
+        onEditWidget={handleEditWidget}
+        onToggleWidgetItem={handleToggleWidgetItem}
+        onResetWidget={handleResetWidget}
+        onAddEnergyWidget={handleAddEnergyWidget}
+        onEditEnergyWidget={handleEditEnergyWidget}
+        onLogEnergy={handleLogEnergy}
+        onAddMessengerWidget={handleAddMessengerWidget}
+        onEditMessengerWidget={handleEditMessengerWidget}
+        onCreateMessage={handleCreateMessage}
+        onViewMessage={handleViewMessage}
+        onAddMoodGardenWidget={handleAddMoodGardenWidget}
+        onEditMoodGardenWidget={handleEditMoodGardenWidget}
+        onLogMood={handleLogMood}
+        onAddParallelUniverseWidget={handleAddParallelUniverseWidget}
+        onEditParallelUniverseWidget={handleEditParallelUniverseWidget}
+        onLogDecision={handleLogDecision}
+        onGenerateOutcome={handleGenerateOutcome}
+        onAddSoundSignatureWidget={handleAddSoundSignatureWidget}
+        onEditSoundSignatureWidget={handleEditSoundSignatureWidget}
+        onLogSoundSession={handleLogSoundSession}
+      />
+
+      {/* New Tab Dialog */}
+      <Dialog open={newTabDialogOpen} onOpenChange={setNewTabDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Tab</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tab-name">Tab Name</Label>
+              <Input
+                id="tab-name"
+                value={newTabName}
+                onChange={(e) => setNewTabName(e.target.value)}
+                placeholder="My Custom Tab"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddCustomTab();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewTabDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCustomTab}>Create Tab</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Widget Editor Dialogs */}
       <ReminderWidgetEditor

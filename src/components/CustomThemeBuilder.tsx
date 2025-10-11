@@ -247,26 +247,10 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
       root.style.setProperty(cssVar, value);
     });
 
-    // Apply background image settings using a dedicated background layer
+    // Apply background image directly to body
     if (themeData.backgroundImage && themeData.backgroundImage.url) {
       const bg = themeData.backgroundImage;
-      
-      // Create or update background layer
-      const bgLayerId = 'theme-preview-bg-layer';
-      let bgLayer = document.getElementById(bgLayerId) as HTMLDivElement;
-      
-      if (!bgLayer) {
-        bgLayer = document.createElement('div');
-        bgLayer.id = bgLayerId;
-        bgLayer.style.position = 'fixed';
-        bgLayer.style.top = '0';
-        bgLayer.style.left = '0';
-        bgLayer.style.width = '100%';
-        bgLayer.style.height = '100%';
-        bgLayer.style.pointerEvents = 'none';
-        bgLayer.style.zIndex = '-2';
-        document.body.appendChild(bgLayer);
-      }
+      const body = document.body;
       
       // Create filter string
       const filterValue = `
@@ -275,56 +259,45 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
         brightness(${bg.filter.brightness}%)
         contrast(${bg.filter.contrast}%)
         saturate(${bg.filter.saturate}%)
-        blur(${bg.blur}px)
       `.trim();
 
-      // Apply background styles to the layer
-      bgLayer.style.backgroundImage = `url(${bg.url})`;
-      bgLayer.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
-      bgLayer.style.backgroundPosition = bg.position.replace('-', ' ');
-      bgLayer.style.backgroundRepeat = bg.repeat;
-      bgLayer.style.backgroundAttachment = bg.attachment;
-      bgLayer.style.opacity = (bg.opacity / 100).toString();
-      bgLayer.style.filter = filterValue;
+      // Apply background styles
+      body.style.backgroundImage = `url(${bg.url})`;
+      body.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
+      body.style.backgroundPosition = bg.position.replace('-', ' ');
+      body.style.backgroundRepeat = bg.repeat;
+      body.style.backgroundAttachment = bg.attachment;
+      body.style.filter = filterValue;
       
-      // Create overlay
-      const overlayId = 'theme-preview-overlay';
-      let overlay = document.getElementById(overlayId);
-      
-      if (bg.overlayOpacity > 0) {
-        if (!overlay) {
-          overlay = document.createElement('div');
-          overlay.id = overlayId;
-          overlay.style.position = 'fixed';
-          overlay.style.top = '0';
-          overlay.style.left = '0';
-          overlay.style.width = '100%';
-          overlay.style.height = '100%';
-          overlay.style.pointerEvents = 'none';
-          overlay.style.zIndex = '-1';
-          document.body.appendChild(overlay);
-        }
-        overlay.style.backgroundColor = `hsl(${bg.overlayColor} / ${bg.overlayOpacity}%)`;
-      } else if (overlay) {
-        overlay.remove();
-      }
+      // Apply blur using a pseudo-element approach via CSS variable
+      root.style.setProperty('--bg-blur', `${bg.blur}px`);
+      root.style.setProperty('--bg-opacity', `${bg.opacity / 100}`);
+      root.style.setProperty('--overlay-color', bg.overlayColor);
+      root.style.setProperty('--overlay-opacity', `${bg.overlayOpacity}%`);
     }
   };
 
   const removeThemePreview = () => {
     const root = document.documentElement;
+    const body = document.body;
+    
     Object.keys(theme.colors).forEach((key) => {
       const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
       root.style.removeProperty(cssVar);
     });
 
-    // Remove background layer
-    const bgLayer = document.getElementById('theme-preview-bg-layer');
-    if (bgLayer) bgLayer.remove();
-
-    // Remove overlay
-    const overlay = document.getElementById('theme-preview-overlay');
-    if (overlay) overlay.remove();
+    // Remove background styles from body
+    body.style.backgroundImage = '';
+    body.style.backgroundSize = '';
+    body.style.backgroundPosition = '';
+    body.style.backgroundRepeat = '';
+    body.style.backgroundAttachment = '';
+    body.style.filter = '';
+    
+    root.style.removeProperty('--bg-blur');
+    root.style.removeProperty('--bg-opacity');
+    root.style.removeProperty('--overlay-color');
+    root.style.removeProperty('--overlay-opacity');
   };
 
   const handleColorChange = (colorKey: keyof CustomTheme['colors'], value: string) => {
@@ -446,17 +419,39 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
             <TabsContent value="background" className="space-y-6 mt-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Background Image URL</Label>
+                  <Label>Background Image</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const url = event.target?.result as string;
+                            setTheme({
+                              ...theme,
+                              backgroundImage: { ...theme.backgroundImage!, url }
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                  </div>
                   <Input
                     value={theme.backgroundImage?.url || ''}
                     onChange={(e) => setTheme({
                       ...theme,
                       backgroundImage: { ...theme.backgroundImage!, url: e.target.value }
                     })}
-                    placeholder="https://images.unsplash.com/photo-..."
+                    placeholder="Or paste image URL..."
+                    className="mt-2"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use Unsplash, Pexels, or your own hosted images
+                    Upload from device or use URL from Unsplash, Pexels, etc.
                   </p>
                 </div>
 
