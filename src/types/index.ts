@@ -88,3 +88,20 @@ export interface Playbook {
   resetOnRecurrence: boolean;
   createdAt: string;
 }
+
+export interface ReminderWidget {
+  id: string;
+  title: string;
+  description?: string;
+  items: ReminderItem[];
+  resetSchedule: 'none' | 'daily' | 'weekly' | 'monthly';
+  lastResetDate?: string;
+  createdAt: string;
+}
+
+export interface ReminderItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  order: number;
+}

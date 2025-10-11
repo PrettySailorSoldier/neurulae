@@ -7,9 +7,12 @@ import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook } from '@/types';
-import { Brain } from 'lucide-react';
-import { getTodayString } from '@/lib/timeUtils';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget } from '@/types';
+import { Brain, Plus } from 'lucide-react';
+import { getTodayString, getDateString } from '@/lib/timeUtils';
+import { ReminderWidgetDisplay } from '@/components/ReminderWidgetDisplay';
+import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [theme, setTheme] = useLocalStorage<Theme>('neuroflow-theme', 'orchid');
@@ -19,6 +22,9 @@ const Index = () => {
   const [timeBlocks, setTimeBlocks] = useLocalStorage<TimeBlock[]>('neuroflow-timeblocks', []);
   const [scheduledTasks, setScheduledTasks] = useLocalStorage<ScheduledTask[]>('neuroflow-scheduled-tasks', []);
   const [playbooks, setPlaybooks] = useLocalStorage<Playbook[]>('neuroflow-playbooks', []);
+  const [reminderWidgets, setReminderWidgets] = useLocalStorage<ReminderWidget[]>('neuroflow-widgets', []);
+  const [editingWidget, setEditingWidget] = useState<ReminderWidget | undefined>();
+  const [widgetEditorOpen, setWidgetEditorOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -104,6 +110,94 @@ const Index = () => {
     setPlaybooks(playbooks.filter(p => p.id !== id));
   };
 
+  const handleAddWidget = () => {
+    setEditingWidget(undefined);
+    setWidgetEditorOpen(true);
+  };
+
+  const handleEditWidget = (id: string) => {
+    const widget = reminderWidgets.find(w => w.id === id);
+    setEditingWidget(widget);
+    setWidgetEditorOpen(true);
+  };
+
+  const handleSaveWidget = (widgetData: Omit<ReminderWidget, 'id' | 'createdAt'>) => {
+    if (editingWidget) {
+      setReminderWidgets(reminderWidgets.map(w =>
+        w.id === editingWidget.id ? { ...w, ...widgetData } : w
+      ));
+    } else {
+      const newWidget: ReminderWidget = {
+        ...widgetData,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+      };
+      setReminderWidgets([...reminderWidgets, newWidget]);
+    }
+  };
+
+  const handleToggleWidgetItem = (widgetId: string, itemId: string) => {
+    setReminderWidgets(reminderWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        return {
+          ...widget,
+          items: widget.items.map(item =>
+            item.id === itemId ? { ...item, completed: !item.completed } : item
+          ),
+        };
+      }
+      return widget;
+    }));
+  };
+
+  const handleResetWidget = (widgetId: string) => {
+    setReminderWidgets(reminderWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        return {
+          ...widget,
+          items: widget.items.map(item => ({ ...item, completed: false })),
+          lastResetDate: new Date().toISOString(),
+        };
+      }
+      return widget;
+    }));
+  };
+
+  // Auto-reset widgets based on schedule
+  useEffect(() => {
+    const checkResets = () => {
+      const now = new Date();
+      const today = getTodayString();
+
+      reminderWidgets.forEach(widget => {
+        if (widget.resetSchedule === 'none') return;
+
+        const lastReset = widget.lastResetDate ? new Date(widget.lastResetDate) : null;
+        let shouldReset = false;
+
+        if (!lastReset) {
+          shouldReset = true;
+        } else if (widget.resetSchedule === 'daily') {
+          shouldReset = getDateString(lastReset) !== today;
+        } else if (widget.resetSchedule === 'weekly') {
+          const daysSince = Math.floor((now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24));
+          shouldReset = daysSince >= 7;
+        } else if (widget.resetSchedule === 'monthly') {
+          shouldReset = lastReset.getMonth() !== now.getMonth() || lastReset.getFullYear() !== now.getFullYear();
+        }
+
+        if (shouldReset) {
+          handleResetWidget(widget.id);
+        }
+      });
+    };
+
+    checkResets();
+    const interval = setInterval(checkResets, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [reminderWidgets]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -144,6 +238,41 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Reminder Widgets */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Custom Reminders</h2>
+                <Button onClick={handleAddWidget} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Widget
+                </Button>
+              </div>
+              
+              {reminderWidgets.length === 0 ? (
+                <div className="bg-card border border-border rounded-lg p-8 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    Create custom reminder widgets to track daily routines, care checklists, or any recurring tasks
+                  </p>
+                  <Button onClick={handleAddWidget}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Widget
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {reminderWidgets.map(widget => (
+                    <ReminderWidgetDisplay
+                      key={widget.id}
+                      widget={widget}
+                      onToggleItem={handleToggleWidgetItem}
+                      onEdit={handleEditWidget}
+                      onReset={handleResetWidget}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Daily Flow Timeline - Left 40% */}
               <div className="lg:col-span-1">
@@ -215,6 +344,14 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Widget Editor Dialog */}
+      <ReminderWidgetEditor
+        open={widgetEditorOpen}
+        onClose={() => setWidgetEditorOpen(false)}
+        widget={editingWidget}
+        onSave={handleSaveWidget}
+      />
     </div>
   );
 };
