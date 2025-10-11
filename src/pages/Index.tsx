@@ -652,6 +652,15 @@ const Index = () => {
     });
   };
 
+  const handleDeleteCustomTheme = () => {
+    setCustomTheme(null);
+    setTheme('orchid');
+    toast({ 
+      title: "Custom theme deleted", 
+      description: "Switched to Orchid Velvet theme" 
+    });
+  };
+
   const handleAddCustomTab = () => {
     if (newTabName.trim()) {
       const newTab = {
@@ -688,6 +697,7 @@ const Index = () => {
               onThemeChange={setTheme}
               onCustomThemeClick={handleOpenCustomThemeBuilder}
               onEditCustomTheme={handleEditCustomTheme}
+              onDeleteCustomTheme={handleDeleteCustomTheme}
               onUseAsTemplate={handleUseThemeAsTemplate}
             />
           </div>

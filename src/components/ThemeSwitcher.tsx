@@ -1,4 +1,4 @@
-import { Palette, Plus, Edit } from 'lucide-react';
+import { Palette, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,10 +26,11 @@ interface ThemeSwitcherProps {
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick?: () => void;
   onEditCustomTheme?: () => void;
+  onDeleteCustomTheme?: () => void;
   onUseAsTemplate?: (theme: 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy') => void;
 }
 
-export function ThemeSwitcher({ currentTheme, onThemeChange, onCustomThemeClick, onEditCustomTheme, onUseAsTemplate }: ThemeSwitcherProps) {
+export function ThemeSwitcher({ currentTheme, onThemeChange, onCustomThemeClick, onEditCustomTheme, onDeleteCustomTheme, onUseAsTemplate }: ThemeSwitcherProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -68,7 +69,7 @@ export function ThemeSwitcher({ currentTheme, onThemeChange, onCustomThemeClick,
             )}
           </DropdownMenuItem>
         ))}
-        {(onCustomThemeClick || onEditCustomTheme) && (
+        {(onCustomThemeClick || onEditCustomTheme || onDeleteCustomTheme) && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Custom Theme</DropdownMenuLabel>
@@ -80,6 +81,15 @@ export function ThemeSwitcher({ currentTheme, onThemeChange, onCustomThemeClick,
                 <div className="w-8 h-8 rounded bg-gradient-to-r from-primary to-secondary" />
                 <span className="font-semibold">Edit Custom Theme</span>
                 <Edit className="w-4 h-4 ml-auto" />
+              </DropdownMenuItem>
+            )}
+            {currentTheme === 'custom' && onDeleteCustomTheme && (
+              <DropdownMenuItem
+                onClick={onDeleteCustomTheme}
+                className="flex items-center gap-3 cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Custom Theme</span>
               </DropdownMenuItem>
             )}
             {onCustomThemeClick && (
