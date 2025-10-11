@@ -44,6 +44,16 @@
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
+    /* Background image control variables */
+    --bg-blur: 0px;
+    --bg-opacity: 1;
+    --overlay-color: 0 0% 0%;
+    --overlay-opacity: 0%;
+    --bg-filter-grayscale: 0%;
+    --bg-filter-sepia: 0%;
+    --bg-filter-brightness: 100%;
+    --bg-filter-contrast: 100%;
+    --bg-filter-saturate: 100%;
   }
   
   /* Jellyfish Dream Theme */
@@ -181,6 +191,21 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Ensure app content sits above the overlay */
+  #root { position: relative; z-index: 1; }
+
+  /* Overlay layer for background effects and color tint */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: hsl(var(--overlay-color) / var(--overlay-opacity));
+    backdrop-filter: blur(var(--bg-blur)) grayscale(var(--bg-filter-grayscale)) sepia(var(--bg-filter-sepia)) brightness(var(--bg-filter-brightness)) contrast(var(--bg-filter-contrast)) saturate(var(--bg-filter-saturate));
+    -webkit-backdrop-filter: blur(var(--bg-blur)) grayscale(var(--bg-filter-grayscale)) sepia(var(--bg-filter-sepia)) brightness(var(--bg-filter-brightness)) contrast(var(--bg-filter-contrast)) saturate(var(--bg-filter-saturate));
+    z-index: 0;
   }
 }
 

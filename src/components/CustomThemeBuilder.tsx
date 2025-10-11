@@ -252,28 +252,23 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
       const bg = themeData.backgroundImage;
       const body = document.body;
       
-      // Create filter string
-      const filterValue = `
-        grayscale(${bg.filter.grayscale}%)
-        sepia(${bg.filter.sepia}%)
-        brightness(${bg.filter.brightness}%)
-        contrast(${bg.filter.contrast}%)
-        saturate(${bg.filter.saturate}%)
-      `.trim();
-
       // Apply background styles
       body.style.backgroundImage = `url(${bg.url})`;
       body.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
       body.style.backgroundPosition = bg.position.replace('-', ' ');
       body.style.backgroundRepeat = bg.repeat;
       body.style.backgroundAttachment = bg.attachment;
-      body.style.filter = filterValue;
       
-      // Apply blur using a pseudo-element approach via CSS variable
+      // Apply overlay and filters via CSS variables (consumed by body::before)
       root.style.setProperty('--bg-blur', `${bg.blur}px`);
       root.style.setProperty('--bg-opacity', `${bg.opacity / 100}`);
       root.style.setProperty('--overlay-color', bg.overlayColor);
       root.style.setProperty('--overlay-opacity', `${bg.overlayOpacity}%`);
+      root.style.setProperty('--bg-filter-grayscale', `${bg.filter.grayscale}%`);
+      root.style.setProperty('--bg-filter-sepia', `${bg.filter.sepia}%`);
+      root.style.setProperty('--bg-filter-brightness', `${bg.filter.brightness}%`);
+      root.style.setProperty('--bg-filter-contrast', `${bg.filter.contrast}%`);
+      root.style.setProperty('--bg-filter-saturate', `${bg.filter.saturate}%`);
     }
   };
 
@@ -292,12 +287,16 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
     body.style.backgroundPosition = '';
     body.style.backgroundRepeat = '';
     body.style.backgroundAttachment = '';
-    body.style.filter = '';
     
     root.style.removeProperty('--bg-blur');
     root.style.removeProperty('--bg-opacity');
     root.style.removeProperty('--overlay-color');
     root.style.removeProperty('--overlay-opacity');
+    root.style.removeProperty('--bg-filter-grayscale');
+    root.style.removeProperty('--bg-filter-sepia');
+    root.style.removeProperty('--bg-filter-brightness');
+    root.style.removeProperty('--bg-filter-contrast');
+    root.style.removeProperty('--bg-filter-saturate');
   };
 
   const handleColorChange = (colorKey: keyof CustomTheme['colors'], value: string) => {
