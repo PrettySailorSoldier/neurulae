@@ -62,6 +62,7 @@ const Index = () => {
   
   const [customTheme, setCustomTheme] = useLocalStorage<CustomTheme | null>('neuroflow-custom-theme', null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
+  const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
   
   const { toast } = useToast();
 
@@ -76,10 +77,26 @@ const Index = () => {
         root.style.setProperty(cssVar, value);
       });
 
-      // Apply background image settings
+      // Apply background image settings using a dedicated background layer
       if (customTheme.backgroundImage && customTheme.backgroundImage.url) {
         const bg = customTheme.backgroundImage;
-        const body = document.body;
+        
+        // Create or update background layer
+        const bgLayerId = 'custom-theme-bg-layer';
+        let bgLayer = document.getElementById(bgLayerId) as HTMLDivElement;
+        
+        if (!bgLayer) {
+          bgLayer = document.createElement('div');
+          bgLayer.id = bgLayerId;
+          bgLayer.style.position = 'fixed';
+          bgLayer.style.top = '0';
+          bgLayer.style.left = '0';
+          bgLayer.style.width = '100%';
+          bgLayer.style.height = '100%';
+          bgLayer.style.pointerEvents = 'none';
+          bgLayer.style.zIndex = '-2';
+          document.body.appendChild(bgLayer);
+        }
         
         // Create filter string
         const filterValue = `
@@ -91,14 +108,14 @@ const Index = () => {
           blur(${bg.blur}px)
         `.trim();
 
-        // Apply background styles
-        body.style.backgroundImage = `url(${bg.url})`;
-        body.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
-        body.style.backgroundPosition = bg.position.replace('-', ' ');
-        body.style.backgroundRepeat = bg.repeat;
-        body.style.backgroundAttachment = bg.attachment;
-        body.style.opacity = (bg.opacity / 100).toString();
-        body.style.filter = filterValue;
+        // Apply background styles to the layer
+        bgLayer.style.backgroundImage = `url(${bg.url})`;
+        bgLayer.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
+        bgLayer.style.backgroundPosition = bg.position.replace('-', ' ');
+        bgLayer.style.backgroundRepeat = bg.repeat;
+        bgLayer.style.backgroundAttachment = bg.attachment;
+        bgLayer.style.opacity = (bg.opacity / 100).toString();
+        bgLayer.style.filter = filterValue;
         
         // Create overlay
         const overlayId = 'custom-theme-overlay';
@@ -125,21 +142,15 @@ const Index = () => {
     } else if (theme !== 'custom') {
       // Remove custom theme variables when switching to preset theme
       const root = document.documentElement;
-      const body = document.body;
       const colorKeys = ['background', 'foreground', 'card', 'cardForeground', 'primary', 'primaryForeground', 'secondary', 'secondaryForeground', 'accent', 'accentForeground', 'muted', 'mutedForeground', 'border', 'input'];
       colorKeys.forEach((key) => {
         const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         root.style.removeProperty(cssVar);
       });
 
-      // Remove background image styles
-      body.style.backgroundImage = '';
-      body.style.backgroundSize = '';
-      body.style.backgroundPosition = '';
-      body.style.backgroundRepeat = '';
-      body.style.backgroundAttachment = '';
-      body.style.opacity = '';
-      body.style.filter = '';
+      // Remove background layer
+      const bgLayer = document.getElementById('custom-theme-bg-layer');
+      if (bgLayer) bgLayer.remove();
 
       // Remove overlay
       const overlay = document.getElementById('custom-theme-overlay');
@@ -644,12 +655,24 @@ const Index = () => {
 
   // Custom Theme handlers
   const handleOpenCustomThemeBuilder = () => {
+    setTemplateTheme(undefined);
+    setCustomThemeBuilderOpen(true);
+  };
+
+  const handleEditCustomTheme = () => {
+    setTemplateTheme(undefined);
+    setCustomThemeBuilderOpen(true);
+  };
+
+  const handleUseThemeAsTemplate = (preset: 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy') => {
+    setTemplateTheme(preset);
     setCustomThemeBuilderOpen(true);
   };
 
   const handleSaveCustomTheme = (newTheme: CustomTheme) => {
     setCustomTheme(newTheme);
     setTheme('custom');
+    setTemplateTheme(undefined);
     toast({ 
       title: "Custom theme saved", 
       description: `${newTheme.name} has been applied` 
@@ -673,6 +696,8 @@ const Index = () => {
               currentTheme={theme} 
               onThemeChange={setTheme}
               onCustomThemeClick={handleOpenCustomThemeBuilder}
+              onEditCustomTheme={handleEditCustomTheme}
+              onUseAsTemplate={handleUseThemeAsTemplate}
             />
           </div>
         </div>
@@ -971,7 +996,8 @@ const Index = () => {
         open={customThemeBuilderOpen}
         onOpenChange={setCustomThemeBuilderOpen}
         onSave={handleSaveCustomTheme}
-        existingTheme={customTheme || undefined}
+        existingTheme={theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined}
+        templateTheme={templateTheme}
       />
     </div>
   );
