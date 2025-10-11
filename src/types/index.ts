@@ -152,3 +152,84 @@ export interface FutureSelfMessengerWidget {
   messages: FutureSelfMessage[];
   aiDeliveryEnabled: boolean;
 }
+
+// Mood Garden Widget
+export interface MoodEntry {
+  id: string;
+  timestamp: string;
+  emotion: string;
+  intensity: number; // 1-10
+  note?: string;
+}
+
+export interface Plant {
+  id: string;
+  type: string;
+  health: number;
+  lastWatered: string;
+  stage: 'seed' | 'sprout' | 'growing' | 'blooming';
+}
+
+export interface MoodGardenWidget {
+  id: string;
+  type: 'mood-garden';
+  title: string;
+  moodEntries: MoodEntry[];
+  plants: Plant[];
+  trackedEmotions: string[];
+}
+
+// Parallel Universe Widget
+export interface Decision {
+  id: string;
+  timestamp: string;
+  question: string;
+  chosenOption: string;
+  alternatives: string[];
+  context?: string;
+}
+
+export interface AlternateOutcome {
+  id: string;
+  decisionId: string;
+  alternativePath: string;
+  aiGeneratedOutcome: string;
+  generatedAt: string;
+}
+
+export interface ParallelUniverseWidget {
+  id: string;
+  type: 'parallel-universe';
+  title: string;
+  decisions: Decision[];
+  alternateOutcomes: AlternateOutcome[];
+  aiEnabled: boolean;
+}
+
+// Sound Signature Widget
+export interface SoundSession {
+  id: string;
+  timestamp: string;
+  soundType: string;
+  duration: number;
+  productivity: number; // 1-10
+  mood: string;
+  activityType: string;
+}
+
+export interface PlaylistRecommendation {
+  id: string;
+  name: string;
+  forActivity: string;
+  basedOnSessions: string[];
+  confidence: number;
+}
+
+export interface SoundSignatureWidget {
+  id: string;
+  type: 'sound-signature';
+  title: string;
+  soundSessions: SoundSession[];
+  playlists: PlaylistRecommendation[];
+  trackedActivities: string[];
+}

@@ -7,7 +7,7 @@ import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage } from '@/types';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant } from '@/types';
 import { Brain, Plus } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetDisplay } from '@/components/ReminderWidgetDisplay';
@@ -16,6 +16,12 @@ import { EnergyTaskWidget as EnergyTaskWidgetDisplay } from '@/components/Energy
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
 import { FutureSelfMessengerWidget as FutureSelfMessengerWidgetDisplay } from '@/components/FutureSelfMessengerWidget';
 import { FutureSelfMessengerEditor } from '@/components/FutureSelfMessengerEditor';
+import { MoodGardenWidget as MoodGardenWidgetDisplay } from '@/components/MoodGardenWidget';
+import { MoodGardenWidgetEditor } from '@/components/MoodGardenWidgetEditor';
+import { ParallelUniverseWidget as ParallelUniverseWidgetDisplay } from '@/components/ParallelUniverseWidget';
+import { ParallelUniverseWidgetEditor } from '@/components/ParallelUniverseWidgetEditor';
+import { SoundSignatureWidget as SoundSignatureWidgetDisplay } from '@/components/SoundSignatureWidget';
+import { SoundSignatureWidgetEditor } from '@/components/SoundSignatureWidgetEditor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,6 +45,18 @@ const Index = () => {
   const [editingMessengerWidget, setEditingMessengerWidget] = useState<FutureSelfMessengerWidget | undefined>();
   const [messengerWidgetEditorOpen, setMessengerWidgetEditorOpen] = useState(false);
   const [messengerEditorMode, setMessengerEditorMode] = useState<'settings' | 'message'>('settings');
+  
+  const [moodGardenWidgets, setMoodGardenWidgets] = useLocalStorage<MoodGardenWidget[]>('neuroflow-mood-garden-widgets', []);
+  const [editingMoodGardenWidget, setEditingMoodGardenWidget] = useState<MoodGardenWidget | undefined>();
+  const [moodGardenWidgetEditorOpen, setMoodGardenWidgetEditorOpen] = useState(false);
+  
+  const [parallelUniverseWidgets, setParallelUniverseWidgets] = useLocalStorage<ParallelUniverseWidget[]>('neuroflow-parallel-universe-widgets', []);
+  const [editingParallelUniverseWidget, setEditingParallelUniverseWidget] = useState<ParallelUniverseWidget | undefined>();
+  const [parallelUniverseWidgetEditorOpen, setParallelUniverseWidgetEditorOpen] = useState(false);
+  
+  const [soundSignatureWidgets, setSoundSignatureWidgets] = useLocalStorage<SoundSignatureWidget[]>('neuroflow-sound-signature-widgets', []);
+  const [editingSoundSignatureWidget, setEditingSoundSignatureWidget] = useState<SoundSignatureWidget | undefined>();
+  const [soundSignatureWidgetEditorOpen, setSoundSignatureWidgetEditorOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -351,6 +369,196 @@ const Index = () => {
     }));
   };
 
+  // Mood Garden handlers
+  const handleAddMoodGardenWidget = () => {
+    setEditingMoodGardenWidget(undefined);
+    setMoodGardenWidgetEditorOpen(true);
+  };
+
+  const handleEditMoodGardenWidget = (widgetId: string) => {
+    const widget = moodGardenWidgets.find(w => w.id === widgetId);
+    setEditingMoodGardenWidget(widget);
+    setMoodGardenWidgetEditorOpen(true);
+  };
+
+  const handleSaveMoodGardenWidget = (widgetData: Omit<MoodGardenWidget, 'id'> & { id?: string }) => {
+    if (widgetData.id) {
+      setMoodGardenWidgets(moodGardenWidgets.map(w =>
+        w.id === widgetData.id ? { ...w, ...widgetData } : w
+      ));
+    } else {
+      const newWidget: MoodGardenWidget = {
+        ...widgetData,
+        id: crypto.randomUUID(),
+      };
+      setMoodGardenWidgets([...moodGardenWidgets, newWidget]);
+    }
+    toast({ title: "Mood garden saved" });
+  };
+
+  const handleLogMood = (widgetId: string, emotion: string, intensity: number, note?: string) => {
+    setMoodGardenWidgets(moodGardenWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        const newEntry = {
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          emotion,
+          intensity,
+          note,
+        };
+
+        // Update or create plant for this emotion
+        let updatedPlants = [...widget.plants];
+        const existingPlantIndex = updatedPlants.findIndex(p => p.type === emotion);
+        
+        if (existingPlantIndex >= 0) {
+          // Update existing plant
+          const plant = updatedPlants[existingPlantIndex];
+          const newHealth = Math.min(100, plant.health + intensity);
+          const newStage: Plant['stage'] = 
+            newHealth < 25 ? 'seed' :
+            newHealth < 50 ? 'sprout' :
+            newHealth < 75 ? 'growing' : 'blooming';
+          
+          updatedPlants[existingPlantIndex] = {
+            ...plant,
+            health: newHealth,
+            lastWatered: new Date().toISOString(),
+            stage: newStage,
+          };
+        } else {
+          // Create new plant
+          updatedPlants.push({
+            id: crypto.randomUUID(),
+            type: emotion,
+            health: intensity * 10,
+            lastWatered: new Date().toISOString(),
+            stage: intensity < 3 ? 'seed' : 'sprout',
+          });
+        }
+
+        return {
+          ...widget,
+          moodEntries: [...widget.moodEntries, newEntry].slice(-50),
+          plants: updatedPlants,
+        };
+      }
+      return widget;
+    }));
+    toast({ title: "Mood logged", description: `${emotion} - ${intensity}/10` });
+  };
+
+  // Parallel Universe handlers
+  const handleAddParallelUniverseWidget = () => {
+    setEditingParallelUniverseWidget(undefined);
+    setParallelUniverseWidgetEditorOpen(true);
+  };
+
+  const handleEditParallelUniverseWidget = (widgetId: string) => {
+    const widget = parallelUniverseWidgets.find(w => w.id === widgetId);
+    setEditingParallelUniverseWidget(widget);
+    setParallelUniverseWidgetEditorOpen(true);
+  };
+
+  const handleSaveParallelUniverseWidget = (widgetData: Omit<ParallelUniverseWidget, 'id'> & { id?: string }) => {
+    if (widgetData.id) {
+      setParallelUniverseWidgets(parallelUniverseWidgets.map(w =>
+        w.id === widgetData.id ? { ...w, ...widgetData } : w
+      ));
+    } else {
+      const newWidget: ParallelUniverseWidget = {
+        ...widgetData,
+        id: crypto.randomUUID(),
+      };
+      setParallelUniverseWidgets([...parallelUniverseWidgets, newWidget]);
+    }
+    toast({ title: "Parallel universe widget saved" });
+  };
+
+  const handleLogDecision = (widgetId: string, question: string, chosen: string, alternatives: string[], context?: string) => {
+    setParallelUniverseWidgets(parallelUniverseWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        const newDecision = {
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          question,
+          chosenOption: chosen,
+          alternatives,
+          context,
+        };
+        return {
+          ...widget,
+          decisions: [...widget.decisions, newDecision].slice(-20),
+        };
+      }
+      return widget;
+    }));
+    toast({ title: "Decision logged" });
+  };
+
+  const handleGenerateOutcome = (widgetId: string, decisionId: string) => {
+    toast({ 
+      title: "AI feature coming soon", 
+      description: "AI-generated alternate outcomes will be available in a future update" 
+    });
+  };
+
+  // Sound Signature handlers
+  const handleAddSoundSignatureWidget = () => {
+    setEditingSoundSignatureWidget(undefined);
+    setSoundSignatureWidgetEditorOpen(true);
+  };
+
+  const handleEditSoundSignatureWidget = (widgetId: string) => {
+    const widget = soundSignatureWidgets.find(w => w.id === widgetId);
+    setEditingSoundSignatureWidget(widget);
+    setSoundSignatureWidgetEditorOpen(true);
+  };
+
+  const handleSaveSoundSignatureWidget = (widgetData: Omit<SoundSignatureWidget, 'id'> & { id?: string }) => {
+    if (widgetData.id) {
+      setSoundSignatureWidgets(soundSignatureWidgets.map(w =>
+        w.id === widgetData.id ? { ...w, ...widgetData } : w
+      ));
+    } else {
+      const newWidget: SoundSignatureWidget = {
+        ...widgetData,
+        id: crypto.randomUUID(),
+      };
+      setSoundSignatureWidgets([...soundSignatureWidgets, newWidget]);
+    }
+    toast({ title: "Sound signature widget saved" });
+  };
+
+  const handleLogSoundSession = (
+    widgetId: string, 
+    soundType: string, 
+    duration: number, 
+    productivity: number, 
+    mood: string, 
+    activity: string
+  ) => {
+    setSoundSignatureWidgets(soundSignatureWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        const newSession = {
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          soundType,
+          duration,
+          productivity,
+          mood,
+          activityType: activity,
+        };
+        return {
+          ...widget,
+          soundSessions: [...widget.soundSessions, newSession].slice(-100),
+        };
+      }
+      return widget;
+    }));
+    toast({ title: "Sound session logged", description: `${soundType} - ${productivity}/10` });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -404,10 +612,24 @@ const Index = () => {
                     <Plus className="h-4 w-4 mr-2" />
                     Future Self Messenger
                   </Button>
+                  <Button onClick={handleAddMoodGardenWidget} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Mood Garden
+                  </Button>
+                  <Button onClick={handleAddParallelUniverseWidget} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Parallel Universe
+                  </Button>
+                  <Button onClick={handleAddSoundSignatureWidget} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Sound Signature
+                  </Button>
                 </div>
               </div>
               
-              {energyWidgets.length === 0 && messengerWidgets.length === 0 ? (
+              {energyWidgets.length === 0 && messengerWidgets.length === 0 && 
+               moodGardenWidgets.length === 0 && parallelUniverseWidgets.length === 0 && 
+               soundSignatureWidgets.length === 0 ? (
                 <div className="bg-card border border-border rounded-lg p-8 text-center">
                   <p className="text-muted-foreground mb-4">
                     Transform your productivity with intelligent widgets that adapt to your energy levels and help you stay motivated
@@ -420,6 +642,18 @@ const Index = () => {
                     <Button onClick={handleAddMessengerWidget} variant="outline">
                       <Plus className="h-4 w-4 mr-2" />
                       Future Self Messenger
+                    </Button>
+                    <Button onClick={handleAddMoodGardenWidget} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Mood Garden
+                    </Button>
+                    <Button onClick={handleAddParallelUniverseWidget} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Parallel Universe
+                    </Button>
+                    <Button onClick={handleAddSoundSignatureWidget} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Sound Signature
                     </Button>
                   </div>
                 </div>
@@ -440,6 +674,31 @@ const Index = () => {
                       onCreateMessage={() => handleCreateMessage(widget.id)}
                       onViewMessage={(msgId) => handleViewMessage(widget.id, msgId)}
                       onEdit={() => handleEditMessengerWidget(widget.id)}
+                    />
+                  ))}
+                  {moodGardenWidgets.map(widget => (
+                    <MoodGardenWidgetDisplay
+                      key={widget.id}
+                      widget={widget}
+                      onLogMood={(emotion, intensity, note) => handleLogMood(widget.id, emotion, intensity, note)}
+                      onEdit={() => handleEditMoodGardenWidget(widget.id)}
+                    />
+                  ))}
+                  {parallelUniverseWidgets.map(widget => (
+                    <ParallelUniverseWidgetDisplay
+                      key={widget.id}
+                      widget={widget}
+                      onLogDecision={(q, c, a, ctx) => handleLogDecision(widget.id, q, c, a, ctx)}
+                      onGenerateOutcome={(decId) => handleGenerateOutcome(widget.id, decId)}
+                      onEdit={() => handleEditParallelUniverseWidget(widget.id)}
+                    />
+                  ))}
+                  {soundSignatureWidgets.map(widget => (
+                    <SoundSignatureWidgetDisplay
+                      key={widget.id}
+                      widget={widget}
+                      onLogSession={(s, d, p, m, a) => handleLogSoundSession(widget.id, s, d, p, m, a)}
+                      onEdit={() => handleEditSoundSignatureWidget(widget.id)}
                     />
                   ))}
                 </div>
@@ -575,6 +834,27 @@ const Index = () => {
         mode={messengerEditorMode}
         onSave={handleSaveMessengerWidget}
         onSaveMessage={handleSaveMessage}
+      />
+      
+      <MoodGardenWidgetEditor
+        open={moodGardenWidgetEditorOpen}
+        onOpenChange={setMoodGardenWidgetEditorOpen}
+        widget={editingMoodGardenWidget}
+        onSave={handleSaveMoodGardenWidget}
+      />
+      
+      <ParallelUniverseWidgetEditor
+        open={parallelUniverseWidgetEditorOpen}
+        onOpenChange={setParallelUniverseWidgetEditorOpen}
+        widget={editingParallelUniverseWidget}
+        onSave={handleSaveParallelUniverseWidget}
+      />
+      
+      <SoundSignatureWidgetEditor
+        open={soundSignatureWidgetEditorOpen}
+        onOpenChange={setSoundSignatureWidgetEditorOpen}
+        widget={editingSoundSignatureWidget}
+        onSave={handleSaveSoundSignatureWidget}
       />
     </div>
   );
