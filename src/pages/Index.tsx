@@ -24,6 +24,7 @@ import { SoundSignatureWidget as SoundSignatureWidgetDisplay } from '@/component
 import { SoundSignatureWidgetEditor } from '@/components/SoundSignatureWidgetEditor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 
 const Index = () => {
   const [theme, setTheme] = useLocalStorage<Theme>('neuroflow-theme', 'orchid');
@@ -603,28 +604,37 @@ const Index = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">🎯 Productivity Enhancements</h2>
-                <div className="flex gap-2">
-                  <Button onClick={handleAddEnergyWidget} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Energy Tracker
-                  </Button>
-                  <Button onClick={handleAddMessengerWidget} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Future Self Messenger
-                  </Button>
-                  <Button onClick={handleAddMoodGardenWidget} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Mood Garden
-                  </Button>
-                  <Button onClick={handleAddParallelUniverseWidget} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Parallel Universe
-                  </Button>
-                  <Button onClick={handleAddSoundSignatureWidget} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Sound Signature
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Widget
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Productivity Widgets</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={handleAddEnergyWidget}>
+                      ⚡ Energy-Task Harmony
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleAddMessengerWidget}>
+                      ✉️ Future Self Messenger
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleAddMoodGardenWidget}>
+                      🌱 Mood Garden
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleAddParallelUniverseWidget}>
+                      🌌 Parallel Universe
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleAddSoundSignatureWidget}>
+                      🎵 Sound Signature
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Custom</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={handleAddWidget}>
+                      ➕ Custom Reminder Widget
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               {energyWidgets.length === 0 && messengerWidgets.length === 0 && 
