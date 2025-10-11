@@ -169,26 +169,38 @@ const Index = () => {
       const now = new Date();
       const today = getTodayString();
 
-      reminderWidgets.forEach(widget => {
-        if (widget.resetSchedule === 'none') return;
+      setReminderWidgets(prevWidgets => {
+        let hasChanges = false;
+        const updatedWidgets = prevWidgets.map(widget => {
+          if (widget.resetSchedule === 'none') return widget;
 
-        const lastReset = widget.lastResetDate ? new Date(widget.lastResetDate) : null;
-        let shouldReset = false;
+          const lastReset = widget.lastResetDate ? new Date(widget.lastResetDate) : null;
+          let shouldReset = false;
 
-        if (!lastReset) {
-          shouldReset = true;
-        } else if (widget.resetSchedule === 'daily') {
-          shouldReset = getDateString(lastReset) !== today;
-        } else if (widget.resetSchedule === 'weekly') {
-          const daysSince = Math.floor((now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24));
-          shouldReset = daysSince >= 7;
-        } else if (widget.resetSchedule === 'monthly') {
-          shouldReset = lastReset.getMonth() !== now.getMonth() || lastReset.getFullYear() !== now.getFullYear();
-        }
+          if (!lastReset) {
+            shouldReset = true;
+          } else if (widget.resetSchedule === 'daily') {
+            shouldReset = getDateString(lastReset) !== today;
+          } else if (widget.resetSchedule === 'weekly') {
+            const daysSince = Math.floor((now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24));
+            shouldReset = daysSince >= 7;
+          } else if (widget.resetSchedule === 'monthly') {
+            shouldReset = lastReset.getMonth() !== now.getMonth() || lastReset.getFullYear() !== now.getFullYear();
+          }
 
-        if (shouldReset) {
-          handleResetWidget(widget.id);
-        }
+          if (shouldReset) {
+            hasChanges = true;
+            return {
+              ...widget,
+              items: widget.items.map(item => ({ ...item, completed: false })),
+              lastResetDate: new Date().toISOString(),
+            };
+          }
+
+          return widget;
+        });
+
+        return hasChanges ? updatedWidgets : prevWidgets;
       });
     };
 
@@ -196,7 +208,7 @@ const Index = () => {
     const interval = setInterval(checkResets, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [reminderWidgets]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
