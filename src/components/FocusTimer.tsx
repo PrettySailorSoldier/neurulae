@@ -70,7 +70,7 @@ export function FocusTimer() {
   const progress = ((timer.totalTime - timer.timeRemaining) / timer.totalTime) * 100;
 
   return (
-    <Card className="card-elevated">
+    <Card className="card-elevated border-2">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-5 w-5" />

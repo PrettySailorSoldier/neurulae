@@ -869,7 +869,7 @@ const Index = () => {
               {/* Today's Schedule & Unscheduled Tasks - Right */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Today's Schedule */}
-                <div className="bg-card rounded-lg border border-border p-4">
+                <div className="bg-card rounded-lg border-2 border-border p-4">
                   <h3 className="text-lg font-semibold mb-4">📅 Today's Schedule</h3>
                   <div className="space-y-3">
                     {scheduledTasks
@@ -894,7 +894,7 @@ const Index = () => {
                 </div>
 
                 {/* Unscheduled Tasks */}
-                <div className="bg-card rounded-lg border border-border p-4">
+                <div className="bg-card rounded-lg border-2 border-border p-4">
                   <h3 className="text-lg font-semibold mb-4">📋 Unscheduled Tasks</h3>
                   <TaskList
                     tasks={tasks.filter(
@@ -922,7 +922,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="care">
-            <div className="text-center py-12 bg-card rounded-lg border border-border">
+            <div className="text-center py-12 bg-card rounded-lg border-2 border-border">
               <h3 className="text-xl font-semibold mb-2">Care Checklist</h3>
               <p className="text-muted-foreground">Daily care routines coming soon</p>
             </div>
@@ -930,7 +930,7 @@ const Index = () => {
 
           {customTabs.map(tab => (
             <TabsContent key={tab.id} value={tab.id}>
-              <div className="text-center py-12 bg-card rounded-lg border border-border">
+              <div className="text-center py-12 bg-card rounded-lg border-2 border-border">
                 <h3 className="text-xl font-semibold mb-2">{tab.name}</h3>
                 <p className="text-muted-foreground">Custom content for this tab</p>
               </div>

@@ -132,7 +132,7 @@ export function DailyFlowTimeline({
   };
 
   return (
-    <div className="relative">
+    <div className="relative bg-card border-2 border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
         <Button onClick={handleAddBlock} size="sm" className="bg-primary hover:bg-primary/90">
@@ -141,7 +141,7 @@ export function DailyFlowTimeline({
         </Button>
       </div>
 
-      <div className="relative bg-card border border-border rounded-lg p-4 min-h-[600px]">
+      <div className="relative bg-card/50 border border-border rounded-lg p-4 min-h-[600px]">
         {/* Hour markers */}
         <div className="absolute left-0 top-0 bottom-0 w-12 text-xs text-muted-foreground">
           {Array.from({ length: 25 }).map((_, i) => (
