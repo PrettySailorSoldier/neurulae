@@ -9,7 +9,7 @@ interface TimerState {
 }
 
 export function useTimerState() {
-  const [timerState, setTimerState] = useLocalStorage<TimerState>('neuroflow-active-timer', {
+  const [timerState, setTimerState] = useLocalStorage<TimerState>('neupath-active-timer', {
     isRunning: false,
     timeRemaining: 0,
     timerType: null,

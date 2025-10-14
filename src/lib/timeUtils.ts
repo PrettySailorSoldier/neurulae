@@ -1,4 +1,4 @@
-// Time utility functions for NeuroFlow timeline
+// Time utility functions for NeuPath timeline
 
 export function timeToMinutes(time: string): number {
   const [hours, minutes] = time.split(':').map(Number);
