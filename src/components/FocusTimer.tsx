@@ -19,7 +19,7 @@ export function FocusTimer() {
     totalTime: 25 * 60,
   });
   const [hubOpen, setHubOpen] = useState(false);
-  const [sessions, setSessions] = useLocalStorage<TimerSession[]>('neupath-timer-sessions', []);
+  const [sessions, setSessions] = useLocalStorage<TimerSession[]>('neurulae-timer-sessions', []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

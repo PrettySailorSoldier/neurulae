@@ -7,10 +7,10 @@ import { Play, Square } from 'lucide-react';
 
 export function TimeChime() {
   const { toast } = useToast();
-  const [chimeInterval, setChimeInterval] = useLocalStorage('neupath-chime-interval', 15);
-  const [isRunning, setIsRunning] = useLocalStorage('neupath-chime-running', false);
-  const [chimeCount, setChimeCount] = useLocalStorage('neupath-chime-count', 0);
-  const [nextChimeIn, setNextChimeIn] = useLocalStorage('neupath-chime-countdown', 0);
+  const [chimeInterval, setChimeInterval] = useLocalStorage('neurulae-chime-interval', 15);
+  const [isRunning, setIsRunning] = useLocalStorage('neurulae-chime-running', false);
+  const [chimeCount, setChimeCount] = useLocalStorage('neurulae-chime-count', 0);
+  const [nextChimeIn, setNextChimeIn] = useLocalStorage('neurulae-chime-countdown', 0);
 
   useEffect(() => {
     if (!isRunning || nextChimeIn <= 0) return;

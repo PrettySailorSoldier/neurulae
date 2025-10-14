@@ -27,72 +27,78 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 
 const Index = () => {
-  const [theme, setTheme] = useLocalStorage<Theme>('neupath-theme', 'orchid');
-  const [tasks, setTasks] = useLocalStorage<Task[]>('neupath-tasks', []);
-  const [priorities, setPriorities] = useLocalStorage<Task[]>('neupath-priorities', []);
-  const [projects, setProjects] = useLocalStorage<Project[]>('neupath-projects', []);
-  const [timeBlocks, setTimeBlocks] = useLocalStorage<TimeBlock[]>('neupath-timeblocks', []);
-  const [scheduledTasks, setScheduledTasks] = useLocalStorage<ScheduledTask[]>('neupath-scheduled-tasks', []);
-  const [playbooks, setPlaybooks] = useLocalStorage<Playbook[]>('neupath-playbooks', []);
-  const [reminderWidgets, setReminderWidgets] = useLocalStorage<ReminderWidget[]>('neupath-widgets', []);
+  const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
+  const [tasks, setTasks] = useLocalStorage<Task[]>('neurulae-tasks', []);
+  const [priorities, setPriorities] = useLocalStorage<Task[]>('neurulae-priorities', []);
+  const [projects, setProjects] = useLocalStorage<Project[]>('neurulae-projects', []);
+  const [timeBlocks, setTimeBlocks] = useLocalStorage<TimeBlock[]>('neurulae-timeblocks', []);
+  const [scheduledTasks, setScheduledTasks] = useLocalStorage<ScheduledTask[]>('neurulae-scheduled-tasks', []);
+  const [playbooks, setPlaybooks] = useLocalStorage<Playbook[]>('neurulae-playbooks', []);
+  const [reminderWidgets, setReminderWidgets] = useLocalStorage<ReminderWidget[]>('neurulae-widgets', []);
   const [editingWidget, setEditingWidget] = useState<ReminderWidget | undefined>();
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false);
   
-  const [energyWidgets, setEnergyWidgets] = useLocalStorage<EnergyTaskWidget[]>('neupath-energy-widgets', []);
+  const [energyWidgets, setEnergyWidgets] = useLocalStorage<EnergyTaskWidget[]>('neurulae-energy-widgets', []);
   const [editingEnergyWidget, setEditingEnergyWidget] = useState<EnergyTaskWidget | undefined>();
   const [energyWidgetEditorOpen, setEnergyWidgetEditorOpen] = useState(false);
   
-  const [messengerWidgets, setMessengerWidgets] = useLocalStorage<FutureSelfMessengerWidget[]>('neupath-messenger-widgets', []);
+  const [messengerWidgets, setMessengerWidgets] = useLocalStorage<FutureSelfMessengerWidget[]>('neurulae-messenger-widgets', []);
   const [editingMessengerWidget, setEditingMessengerWidget] = useState<FutureSelfMessengerWidget | undefined>();
   const [messengerWidgetEditorOpen, setMessengerWidgetEditorOpen] = useState(false);
   const [messengerEditorMode, setMessengerEditorMode] = useState<'settings' | 'message'>('settings');
   
-  const [moodGardenWidgets, setMoodGardenWidgets] = useLocalStorage<MoodGardenWidget[]>('neupath-mood-garden-widgets', []);
+  const [moodGardenWidgets, setMoodGardenWidgets] = useLocalStorage<MoodGardenWidget[]>('neurulae-mood-garden-widgets', []);
   const [editingMoodGardenWidget, setEditingMoodGardenWidget] = useState<MoodGardenWidget | undefined>();
   const [moodGardenWidgetEditorOpen, setMoodGardenWidgetEditorOpen] = useState(false);
   
-  const [parallelUniverseWidgets, setParallelUniverseWidgets] = useLocalStorage<ParallelUniverseWidget[]>('neupath-parallel-universe-widgets', []);
+  const [parallelUniverseWidgets, setParallelUniverseWidgets] = useLocalStorage<ParallelUniverseWidget[]>('neurulae-parallel-universe-widgets', []);
   const [editingParallelUniverseWidget, setEditingParallelUniverseWidget] = useState<ParallelUniverseWidget | undefined>();
   const [parallelUniverseWidgetEditorOpen, setParallelUniverseWidgetEditorOpen] = useState(false);
   
-  const [soundSignatureWidgets, setSoundSignatureWidgets] = useLocalStorage<SoundSignatureWidget[]>('neupath-sound-signature-widgets', []);
+  const [soundSignatureWidgets, setSoundSignatureWidgets] = useLocalStorage<SoundSignatureWidget[]>('neurulae-sound-signature-widgets', []);
   const [editingSoundSignatureWidget, setEditingSoundSignatureWidget] = useState<SoundSignatureWidget | undefined>();
   const [soundSignatureWidgetEditorOpen, setSoundSignatureWidgetEditorOpen] = useState(false);
   
-  const [customTheme, setCustomTheme] = useLocalStorage<CustomTheme | null>('neupath-custom-theme', null);
+  const [customTheme, setCustomTheme] = useLocalStorage<CustomTheme | null>('neurulae-custom-theme', null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
   
   // Custom Tabs
-  const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neupath-custom-tabs', []);
+  const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neurulae-custom-tabs', []);
   const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
   const [newTabName, setNewTabName] = useState('');
   
   const { toast } = useToast();
 
-  // One-time migration from neuroflow to neupath localStorage keys
+  // One-time migration from neuroflow/neupath to neurulae localStorage keys
   useEffect(() => {
-    const migrationKey = 'neupath-migration-completed';
+    const migrationKey = 'neurulae-migration-completed';
     if (localStorage.getItem(migrationKey)) return;
 
-    const oldKeys = [
-      'neuroflow-theme', 'neuroflow-tasks', 'neuroflow-priorities', 'neuroflow-projects',
-      'neuroflow-timeblocks', 'neuroflow-scheduled-tasks', 'neuroflow-playbooks', 
-      'neuroflow-widgets', 'neuroflow-energy-widgets', 'neuroflow-messenger-widgets',
-      'neuroflow-mood-garden-widgets', 'neuroflow-parallel-universe-widgets', 
-      'neuroflow-sound-signature-widgets', 'neuroflow-custom-theme', 'neuroflow-custom-tabs',
-      'neuroflow-timer-sessions', 'neuroflow-active-timer', 'neuroflow-chime-interval',
-      'neuroflow-chime-running', 'neuroflow-chime-count', 'neuroflow-chime-countdown'
+    const oldPrefixes = ['neuroflow-', 'neupath-'];
+    const keySuffixes = [
+      'theme', 'tasks', 'priorities', 'projects', 'timeblocks', 'scheduled-tasks', 
+      'playbooks', 'widgets', 'energy-widgets', 'messenger-widgets',
+      'mood-garden-widgets', 'parallel-universe-widgets', 'sound-signature-widgets', 
+      'custom-theme', 'custom-tabs', 'timer-sessions', 'active-timer', 
+      'chime-interval', 'chime-running', 'chime-count', 'chime-countdown'
     ];
 
     let migrated = 0;
-    oldKeys.forEach(oldKey => {
-      const value = localStorage.getItem(oldKey);
-      if (value) {
-        const newKey = oldKey.replace('neuroflow-', 'neupath-');
-        if (!localStorage.getItem(newKey)) {
+    keySuffixes.forEach(suffix => {
+      const newKey = `neurulae-${suffix}`;
+      
+      // Check if new key already has data
+      if (localStorage.getItem(newKey)) return;
+      
+      // Try to find data from old prefixes (neupath first, then neuroflow)
+      for (const prefix of oldPrefixes) {
+        const oldKey = `${prefix}${suffix}`;
+        const value = localStorage.getItem(oldKey);
+        if (value) {
           localStorage.setItem(newKey, value);
           migrated++;
+          break; // Stop after finding the first match
         }
       }
     });
@@ -100,8 +106,8 @@ const Index = () => {
     localStorage.setItem(migrationKey, 'true');
     if (migrated > 0) {
       toast({
-        title: "Welcome to NeuPath!",
-        description: `Successfully migrated your data. All ${migrated} items preserved.`,
+        title: "✨ Welcome to Neurulae!",
+        description: `Your data has been migrated successfully. All ${migrated} items preserved.`,
       });
     }
   }, []);
@@ -724,7 +730,7 @@ const Index = () => {
             <div className="flex items-center gap-3">
               <Brain className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold">NeuPath</h1>
+                <h1 className="text-2xl font-bold">Neurulae</h1>
               </div>
             </div>
             <ThemeSwitcher 
