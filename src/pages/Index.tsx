@@ -10,7 +10,7 @@ import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud } from 'lucide-react';
+import { Brain, Plus, X, Cloud, Crown } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
@@ -28,10 +28,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePremium } from '@/contexts/PremiumContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 const Index = () => {
   const { user } = useAuth();
+  const { plan, isPremium, isAdmin } = usePremium();
   const [showSyncBanner, setShowSyncBanner] = useState(true);
   const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
   const [tasks, setTasks] = useLocalStorage<Task[]>('neurulae-tasks', []);
@@ -759,12 +762,37 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Brain className="h-8 w-8 text-primary" />
-              <div>
+              <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold">Neurulae</h1>
+                {isPremium && !isAdmin && (
+                  <Badge variant="default" className="gap-1">
+                    <Crown className="h-3 w-3" />
+                    {plan === 'lifetime' ? 'Lifetime' : 'Premium'}
+                  </Badge>
+                )}
+                {isAdmin && (
+                  <Badge variant="default" className="gap-1">
+                    <Crown className="h-3 w-3" />
+                    Admin
+                  </Badge>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <SyncStatusIndicator />
+              {user && !isPremium && (
+                <Button variant="default" size="sm" asChild>
+                  <Link to="/pricing">
+                    <Crown className="h-4 w-4 mr-1" />
+                    Upgrade
+                  </Link>
+                </Button>
+              )}
+              {user && isPremium && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/settings">Settings</Link>
+                </Button>
+              )}
               {!user && (
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/auth">Sign In</Link>
