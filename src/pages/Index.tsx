@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { FocusTimer } from '@/components/FocusTimer';
@@ -9,7 +10,7 @@ import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X } from 'lucide-react';
+import { Brain, Plus, X, Cloud } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
@@ -25,8 +26,13 @@ import { ScheduledTaskCard } from '@/components/ScheduledTaskCard';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
+import { useAuth } from '@/contexts/AuthContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Index = () => {
+  const { user } = useAuth();
+  const [showSyncBanner, setShowSyncBanner] = useState(true);
   const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
   const [tasks, setTasks] = useLocalStorage<Task[]>('neurulae-tasks', []);
   const [priorities, setPriorities] = useLocalStorage<Task[]>('neurulae-priorities', []);
@@ -723,6 +729,30 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
+      {/* Sync Banner for non-authenticated users */}
+      {!user && showSyncBanner && (
+        <Alert className="rounded-none border-x-0 border-t-0">
+          <Cloud className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              Sign in to sync your data across devices and never lose your work
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/auth">Sign In</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSyncBanner(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -733,14 +763,22 @@ const Index = () => {
                 <h1 className="text-2xl font-bold">Neurulae</h1>
               </div>
             </div>
-            <ThemeSwitcher 
-              currentTheme={theme} 
-              onThemeChange={setTheme}
-              onCustomThemeClick={handleOpenCustomThemeBuilder}
-              onEditCustomTheme={handleEditCustomTheme}
-              onDeleteCustomTheme={handleDeleteCustomTheme}
-              onUseAsTemplate={handleUseThemeAsTemplate}
-            />
+            <div className="flex items-center gap-2">
+              <SyncStatusIndicator />
+              {!user && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/auth">Sign In</Link>
+                </Button>
+              )}
+              <ThemeSwitcher 
+                currentTheme={theme} 
+                onThemeChange={setTheme}
+                onCustomThemeClick={handleOpenCustomThemeBuilder}
+                onEditCustomTheme={handleEditCustomTheme}
+                onDeleteCustomTheme={handleDeleteCustomTheme}
+                onUseAsTemplate={handleUseThemeAsTemplate}
+              />
+            </div>
           </div>
         </div>
       </header>
