@@ -1,9 +1,15 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const playbookSchema = z.object({
+  goal: z.string().trim().min(1, "Goal is required").max(500, "Goal must be less than 500 characters"),
+  details: z.string().trim().max(2000, "Details must be less than 2000 characters").optional(),
+  category: z.enum(['Cleaning', 'Cooking', 'Learning', 'Self-Care', 'Creative', 'Work', 'Health', 'Social', 'Other']).optional(),
+});
 
 interface PlaybookStep {
   id: string;
@@ -21,25 +27,41 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { goal, details, category } = await req.json();
-    
-    if (!goal) {
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Goal is required' }),
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse and validate input
+    const body = await req.json();
+    const validation = playbookSchema.safeParse(body);
+    
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validation.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const { goal, details, category } = validation.data;
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not found');
+      console.error('LOVABLE_API_KEY not configured');
       return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Service temporarily unavailable' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Generating playbook for goal:', goal);
+    console.log('Generating playbook for authenticated user');
 
     const systemPrompt = `You are a helpful assistant that creates detailed, neurodivergent-friendly step-by-step playbooks.
 Your goal is to break down complex tasks into manageable, actionable steps that account for potential executive dysfunction challenges.
@@ -108,7 +130,7 @@ Remember to respond with ONLY valid JSON, no markdown or explanations.`;
       }
 
       return new Response(
-        JSON.stringify({ error: 'Failed to generate playbook' }),
+        JSON.stringify({ error: 'Failed to generate playbook. Please try again.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -117,14 +139,14 @@ Remember to respond with ONLY valid JSON, no markdown or explanations.`;
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      console.error('No content in AI response:', data);
+      console.error('No content in AI response');
       return new Response(
-        JSON.stringify({ error: 'Invalid AI response' }),
+        JSON.stringify({ error: 'Unable to generate playbook. Please try again.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('AI response content:', content);
+    console.log('Successfully received AI response');
 
     // Parse the JSON response - handle potential markdown wrapping
     let playbookData;
@@ -137,9 +159,9 @@ Remember to respond with ONLY valid JSON, no markdown or explanations.`;
       
       playbookData = JSON.parse(cleanContent);
     } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError, content);
+      console.error('Failed to parse AI response:', parseError);
       return new Response(
-        JSON.stringify({ error: 'Failed to parse AI response' }),
+        JSON.stringify({ error: 'Unable to process response. Please try again.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -168,7 +190,7 @@ Remember to respond with ONLY valid JSON, no markdown or explanations.`;
   } catch (error) {
     console.error('Error in generate-playbook function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'An unexpected error occurred. Please try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
