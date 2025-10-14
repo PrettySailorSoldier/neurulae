@@ -14,7 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sync_metadata: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          id: string
+          last_sync_timestamp: string | null
+          pending_changes: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          id?: string
+          last_sync_timestamp?: string | null
+          pending_changes?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          id?: string
+          last_sync_timestamp?: string | null
+          pending_changes?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_data: {
+        Row: {
+          data: Json
+          data_type: Database["public"]["Enums"]["data_type_enum"]
+          device_id: string | null
+          last_modified: string | null
+          sync_version: number | null
+          user_id: string
+        }
+        Insert: {
+          data?: Json
+          data_type: Database["public"]["Enums"]["data_type_enum"]
+          device_id?: string | null
+          last_modified?: string | null
+          sync_version?: number | null
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          data_type?: Database["public"]["Enums"]["data_type_enum"]
+          device_id?: string | null
+          last_modified?: string | null
+          sync_version?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +97,23 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      data_type_enum:
+        | "tasks"
+        | "projects"
+        | "priorities"
+        | "timeblocks"
+        | "scheduledTasks"
+        | "playbooks"
+        | "reminderWidgets"
+        | "energyWidgets"
+        | "messengerWidgets"
+        | "moodGardenWidgets"
+        | "parallelUniverseWidgets"
+        | "soundSignatureWidgets"
+        | "theme"
+        | "customTheme"
+        | "customTabs"
+        | "timerSessions"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +240,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      data_type_enum: [
+        "tasks",
+        "projects",
+        "priorities",
+        "timeblocks",
+        "scheduledTasks",
+        "playbooks",
+        "reminderWidgets",
+        "energyWidgets",
+        "messengerWidgets",
+        "moodGardenWidgets",
+        "parallelUniverseWidgets",
+        "soundSignatureWidgets",
+        "theme",
+        "customTheme",
+        "customTabs",
+        "timerSessions",
+      ],
+    },
   },
 } as const
