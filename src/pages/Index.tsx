@@ -689,7 +689,6 @@ const Index = () => {
               <Brain className="h-8 w-8 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold">NeuroFlow</h1>
-                <p className="text-sm text-muted-foreground">Your AuDHD Life Management Hub</p>
               </div>
             </div>
             <ThemeSwitcher 
