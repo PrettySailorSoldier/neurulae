@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Clock, Maximize2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Clock, Maximize2, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TimerHub } from './TimerHub';
@@ -12,7 +13,11 @@ const PRESETS = [
   { label: '15 min', minutes: 15 },
 ];
 
-export function FocusTimer() {
+interface FocusTimerProps {
+  onOpenScheduler?: () => void;
+}
+
+export function FocusTimer({ onOpenScheduler }: FocusTimerProps) {
   const [timer, setTimer] = useState<TimerState>({
     isRunning: false,
     timeRemaining: 25 * 60,
@@ -71,15 +76,28 @@ export function FocusTimer() {
 
   return (
     <Card className="card-elevated border-2" data-tutorial="focus-timer">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          Focus Timer
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            <span className="text-base">Focus Timer</span>
+          </div>
+          {onOpenScheduler && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onOpenScheduler}
+              className="h-8 gap-1.5 text-xs"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              {format(new Date(), 'MMM d')}
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div className="relative">
-          <div className="text-5xl font-bold text-center py-6">
+          <div className="text-4xl font-bold text-center py-4">
             {formatTime(timer.timeRemaining)}
           </div>
           <div className="absolute bottom-0 left-0 h-1 bg-muted rounded-full w-full overflow-hidden">
@@ -98,6 +116,7 @@ export function FocusTimer() {
               size="sm"
               onClick={() => setPreset(preset.minutes)}
               disabled={timer.isRunning}
+              className="text-xs h-8"
             >
               {preset.label}
             </Button>
@@ -108,7 +127,6 @@ export function FocusTimer() {
           <Button
             onClick={toggleTimer}
             className="btn-primary"
-            size="lg"
           >
             {timer.isRunning ? (
               <>
@@ -125,7 +143,6 @@ export function FocusTimer() {
           <Button
             onClick={resetTimer}
             variant="outline"
-            size="lg"
           >
             <RotateCcw className="h-4 w-4" />
           </Button>
@@ -134,17 +151,12 @@ export function FocusTimer() {
         <Button
           onClick={() => setHubOpen(true)}
           variant="outline"
-          className="w-full"
+          size="sm"
+          className="w-full text-xs"
         >
           <Maximize2 className="h-4 w-4 mr-2" />
           Advanced Timers
         </Button>
-
-        {timer.currentTaskId && (
-          <div className="text-sm text-muted-foreground text-center">
-            Current Task: Focus Session
-          </div>
-        )}
       </CardContent>
 
       <TimerHub

@@ -8,6 +8,7 @@ import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
+import { CalendarScheduler } from '@/components/CalendarScheduler';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
 import { Brain, Plus, X, Cloud, Crown, HelpCircle } from 'lucide-react';
@@ -81,6 +82,9 @@ const Index = () => {
   // Onboarding Tutorial
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [hasSeenTutorial, setHasSeenTutorial] = useLocalStorage<boolean>('neurulae-tutorial-seen', false);
+  
+  // Calendar Scheduler
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -265,6 +269,21 @@ const Index = () => {
   const handleDeleteTimeBlock = (id: string) => {
     setTimeBlocks(timeBlocks.filter(block => block.id !== id));
     setScheduledTasks(scheduledTasks.filter(task => task.blockId !== id));
+  };
+
+  const handleScheduleTask = (taskId: string, blockId: string, date: string, estimatedMinutes?: number) => {
+    const newScheduledTask: ScheduledTask = {
+      id: crypto.randomUUID(),
+      taskId,
+      blockId,
+      date,
+      estimatedMinutes,
+    };
+    setScheduledTasks([...scheduledTasks, newScheduledTask]);
+    toast({
+      title: "Task Scheduled",
+      description: "Your task has been added to the schedule.",
+    });
   };
 
   const handleAddPlaybook = (playbookData: Omit<Playbook, 'id' | 'createdAt'>) => {
@@ -845,7 +864,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6">
         {/* Top Widgets Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <FocusTimer />
+          <FocusTimer onOpenScheduler={() => setSchedulerOpen(true)} />
           <TodaysPriorities
             priorities={priorities}
             onToggleComplete={handleToggleComplete}
@@ -1090,6 +1109,15 @@ const Index = () => {
         onSave={handleSaveCustomTheme}
         existingTheme={theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined}
         templateTheme={templateTheme}
+      />
+      
+      <CalendarScheduler
+        open={schedulerOpen}
+        onOpenChange={setSchedulerOpen}
+        tasks={tasks}
+        scheduledTasks={scheduledTasks}
+        timeBlocks={timeBlocks}
+        onScheduleTask={handleScheduleTask}
       />
     </div>
   );
