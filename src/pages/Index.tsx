@@ -10,7 +10,7 @@ import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud, Crown } from 'lucide-react';
+import { Brain, Plus, X, Cloud, Crown, HelpCircle } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
@@ -31,6 +31,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePremium } from '@/contexts/PremiumContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 
 const Index = () => {
   const { user } = useAuth();
@@ -77,7 +78,19 @@ const Index = () => {
   const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
   const [newTabName, setNewTabName] = useState('');
   
+  // Onboarding Tutorial
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [hasSeenTutorial, setHasSeenTutorial] = useLocalStorage<boolean>('neurulae-tutorial-seen', false);
+  
   const { toast } = useToast();
+
+  // Show tutorial on first visit
+  useEffect(() => {
+    if (!hasSeenTutorial) {
+      setTutorialOpen(true);
+      setHasSeenTutorial(true);
+    }
+  }, [hasSeenTutorial, setHasSeenTutorial]);
 
   // One-time migration from neuroflow/neupath to neurulae localStorage keys
   useEffect(() => {
@@ -779,6 +792,14 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTutorialOpen(true)}
+                title="Help & Tutorial"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
               <SyncStatusIndicator />
               {user && !isPremium && (
                 <Button variant="default" size="sm" asChild>
@@ -798,7 +819,7 @@ const Index = () => {
                   <Link to="/auth">Sign In</Link>
                 </Button>
               )}
-              <ThemeSwitcher 
+              <ThemeSwitcher
                 currentTheme={theme} 
                 onThemeChange={setTheme}
                 onCustomThemeClick={handleOpenCustomThemeBuilder}
@@ -938,6 +959,12 @@ const Index = () => {
           ))}
         </Tabs>
       </main>
+
+      {/* Onboarding Tutorial */}
+      <OnboardingTutorial 
+        open={tutorialOpen} 
+        onOpenChange={setTutorialOpen}
+      />
 
       {/* Widget Panel */}
       <WidgetPanel
