@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { FocusTimer } from '@/components/FocusTimer';
 import { TodaysPriorities } from '@/components/TodaysPriorities';
+import { CalendarWidget } from '@/components/CalendarWidget';
 import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
@@ -863,8 +864,9 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         {/* Top Widgets Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <FocusTimer onOpenScheduler={() => setSchedulerOpen(true)} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <FocusTimer />
+          <CalendarWidget onOpenScheduler={() => setSchedulerOpen(true)} />
           <TodaysPriorities
             priorities={priorities}
             onToggleComplete={handleToggleComplete}

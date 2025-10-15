@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Clock, Maximize2, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import { Play, Pause, RotateCcw, Clock, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TimerHub } from './TimerHub';
@@ -13,11 +12,7 @@ const PRESETS = [
   { label: '15 min', minutes: 15 },
 ];
 
-interface FocusTimerProps {
-  onOpenScheduler?: () => void;
-}
-
-export function FocusTimer({ onOpenScheduler }: FocusTimerProps) {
+export function FocusTimer() {
   const [timer, setTimer] = useState<TimerState>({
     isRunning: false,
     timeRemaining: 25 * 60,
@@ -77,22 +72,9 @@ export function FocusTimer({ onOpenScheduler }: FocusTimerProps) {
   return (
     <Card className="card-elevated border-2" data-tutorial="focus-timer">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span className="text-base">Focus Timer</span>
-          </div>
-          {onOpenScheduler && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onOpenScheduler}
-              className="h-8 gap-1.5 text-xs"
-            >
-              <Calendar className="h-3.5 w-3.5" />
-              {format(new Date(), 'MMM d')}
-            </Button>
-          )}
+        <CardTitle className="flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          <span className="text-base">Focus Timer</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
