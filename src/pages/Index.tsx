@@ -208,7 +208,7 @@ const Index = () => {
       recurring: 'none',
       createdAt: new Date().toISOString(),
     };
-    setTasks([...tasks, newTask]);
+    setTasks(prev => [...prev, newTask]);
   };
 
   const handleToggleComplete = (id: string) => {
