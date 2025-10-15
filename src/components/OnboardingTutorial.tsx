@@ -14,6 +14,7 @@ const tutorialSteps = [
     title: 'Welcome to Neurulae! 🎉',
     icon: Sparkles,
     description: 'Your personal productivity workspace designed to help you focus, plan, and achieve your goals.',
+    spotlightSelector: null,
     content: [
       'Neurulae combines powerful time management tools with flexible organization',
       'Follow this quick tutorial to learn how to get the most out of your workspace',
@@ -24,6 +25,7 @@ const tutorialSteps = [
     title: 'Focus Timer ⏱️',
     icon: Clock,
     description: 'Start your productivity journey with focused work sessions',
+    spotlightSelector: '[data-tutorial="focus-timer"]',
     content: [
       'Use preset timers (25, 15, or 5 minutes) for quick sessions',
       'Click Start to begin a focus session and track your progress',
@@ -35,6 +37,7 @@ const tutorialSteps = [
     title: "Today's Priorities ⭐",
     icon: Star,
     description: 'Highlight what matters most each day',
+    spotlightSelector: '[data-tutorial="priorities"]',
     content: [
       'Add your top 3-5 priorities for the day',
       'Check them off as you complete them',
@@ -46,6 +49,7 @@ const tutorialSteps = [
     title: 'Daily Flow Timeline 📅',
     icon: Calendar,
     description: 'Visualize and structure your entire day',
+    spotlightSelector: '[data-tutorial="timeline"]',
     content: [
       'Create Main Activity blocks for work, meetings, meals, and routines',
       'Add Dedicated Time blocks for focused project work',
@@ -58,6 +62,7 @@ const tutorialSteps = [
     title: 'Tasks & Projects 📋',
     icon: ListTodo,
     description: 'Organize everything you need to do',
+    spotlightSelector: '[data-tutorial="tasks"]',
     content: [
       'Add tasks in the Unscheduled Tasks section',
       'Assign tasks to time blocks by editing the block',
@@ -69,6 +74,7 @@ const tutorialSteps = [
     title: 'Playbooks 📖',
     icon: BookOpen,
     description: 'Reusable templates for recurring workflows',
+    spotlightSelector: '[data-tutorial="playbooks"]',
     content: [
       'Create step-by-step guides for routines and processes',
       'Morning routines, workout plans, meeting agendas, and more',
@@ -80,6 +86,7 @@ const tutorialSteps = [
     title: 'Widgets & More ✨',
     icon: Sparkles,
     description: 'Customize your workspace with powerful tools',
+    spotlightSelector: '[data-tutorial="widgets"]',
     content: [
       'Click the widget icon on the right to open the Widget Panel',
       'Add reminders, energy trackers, mood gardens, and more',
@@ -91,6 +98,7 @@ const tutorialSteps = [
     title: "You're All Set! 🚀",
     icon: CheckCircle2,
     description: 'Ready to boost your productivity',
+    spotlightSelector: null,
     content: [
       'Start by adding a few priorities for today',
       'Create your first time block to structure your day',
@@ -102,12 +110,33 @@ const tutorialSteps = [
 
 export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     if (open) {
       setCurrentStep(0);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const step = tutorialSteps[currentStep];
+    if (step.spotlightSelector) {
+      const element = document.querySelector(step.spotlightSelector);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        setSpotlightRect(rect);
+        
+        // Scroll element into view if needed
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        setSpotlightRect(null);
+      }
+    } else {
+      setSpotlightRect(null);
+    }
+  }, [currentStep, open]);
 
   const handleNext = () => {
     if (currentStep < tutorialSteps.length - 1) {
@@ -129,13 +158,39 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
   const StepIcon = step.icon;
   const progress = ((currentStep + 1) / tutorialSteps.length) * 100;
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <StepIcon className="h-6 w-6 text-primary" />
+    <>
+      {/* Backdrop with spotlight cutout */}
+      <div 
+        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100]"
+        style={{ 
+          backdropFilter: 'blur(8px)',
+        }}
+        onClick={() => onOpenChange(false)}
+      >
+        {spotlightRect && (
+          <div
+            className="absolute ring-4 ring-primary rounded-lg pointer-events-none animate-pulse"
+            style={{
+              top: spotlightRect.top - 8,
+              left: spotlightRect.left - 8,
+              width: spotlightRect.width + 16,
+              height: spotlightRect.height + 16,
+              boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.5)`,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Tutorial Dialog */}
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl z-[101]" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <StepIcon className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
               <DialogTitle className="text-2xl">{step.title}</DialogTitle>
@@ -185,7 +240,8 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
             </Button>
           )}
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

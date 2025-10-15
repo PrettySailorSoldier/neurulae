@@ -132,7 +132,7 @@ export function DailyFlowTimeline({
   };
 
   return (
-    <div className="relative bg-card border-2 border-border rounded-lg p-4">
+    <div className="relative bg-card border-2 border-border rounded-lg p-4" data-tutorial="timeline">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
         <Button onClick={handleAddBlock} size="sm" className="bg-primary hover:bg-primary/90">

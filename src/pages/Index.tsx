@@ -915,7 +915,7 @@ const Index = () => {
                 </div>
 
                 {/* Unscheduled Tasks */}
-                <div className="bg-card rounded-lg border-2 border-border p-4">
+                <div className="bg-card rounded-lg border-2 border-border p-4" data-tutorial="tasks">
                   <h3 className="text-lg font-semibold mb-4">📋 Unscheduled Tasks</h3>
                   <TaskList
                     tasks={tasks.filter(
@@ -933,7 +933,7 @@ const Index = () => {
             <ProjectsTab projects={projects} onAddProject={handleAddProject} />
           </TabsContent>
 
-          <TabsContent value="playbooks">
+          <TabsContent value="playbooks" data-tutorial="playbooks">
             <PlaybooksTab
               playbooks={playbooks}
               onAddPlaybook={handleAddPlaybook}

@@ -101,6 +101,7 @@ export function WidgetPanel({
         onClick={() => setIsOpen(!isOpen)}
         className="fixed right-0 top-1/2 -translate-y-1/2 z-40 rounded-l-lg rounded-r-none"
         size="sm"
+        data-tutorial="widgets"
       >
         {isOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </Button>

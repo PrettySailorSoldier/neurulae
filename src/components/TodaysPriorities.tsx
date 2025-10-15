@@ -12,7 +12,7 @@ interface TodaysPrioritiesProps {
 
 export function TodaysPriorities({ priorities, onToggleComplete, onAddPriority }: TodaysPrioritiesProps) {
   return (
-    <Card className="card-elevated border-2">
+    <Card className="card-elevated border-2" data-tutorial="priorities">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Star className="h-5 w-5 fill-current" />
