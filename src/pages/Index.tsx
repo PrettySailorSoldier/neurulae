@@ -864,14 +864,20 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         {/* Top Widgets Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <FocusTimer />
-          <CalendarWidget onOpenScheduler={() => setSchedulerOpen(true)} />
-          <TodaysPriorities
-            priorities={priorities}
-            onToggleComplete={handleToggleComplete}
-            onAddPriority={handleAddPriority}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
+          <div className="md:col-span-4">
+            <FocusTimer />
+          </div>
+          <div className="md:col-span-2">
+            <CalendarWidget onOpenScheduler={() => setSchedulerOpen(true)} />
+          </div>
+          <div className="md:col-span-6">
+            <TodaysPriorities
+              priorities={priorities}
+              onToggleComplete={handleToggleComplete}
+              onAddPriority={handleAddPriority}
+            />
+          </div>
         </div>
 
         {/* Tabbed Content */}
