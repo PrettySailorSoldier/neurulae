@@ -1,3 +1,9 @@
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -9,6 +15,8 @@ export interface Task {
   colorTag?: string;
   createdAt: string;
   linkedPlaybookId?: string;
+  subtasks?: SubTask[];
+  notes?: string;
 }
 
 export interface Project {

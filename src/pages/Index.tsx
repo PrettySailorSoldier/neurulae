@@ -215,6 +215,15 @@ const Index = () => {
     ));
   };
 
+  const handleUpdateTask = (updatedTask: Task) => {
+    setTasks(tasks.map(task => 
+      task.id === updatedTask.id ? updatedTask : task
+    ));
+    setPriorities(priorities.map(task =>
+      task.id === updatedTask.id ? updatedTask : task
+    ));
+  };
+
   const handleAddPriority = () => {
     // In a full implementation, this would open a dialog to select/create a task
     const newPriority: Task = {
@@ -884,6 +893,7 @@ const Index = () => {
                   onUpdateBlock={handleUpdateTimeBlock}
                   onDeleteBlock={handleDeleteTimeBlock}
                   onToggleComplete={handleToggleComplete}
+                  onUpdateTask={handleUpdateTask}
                 />
               </div>
 
@@ -902,6 +912,7 @@ const Index = () => {
                             key={scheduledTask.id}
                             task={task}
                             onToggleComplete={() => handleToggleComplete(task.id)}
+                            onUpdateTask={handleUpdateTask}
                             estimatedMinutes={scheduledTask.estimatedMinutes}
                           />
                         ) : null;

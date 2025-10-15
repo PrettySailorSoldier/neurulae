@@ -14,6 +14,7 @@ interface DailyFlowTimelineProps {
   onUpdateBlock: (id: string, block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
   onDeleteBlock: (id: string) => void;
   onToggleComplete: (taskId: string) => void;
+  onUpdateTask?: (task: Task) => void;
 }
 
 export function DailyFlowTimeline({
@@ -24,6 +25,7 @@ export function DailyFlowTimeline({
   onUpdateBlock,
   onDeleteBlock,
   onToggleComplete,
+  onUpdateTask,
 }: DailyFlowTimelineProps) {
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
   const [editorOpen, setEditorOpen] = useState(false);
@@ -118,6 +120,7 @@ export function DailyFlowTimeline({
                 key={task.id}
                 task={task}
                 onToggleComplete={onToggleComplete}
+                onUpdateTask={onUpdateTask}
               />
             ))}
             {blockTasks.length > 3 && (

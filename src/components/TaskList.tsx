@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { Task } from '@/types';
 
 interface TaskListProps {
@@ -16,6 +17,8 @@ export function TaskList({ tasks, onToggleComplete, onAddTask }: TaskListProps) 
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkText, setBulkText] = useState('');
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -27,6 +30,15 @@ export function TaskList({ tasks, onToggleComplete, onAddTask }: TaskListProps) 
     if (newTaskTitle.trim()) {
       onAddTask(newTaskTitle);
       setNewTaskTitle('');
+    }
+  };
+
+  const handleBulkAdd = () => {
+    if (bulkText.trim()) {
+      const lines = bulkText.split('\n').filter(line => line.trim());
+      lines.forEach(line => onAddTask(line.trim()));
+      setBulkText('');
+      setBulkMode(false);
     }
   };
 
@@ -54,16 +66,48 @@ export function TaskList({ tasks, onToggleComplete, onAddTask }: TaskListProps) 
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex gap-2">
-          <Input
-            placeholder="New task..."
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-          />
-          <Button onClick={handleAddTask} className="btn-primary">
-            <Plus className="h-4 w-4" />
-          </Button>
+        <div className="space-y-2">
+          <div className="flex gap-2 items-center">
+            <Button
+              variant={bulkMode ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setBulkMode(!bulkMode)}
+              className="text-xs"
+            >
+              {bulkMode ? 'Single' : 'Bulk'} Add
+            </Button>
+          </div>
+          
+          {bulkMode ? (
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Paste your task list here... (one task per line)"
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                className="min-h-[120px] resize-none"
+              />
+              <div className="flex gap-2">
+                <Button onClick={handleBulkAdd} className="btn-primary flex-1">
+                  Add All Tasks
+                </Button>
+                <Button onClick={() => { setBulkText(''); setBulkMode(false); }} variant="outline">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                placeholder="New task..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+              />
+              <Button onClick={handleAddTask} className="btn-primary">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
