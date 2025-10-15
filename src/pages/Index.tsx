@@ -229,6 +229,11 @@ const Index = () => {
     ));
   };
 
+  const handleDeleteTask = (id: string) => {
+    setTasks(tasks.filter(task => task.id !== id));
+    setPriorities(priorities.filter(task => task.id !== id));
+  };
+
   const handleAddPriority = () => {
     // In a full implementation, this would open a dialog to select/create a task
     const newPriority: Task = {
@@ -961,6 +966,8 @@ const Index = () => {
                     )}
                     onAddTask={handleAddTask}
                     onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
                   />
                 </div>
               </div>
