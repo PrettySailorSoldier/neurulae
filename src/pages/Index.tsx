@@ -234,6 +234,29 @@ const Index = () => {
     setPriorities(priorities.filter(task => task.id !== id));
   };
 
+  const handlePrioritizeTasks = (taskIds: string[]) => {
+    // Move top priority tasks to priorities list
+    const topTasks = taskIds.slice(0, 5).map(id => tasks.find(t => t.id === id)).filter(Boolean) as Task[];
+    setPriorities(topTasks);
+  };
+
+  const handleScheduleTasks = (schedule: Array<{
+    taskId: string;
+    blockId: string;
+    estimatedMinutes?: number;
+    order?: number;
+  }>) => {
+    const today = getTodayString();
+    const newScheduledTasks = schedule.map(item => ({
+      id: crypto.randomUUID(),
+      taskId: item.taskId,
+      blockId: item.blockId,
+      date: today,
+      estimatedMinutes: item.estimatedMinutes,
+    }));
+    setScheduledTasks([...scheduledTasks, ...newScheduledTasks]);
+  };
+
   const handleAddPriority = () => {
     // In a full implementation, this would open a dialog to select/create a task
     const newPriority: Task = {
@@ -964,10 +987,13 @@ const Index = () => {
                     tasks={tasks.filter(
                       task => !scheduledTasks.some(st => st.taskId === task.id && st.date === getTodayString())
                     )}
+                    timeBlocks={timeBlocks}
                     onAddTask={handleAddTask}
                     onToggleComplete={handleToggleComplete}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
+                    onPrioritize={handlePrioritizeTasks}
+                    onScheduleTasks={handleScheduleTasks}
                   />
                 </div>
               </div>
