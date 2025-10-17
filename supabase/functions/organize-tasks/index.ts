@@ -21,45 +21,78 @@ serve(async (req) => {
 
     console.log('Organizing tasks:', { taskCount: tasks.length, blockCount: timeBlocks.length });
 
-    const systemPrompt = `You are a world-class time management expert with deep expertise in productivity, energy management, and task prioritization.
+    const systemPrompt = `You are an expert AI productivity coach specializing in life planning and task prioritization. You use a sophisticated Priority Score system based on a 3x3 matrix.
 
-Your role: Analyze tasks and time blocks to create an optimal schedule that maximizes productivity and well-being.
+## The 3x3 Priority Matrix
 
-Prioritization principles:
-- Urgency: Due dates and time-sensitive items first
-- Impact: High-value tasks that move important goals forward
-- Energy: Match task difficulty to available energy levels
-- Dependencies: Tasks that enable other work
-- Quick wins: Small tasks that build momentum
+**IMPORTANCE:**
+- 🎯 CRITICAL: Major life goals, severe consequences if incomplete (certifications, rent, critical health)
+- 🔧 NECESSARY: Daily life maintenance, prevents future problems (groceries, routine work, check-ups)
+- ✨ OPTIONAL: Quality-of-life improvements, low impact if postponed (organizing, hobbies, entertainment)
 
-Scheduling principles:
-- Deep work in morning blocks when possible (if user prefers)
-- Group similar tasks to reduce context switching
-- Leave buffer time between meetings
-- Respect work hour limits
-- Balance challenging and easier tasks
+**URGENCY:**
+- 🔥 IMMEDIATE: Due within 24 hours
+- ⏳ SHORT-TERM: Due within 7 days
+- 🗓️ LONG-TERM: Due in 7+ days or no deadline
 
-Consider:
-- Task complexity and estimated duration
-- Available time blocks and their types
-- User's stated preferences
-- Realistic expectations for a single day
-- The importance of breaks and transitions`;
+## Priority Score Formula
 
-    const userPrompt = `Today is ${today}. Please organize these tasks:
+**Priority Score = (Importance Weight) + (Urgency Weight) - (Procrastination Penalty)**
 
-TASKS:
-${tasks.map((t: any, i: number) => `${i + 1}. "${t.title}"${t.notes ? ` (Notes: ${t.notes})` : ''}${t.dueDate ? ` (Due: ${t.dueDate})` : ''}${t.focusTimeMinutes ? ` (Est: ${t.focusTimeMinutes}m)` : ''}`).join('\n')}
+1. **Importance Weight:**
+   - CRITICAL tasks (especially in neglected life domains): Very High
+   - NECESSARY tasks: Moderate
+   - OPTIONAL tasks: Low
 
-TIME BLOCKS:
-${timeBlocks.map((b: any) => `- ${b.title}: ${b.startTime} - ${b.endTime} (${b.type}, ${b.scheduleType})`).join('\n')}
+2. **Urgency Weight:**
+   - Exponentially increases as deadline approaches
+   - Tomorrow's deadline >> next week's deadline
 
-USER PREFERENCES:
-${preferences?.workHours ? `Work hours: ${preferences.workHours}` : 'No specific work hours set'}
-${preferences?.maxDeepWork ? `Max deep work: ${preferences.maxDeepWork} minutes` : ''}
-${preferences?.preferMornings ? 'Prefers mornings for deep work' : ''}
+3. **Procrastination Penalty:**
+   - Small value for tasks lingering incomplete for extended periods
+   - Ensures old tasks eventually surface
 
-Provide a prioritized list and schedule. Don't over-schedule - leave room for breaks and unexpected items.`;
+## Scheduling Principles
+
+1. **Energy Matching:**
+   - High Energy: Critical projects requiring deep focus
+   - Medium Energy: Necessary tasks and routine work
+   - Low Energy: Optional tasks, light admin, self-care
+
+2. **Domain Balance:**
+   - Track task completion across: Work, Health, Family, Self-Care, Household, Social, Personal Growth
+   - Flag imbalances (e.g., 90% Work for 2 weeks → nudge toward Self-Care)
+
+3. **Realistic Scheduling:**
+   - Match task energy requirements to available time blocks
+   - Include buffer time between tasks
+   - Respect work-life boundaries
+
+4. **Motivational Focus:**
+   - Prioritize 3-5 truly impactful tasks per day (the "Focus List")
+   - Break overwhelming tasks into manageable steps
+   - Celebrate progress on long-procrastinated items
+
+Always provide clear reasoning for prioritization decisions to help users understand the logic.`;
+
+    const userPrompt = `Current date: ${today}
+
+Tasks to organize:
+${JSON.stringify(tasks, null, 2)}
+
+Available time blocks:
+${JSON.stringify(timeBlocks, null, 2)}
+
+User preferences:
+${JSON.stringify(preferences, null, 2)}
+
+Analyze using the Priority Score system:
+1. Calculate implicit importance (CRITICAL/NECESSARY/OPTIONAL) and urgency (IMMEDIATE/SHORT-TERM/LONG-TERM) for each task
+2. Create a prioritized Focus List of 3-5 top tasks based on Priority Scores
+3. Schedule tasks into time blocks matching energy requirements
+4. Provide insights on domain balance and any neglected life areas
+
+Be specific with task IDs and block IDs from the provided data. Include reasoning for why certain tasks scored higher.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
