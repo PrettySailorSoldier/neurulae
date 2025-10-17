@@ -189,7 +189,7 @@ export default function Pricing() {
         </div>
 
         <div className="text-center mt-12">
-          <Button variant="ghost" onClick={() => navigate('/')}>
+          <Button variant="ghost" onClick={() => navigate('/app')}>
             Back to App
           </Button>
         </div>

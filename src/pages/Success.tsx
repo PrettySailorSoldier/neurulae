@@ -34,7 +34,7 @@ export default function Success() {
             </p>
             
             <div className="flex flex-col gap-2">
-              <Button onClick={() => navigate('/')} className="w-full">
+              <Button onClick={() => navigate('/app')} className="w-full">
                 Start Using Premium Features
               </Button>
               <Button 

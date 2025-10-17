@@ -129,7 +129,7 @@ export default function Settings() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/app')}
             >
               Back to App
             </Button>

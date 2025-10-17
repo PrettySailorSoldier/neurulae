@@ -19,7 +19,7 @@ export function AuthPage() {
 
   // Redirect if already logged in
   if (user) {
-    navigate('/');
+    navigate('/app');
     return null;
   }
 
@@ -56,7 +56,7 @@ export function AuthPage() {
           title: 'Welcome back!',
           description: 'Signed in successfully'
         });
-        navigate('/');
+        navigate('/app');
       }
     } catch (error: any) {
       toast({
@@ -107,7 +107,7 @@ export function AuthPage() {
           title: 'Account created!',
           description: 'Your local data has been backed up to the cloud'
         });
-        navigate('/');
+        navigate('/app');
       }
     } catch (error: any) {
       toast({

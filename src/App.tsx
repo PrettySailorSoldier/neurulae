@@ -5,7 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PremiumProvider } from "@/contexts/PremiumContext";
+import { RequireAuth } from "@/components/auth/RequireAuth";
+import { PublicOnly } from "@/components/auth/PublicOnly";
 import Index from "./pages/Index";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
@@ -23,10 +26,11 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
+              <Route path="/app" element={<RequireAuth><Index /></RequireAuth>} />
+              <Route path="/auth" element={<PublicOnly><Auth /></PublicOnly>} />
               <Route path="/pricing" element={<Pricing />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
               <Route path="/success" element={<Success />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
