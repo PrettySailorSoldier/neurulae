@@ -35,6 +35,36 @@ export type Database = {
         }
         Relationships: []
       }
+      stuck_sessions: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          id: string
+          playbooks_generated: string[] | null
+          session_date: string | null
+          tasks_created: number | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          playbooks_generated?: string[] | null
+          session_date?: string | null
+          tasks_created?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          playbooks_generated?: string[] | null
+          session_date?: string | null
+          tasks_created?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       subscription_status: {
         Row: {
           created_at: string | null

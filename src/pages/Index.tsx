@@ -12,7 +12,7 @@ import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles } from 'lucide-react';
+import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles, Compass } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { AIAssistant } from '@/components/AIAssistant';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
@@ -36,10 +36,14 @@ import { usePremium } from '@/contexts/PremiumContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
+import { useFeatureLimit } from '@/hooks/useFeatureLimit';
+import { UpgradeModal } from '@/components/premium/UpgradeModal';
+import { Card, CardContent } from '@/components/ui/card';
 
 const Index = () => {
   const { user } = useAuth();
   const { plan, isPremium, isAdmin } = usePremium();
+  const { canUseStuckMode, incrementStuckSession, stuckSessionsRemaining, showUpgradeModal, upgradeModalOpen, setUpgradeModalOpen, blockedFeature } = useFeatureLimit();
   const [showSyncBanner, setShowSyncBanner] = useState(true);
   const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
   const [tasks, setTasks] = useLocalStorage<Task[]>('neurulae-tasks', []);
@@ -94,6 +98,7 @@ const Index = () => {
   
   // AI Assistant
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isStuckMode, setIsStuckMode] = useState(false);
   
   const { toast } = useToast();
 
@@ -817,6 +822,24 @@ const Index = () => {
     toast({ title: "Tab removed" });
   };
 
+  const handleStuckClick = () => {
+    if (!canUseStuckMode()) {
+      showUpgradeModal("Unlimited 'I'm Stuck' guided planning sessions");
+      return;
+    }
+    incrementStuckSession();
+    setIsStuckMode(true);
+    setIsAIAssistantOpen(true);
+    toast({
+      title: "Let's figure this out together",
+      description: stuckSessionsRemaining === 1 ? "This is your last free stuck session this month." : undefined,
+    });
+  };
+
+  const handleStuckModeComplete = () => {
+    setIsStuckMode(false);
+  };
+
   return (
     <div className="min-h-screen">
       {/* Sync Banner for non-authenticated users */}
@@ -873,6 +896,20 @@ const Index = () => {
                 title="Priority Matrix"
               >
                 <Grid3x3 className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStuckClick}
+                className="flex items-center gap-2 bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 border-primary/20"
+              >
+                <Compass className="w-4 h-4" />
+                I'm Stuck
+                {!isPremium && !isAdmin && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {stuckSessionsRemaining} left
+                  </Badge>
+                )}
               </Button>
               <Button
                 variant="default"
@@ -1204,13 +1241,22 @@ const Index = () => {
       
       <AIAssistant
         open={isAIAssistantOpen}
-        onOpenChange={setIsAIAssistantOpen}
+        onOpenChange={(open) => {
+          setIsAIAssistantOpen(open);
+          if (!open) setIsStuckMode(false);
+        }}
+        onUpdateTask={handleUpdateTaskById}
+        onUpdateTimeBlock={handleUpdateTimeBlock}
         tasks={[...tasks, ...priorities]}
         timeBlocks={timeBlocks}
-        onUpdateTasks={(updatedTasks) => {
-          updatedTasks.forEach(task => handleUpdateTaskById(task.id, task));
-        }}
-        onUpdateTimeBlocks={setTimeBlocks}
+        stuckMode={isStuckMode}
+        onStuckModeComplete={handleStuckModeComplete}
+      />
+
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        feature={blockedFeature}
       />
     </div>
   );
