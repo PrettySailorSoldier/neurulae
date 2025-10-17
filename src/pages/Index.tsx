@@ -12,7 +12,8 @@ import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud, Crown, HelpCircle } from 'lucide-react';
+import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3 } from 'lucide-react';
+import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
@@ -86,6 +87,9 @@ const Index = () => {
   
   // Calendar Scheduler
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  
+  // Eisenhower Matrix
+  const [eisenhowerOpen, setEisenhowerOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -226,6 +230,15 @@ const Index = () => {
     ));
     setPriorities(priorities.map(task =>
       task.id === updatedTask.id ? updatedTask : task
+    ));
+  };
+  
+  const handleUpdateTaskById = (taskId: string, updates: Partial<Task>) => {
+    setTasks(tasks.map(task => 
+      task.id === taskId ? { ...task, ...updates } : task
+    ));
+    setPriorities(priorities.map(task =>
+      task.id === taskId ? { ...task, ...updates } : task
     ));
   };
 
@@ -852,6 +865,14 @@ const Index = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => setEisenhowerOpen(true)}
+                title="Priority Matrix"
+              >
+                <Grid3x3 className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setTutorialOpen(true)}
                 title="Help & Tutorial"
               >
@@ -1159,6 +1180,13 @@ const Index = () => {
         scheduledTasks={scheduledTasks}
         timeBlocks={timeBlocks}
         onScheduleTask={handleScheduleTask}
+      />
+      
+      <EisenhowerMatrix
+        open={eisenhowerOpen}
+        onOpenChange={setEisenhowerOpen}
+        tasks={[...tasks, ...priorities]}
+        onUpdateTask={handleUpdateTaskById}
       />
     </div>
   );

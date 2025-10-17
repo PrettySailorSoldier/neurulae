@@ -17,6 +17,7 @@ export interface Task {
   linkedPlaybookId?: string;
   subtasks?: SubTask[];
   notes?: string;
+  eisenhowerQuadrant?: 'urgent-important' | 'not-urgent-important' | 'urgent-not-important' | 'not-urgent-not-important';
 }
 
 export interface Project {
