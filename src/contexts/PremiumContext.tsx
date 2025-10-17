@@ -27,7 +27,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Check for admin role first
+      // Check for admin or creator role first
       const { data: roles } = await supabase
         .from('user_roles')
         .select('role')
@@ -35,6 +35,12 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
 
       if (roles?.some(r => r.role === 'admin')) {
         setPlan('admin');
+        setLoading(false);
+        return;
+      }
+
+      if (roles?.some(r => r.role === 'creator')) {
+        setPlan('premium'); // Creators get premium access
         setLoading(false);
         return;
       }

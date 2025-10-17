@@ -12,3 +12,6 @@ verify_jwt = true
 [functions.organize-tasks]
 verify_jwt = false
 
+[functions.ai-assistant]
+verify_jwt = false
+

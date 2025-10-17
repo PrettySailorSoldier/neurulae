@@ -12,8 +12,9 @@ import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3 } from 'lucide-react';
+import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
+import { AIAssistant } from '@/components/AIAssistant';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
@@ -90,6 +91,9 @@ const Index = () => {
   
   // Eisenhower Matrix
   const [eisenhowerOpen, setEisenhowerOpen] = useState(false);
+  
+  // AI Assistant
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -871,6 +875,15 @@ const Index = () => {
                 <Grid3x3 className="h-5 w-5" />
               </Button>
               <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsAIAssistantOpen(true)}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Assistant
+              </Button>
+              <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTutorialOpen(true)}
@@ -1187,6 +1200,17 @@ const Index = () => {
         onOpenChange={setEisenhowerOpen}
         tasks={[...tasks, ...priorities]}
         onUpdateTask={handleUpdateTaskById}
+      />
+      
+      <AIAssistant
+        open={isAIAssistantOpen}
+        onOpenChange={setIsAIAssistantOpen}
+        tasks={[...tasks, ...priorities]}
+        timeBlocks={timeBlocks}
+        onUpdateTasks={(updatedTasks) => {
+          updatedTasks.forEach(task => handleUpdateTaskById(task.id, task));
+        }}
+        onUpdateTimeBlocks={setTimeBlocks}
       />
     </div>
   );
