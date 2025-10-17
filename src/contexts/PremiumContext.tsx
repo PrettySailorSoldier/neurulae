@@ -27,24 +27,31 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Check for admin or creator role first
+      // Check for roles first (admin, creator, premium, lifetime)
       const { data: roles } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id);
 
-      if (roles?.some(r => r.role === 'admin')) {
+      if (roles?.some((r: any) => r.role === 'admin')) {
         setPlan('admin');
         setLoading(false);
         return;
       }
 
-      if (roles?.some(r => r.role === 'creator')) {
-        setPlan('premium'); // Creators get premium access
+      // Treat both 'creator' and 'premium' roles as premium access
+      if (roles?.some((r: any) => r.role === 'creator' || r.role === 'premium')) {
+        setPlan('premium');
         setLoading(false);
         return;
       }
 
+      // Lifetime role (if used) maps to lifetime plan
+      if (roles?.some((r: any) => r.role === 'lifetime')) {
+        setPlan('lifetime');
+        setLoading(false);
+        return;
+      }
       // Check subscription status via edge function
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
@@ -54,8 +61,11 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       
-      if (data.plan) {
+      if (data?.plan) {
         setPlan(data.plan);
+      } else if (data?.subscribed === true) {
+        // If subscribed flag is returned without a plan, treat as premium
+        setPlan('premium');
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
