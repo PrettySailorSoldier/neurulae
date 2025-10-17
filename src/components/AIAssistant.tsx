@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Brain, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Task, TimeBlock } from '@/types';
+import { Task, TimeBlock, Playbook } from '@/types';
+import { format, isToday } from 'date-fns';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -20,19 +21,58 @@ interface AIAssistantProps {
   onOpenChange: (open: boolean) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onUpdateTimeBlock: (blockId: string, updates: Partial<TimeBlock>) => void;
+  onAddTimeBlock: (block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
   tasks: Task[];
   timeBlocks: TimeBlock[];
+  playbooks: Playbook[];
+  onAddPlaybook: (playbook: Omit<Playbook, 'id' | 'createdAt'>) => void;
+  onUpdatePlaybook: (id: string, updates: Partial<Playbook>) => void;
   stuckMode?: boolean;
   onStuckModeComplete?: () => void;
 }
+
+const calculateAvailableWindows = (blocks: TimeBlock[]) => {
+  const now = new Date();
+  const todayBlocks = blocks
+    .filter(block => {
+      const blockDate = new Date(block.startTime);
+      return isToday(blockDate);
+    })
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  
+  const windows = [];
+  let lastEnd = now;
+  
+  for (const block of todayBlocks) {
+    const blockStart = new Date(block.startTime);
+    if (blockStart > lastEnd) {
+      const duration = Math.round((blockStart.getTime() - lastEnd.getTime()) / (1000 * 60));
+      if (duration >= 15) {
+        windows.push({
+          start: format(lastEnd, 'h:mm a'),
+          end: format(blockStart, 'h:mm a'),
+          duration: `${duration} minutes`
+        });
+      }
+    }
+    const blockEnd = new Date(block.endTime);
+    lastEnd = blockEnd > lastEnd ? blockEnd : lastEnd;
+  }
+  
+  return windows;
+};
 
 export function AIAssistant({
   open,
   onOpenChange,
   onUpdateTask,
   onUpdateTimeBlock,
+  onAddTimeBlock,
   tasks,
   timeBlocks,
+  playbooks,
+  onAddPlaybook,
+  onUpdatePlaybook,
   stuckMode = false,
   onStuckModeComplete,
 }: AIAssistantProps) {
@@ -85,7 +125,21 @@ export function AIAssistant({
           context: {
             tasks,
             timeBlocks,
+            playbooks,
             currentDate: new Date().toISOString(),
+            currentTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            todaySchedule: timeBlocks
+              .filter(block => {
+                const blockDate = new Date(block.startTime);
+                return isToday(blockDate);
+              })
+              .map(block => ({
+                title: block.title,
+                startTime: format(new Date(block.startTime), 'h:mm a'),
+                endTime: format(new Date(block.endTime), 'h:mm a'),
+                duration: `${Math.round((new Date(block.endTime).getTime() - new Date(block.startTime).getTime()) / (1000 * 60))} minutes`
+              })),
+            availableTimeWindows: calculateAvailableWindows(timeBlocks),
           },
           mode: stuckMode ? 'stuck_interview' : undefined,
         },
@@ -130,6 +184,49 @@ export function AIAssistant({
       toast({
         title: 'Time Block Updated',
         description: 'Time block has been updated.',
+      });
+    }
+    if (actions.createPlaybook) {
+      onAddPlaybook({
+        title: actions.createPlaybook.title,
+        description: actions.createPlaybook.description || '',
+        category: actions.createPlaybook.category || 'productivity',
+        steps: actions.createPlaybook.steps,
+        isTemplate: false,
+        linkedTaskIds: [],
+        resetOnRecurrence: false,
+      });
+      toast({
+        title: 'Playbook Created',
+        description: `"${actions.createPlaybook.title}" has been added to your playbooks.`,
+      });
+    }
+    if (actions.updatePlaybook) {
+      onUpdatePlaybook(actions.updatePlaybook.id, {
+        steps: actions.updatePlaybook.steps,
+        title: actions.updatePlaybook.title,
+        description: actions.updatePlaybook.description,
+      });
+      toast({
+        title: 'Playbook Updated',
+        description: 'Playbook has been modified.',
+      });
+    }
+    if (actions.suggestTimeBlock) {
+      const startTime = new Date(actions.suggestTimeBlock.startTime);
+      const endTime = new Date(actions.suggestTimeBlock.endTime);
+      
+      onAddTimeBlock({
+        title: actions.suggestTimeBlock.title,
+        startTime: actions.suggestTimeBlock.startTime,
+        endTime: actions.suggestTimeBlock.endTime,
+        type: 'dedicated',
+        scheduleType: 'everyday',
+      });
+      
+      toast({
+        title: 'Time Block Added',
+        description: `"${actions.suggestTimeBlock.title}" has been added from ${format(startTime, 'h:mm a')} to ${format(endTime, 'h:mm a')}.`,
       });
     }
   };

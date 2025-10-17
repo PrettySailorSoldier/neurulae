@@ -1247,8 +1247,12 @@ const Index = () => {
         }}
         onUpdateTask={handleUpdateTaskById}
         onUpdateTimeBlock={handleUpdateTimeBlock}
+        onAddTimeBlock={handleAddTimeBlock}
         tasks={[...tasks, ...priorities]}
         timeBlocks={timeBlocks}
+        playbooks={playbooks}
+        onAddPlaybook={handleAddPlaybook}
+        onUpdatePlaybook={handleUpdatePlaybook}
         stuckMode={isStuckMode}
         onStuckModeComplete={handleStuckModeComplete}
       />
