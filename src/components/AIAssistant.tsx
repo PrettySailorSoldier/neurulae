@@ -79,24 +79,79 @@ export function AIAssistant({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Initial message for stuck mode
+  // Load or create conversation on mount
   useEffect(() => {
-    if (open && stuckMode && messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: "I'm here to help you figure out what needs your attention today. Let's take this step by step. First, do you have work or school today?",
-        timestamp: new Date().toISOString(),
-      }]);
-    } else if (open && !stuckMode && messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: "Hello! I'm your AI productivity coach. I'm here to help you prioritize tasks, balance your schedule, and achieve your goals. What would you like to work on today?",
-        timestamp: new Date().toISOString(),
-      }]);
-    }
+    const initConversation = async () => {
+      if (!open) return;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Try to get the most recent conversation
+      const { data: existingConversation } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingConversation) {
+        setConversationId(existingConversation.id);
+        
+        // Load message history
+        const { data: messageHistory } = await supabase
+          .from('chat_messages')
+          .select('role, content, created_at')
+          .eq('conversation_id', existingConversation.id)
+          .order('created_at', { ascending: true });
+
+        if (messageHistory && messageHistory.length > 0) {
+          setMessages(messageHistory.map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: msg.created_at
+          })));
+        } else {
+          // Set initial message if no history
+          setInitialMessage();
+        }
+      } else {
+        // Create new conversation
+        const { data: newConversation } = await supabase
+          .from('conversations')
+          .insert({ user_id: user.id, title: 'New Conversation' })
+          .select()
+          .single();
+
+        if (newConversation) {
+          setConversationId(newConversation.id);
+          setInitialMessage();
+        }
+      }
+    };
+
+    const setInitialMessage = () => {
+      if (stuckMode) {
+        setMessages([{
+          role: 'assistant',
+          content: "I'm here to help you figure out what needs your attention today. Let's take this step by step. First, do you have work or school today?",
+          timestamp: new Date().toISOString(),
+        }]);
+      } else {
+        setMessages([{
+          role: 'assistant',
+          content: "Hello! I'm your AI productivity coach. I'm here to help you prioritize tasks, balance your schedule, and achieve your goals. What would you like to work on today?",
+          timestamp: new Date().toISOString(),
+        }]);
+      }
+    };
+
+    initConversation();
   }, [open, stuckMode]);
 
   useEffect(() => {
@@ -106,7 +161,7 @@ export function AIAssistant({
   }, [messages]);
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !conversationId) return;
 
     const userMessage: Message = {
       role: 'user',
@@ -117,6 +172,13 @@ export function AIAssistant({
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+
+    // Save user message to database
+    await supabase.from('chat_messages').insert({
+      conversation_id: conversationId,
+      role: 'user',
+      content: userMessage.content
+    });
 
     try {
       // Fetch user profile
@@ -192,6 +254,19 @@ export function AIAssistant({
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Save assistant message to database
+      await supabase.from('chat_messages').insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: assistantMessage.content
+      });
+
+      // Update conversation's updated_at timestamp
+      await supabase
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
 
       // Handle any AI-suggested actions
       if (functionData.actions) {
