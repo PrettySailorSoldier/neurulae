@@ -35,6 +35,42 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_time_blocks: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          start_time: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          start_time: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          start_time?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       stuck_sessions: {
         Row: {
           completed: boolean | null
@@ -155,6 +191,48 @@ export type Database = {
           last_modified?: string | null
           sync_version?: number | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          ai_coaching_style: string | null
+          created_at: string | null
+          default_sleep_time: string | null
+          default_wake_time: string | null
+          id: string
+          life_domains: Json | null
+          living_situation: string | null
+          timezone: string | null
+          updated_at: string | null
+          user_id: string
+          work_schedule: Json | null
+        }
+        Insert: {
+          ai_coaching_style?: string | null
+          created_at?: string | null
+          default_sleep_time?: string | null
+          default_wake_time?: string | null
+          id?: string
+          life_domains?: Json | null
+          living_situation?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id: string
+          work_schedule?: Json | null
+        }
+        Update: {
+          ai_coaching_style?: string | null
+          created_at?: string | null
+          default_sleep_time?: string | null
+          default_wake_time?: string | null
+          id?: string
+          life_domains?: Json | null
+          living_situation?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id?: string
+          work_schedule?: Json | null
         }
         Relationships: []
       }

@@ -39,6 +39,8 @@ import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from '@/components/premium/UpgradeModal';
 import { Card, CardContent } from '@/components/ui/card';
+import { ProfileSetupDialog } from '@/components/ProfileSetupDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user } = useAuth();
@@ -90,6 +92,10 @@ const Index = () => {
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [hasSeenTutorial, setHasSeenTutorial] = useLocalStorage<boolean>('neurulae-tutorial-seen', false);
   
+  // Profile Setup
+  const [profileSetupOpen, setProfileSetupOpen] = useState(false);
+  const [hasProfile, setHasProfile] = useLocalStorage<boolean>('neurulae-has-profile', false);
+  
   // Calendar Scheduler
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   
@@ -109,6 +115,27 @@ const Index = () => {
       setHasSeenTutorial(true);
     }
   }, [hasSeenTutorial, setHasSeenTutorial]);
+
+  // Check for profile and show setup if needed
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (!user || hasProfile) return;
+      
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (!data) {
+        setProfileSetupOpen(true);
+      } else {
+        setHasProfile(true);
+      }
+    };
+    
+    checkProfile();
+  }, [user, hasProfile, setHasProfile]);
 
   // One-time migration from neuroflow/neupath to neurulae localStorage keys
   useEffect(() => {
@@ -1261,6 +1288,14 @@ const Index = () => {
         open={upgradeModalOpen}
         onOpenChange={setUpgradeModalOpen}
         feature={blockedFeature}
+      />
+      
+      <ProfileSetupDialog
+        open={profileSetupOpen}
+        onOpenChange={(open) => {
+          setProfileSetupOpen(open);
+          if (!open) setHasProfile(true);
+        }}
       />
     </div>
   );

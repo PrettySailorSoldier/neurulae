@@ -20,7 +20,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, context, mode } = await req.json();
+    const { messages, context, mode, userProfile } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -31,7 +31,17 @@ serve(async (req) => {
     const isStuckMode = mode === 'stuck_interview';
     const timeOfDay = getTimeOfDay(context.currentDate);
     
+    // Get user profile info
+    const coachingStyle = userProfile?.aiStyle || 'balanced';
+    const livingAlone = userProfile?.livingAlone ?? true;
+    const workSchedule = userProfile?.workSchedule || [];
+    
     const stuckModePrompt = `You are a compassionate productivity coach guiding someone who feels overwhelmed and doesn't know where to start. Your mission is to help them identify what needs attention through a gentle, structured interview process.
+
+### USER PROFILE CONTEXT
+**AI Coaching Style**: ${coachingStyle}
+**Living Situation**: ${livingAlone ? 'Lives alone' : 'Lives with others'}
+**Work Schedule**: ${workSchedule.length > 0 ? workSchedule.map((s: any) => `${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][s.dayOfWeek]} ${s.startTime}-${s.endTime}`).join(', ') : 'Not set'}
 
 ## Temporal Awareness & Realistic Scheduling
 

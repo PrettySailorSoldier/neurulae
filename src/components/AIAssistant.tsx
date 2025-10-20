@@ -119,6 +119,19 @@ export function AIAssistant({
     setIsLoading(true);
 
     try {
+      // Fetch user profile
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      let profileData = null;
+      
+      if (currentUser) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .single();
+        profileData = data;
+      }
+
       const { data: functionData, error: functionError } = await supabase.functions.invoke('ai-assistant', {
         body: {
           messages: messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
@@ -141,6 +154,11 @@ export function AIAssistant({
               })),
             availableTimeWindows: calculateAvailableWindows(timeBlocks),
           },
+          userProfile: profileData ? {
+            aiStyle: profileData.ai_coaching_style,
+            livingAlone: profileData.living_situation === 'alone',
+            workSchedule: profileData.work_schedule || [],
+          } : null,
           mode: stuckMode ? 'stuck_interview' : undefined,
         },
       });
@@ -212,21 +230,45 @@ export function AIAssistant({
         description: 'Playbook has been modified.',
       });
     }
+    // Handle both single and multiple time blocks
     if (actions.suggestTimeBlock) {
-      const startTime = new Date(actions.suggestTimeBlock.startTime);
-      const endTime = new Date(actions.suggestTimeBlock.endTime);
+      const blocks = Array.isArray(actions.suggestTimeBlock) 
+        ? actions.suggestTimeBlock 
+        : [actions.suggestTimeBlock];
       
-      onAddTimeBlock({
-        title: actions.suggestTimeBlock.title,
-        startTime: actions.suggestTimeBlock.startTime,
-        endTime: actions.suggestTimeBlock.endTime,
-        type: 'dedicated',
-        scheduleType: 'everyday',
+      blocks.forEach(block => {
+        onAddTimeBlock({
+          title: block.title,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          type: 'dedicated',
+          scheduleType: 'everyday',
+        });
       });
       
       toast({
-        title: 'Time Block Added',
-        description: `"${actions.suggestTimeBlock.title}" has been added from ${format(startTime, 'h:mm a')} to ${format(endTime, 'h:mm a')}.`,
+        title: 'Time Block(s) Added',
+        description: `Added ${blocks.length} time block(s) to your calendar.`,
+      });
+    }
+    if (actions.createTimeBlock) {
+      const blocks = Array.isArray(actions.createTimeBlock) 
+        ? actions.createTimeBlock 
+        : [actions.createTimeBlock];
+      
+      blocks.forEach(block => {
+        onAddTimeBlock({
+          title: block.title,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          type: 'dedicated',
+          scheduleType: 'everyday',
+        });
+      });
+      
+      toast({
+        title: 'Schedule Updated',
+        description: `Added ${blocks.length} time block(s) to your calendar.`,
       });
     }
   };
