@@ -8,6 +8,11 @@ const corsHeaders = {
 };
 
 const logStep = (step: string, details?: any) => {
+  // Redact PII from logs
+  if (details) {
+    if (details.email) delete details.email;
+    if (details.userId) details.userId = details.userId.slice(-6);
+  }
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
