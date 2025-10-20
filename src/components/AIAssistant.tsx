@@ -122,6 +122,7 @@ export function AIAssistant({
       // Fetch user profile
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       let profileData = null;
+      let scheduleEntries: any[] = [];
       
       if (currentUser) {
         const { data } = await supabase
@@ -130,6 +131,17 @@ export function AIAssistant({
           .eq('user_id', currentUser.id)
           .single();
         profileData = data;
+
+        // Fetch upcoming schedule entries
+        const { data: entries } = await supabase
+          .from('schedule_entries')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .gte('end_time', new Date().toISOString())
+          .order('start_time', { ascending: true })
+          .limit(20);
+        
+        scheduleEntries = entries || [];
       }
 
       const { data: functionData, error: functionError } = await supabase.functions.invoke('ai-assistant', {
@@ -153,6 +165,14 @@ export function AIAssistant({
                 duration: `${Math.round((new Date(block.endTime).getTime() - new Date(block.startTime).getTime()) / (1000 * 60))} minutes`
               })),
             availableTimeWindows: calculateAvailableWindows(timeBlocks),
+            upcomingSchedule: scheduleEntries.map(entry => ({
+              title: entry.title,
+              description: entry.description,
+              startTime: format(new Date(entry.start_time), 'MMM d, h:mm a'),
+              endTime: format(new Date(entry.end_time), 'h:mm a'),
+              category: entry.category,
+              location: entry.location,
+            })),
           },
           userProfile: profileData ? {
             aiStyle: profileData.ai_coaching_style,

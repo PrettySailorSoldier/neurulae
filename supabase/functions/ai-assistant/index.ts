@@ -55,6 +55,11 @@ ${context.todaySchedule && context.todaySchedule.length > 0
   ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
   : '  - No scheduled blocks'}
 
+### Upcoming Work/Class Schedule:
+${context.upcomingSchedule && context.upcomingSchedule.length > 0
+  ? context.upcomingSchedule.slice(0, 10).map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.category})${s.location ? ` at ${s.location}` : ''}`).join('\n')
+  : '  - No work/class schedule entries'}
+
 ### Available Time Windows Today:
 ${context.availableTimeWindows && context.availableTimeWindows.length > 0 
   ? context.availableTimeWindows.map((w: any) => `  - ${w.start} to ${w.end} (${w.duration} available)`).join('\n')
@@ -202,6 +207,11 @@ Respond with empathy, then include structured actions when creating playbooks:
 ${context.todaySchedule && context.todaySchedule.length > 0 
   ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
   : '  - No scheduled blocks'}
+
+### Upcoming Work/Class Schedule:
+${context.upcomingSchedule && context.upcomingSchedule.length > 0
+  ? context.upcomingSchedule.slice(0, 10).map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.category})${s.location ? ` at ${s.location}` : ''}`).join('\n')
+  : '  - No work/class schedule entries'}
 
 ### Available Time Windows Today:
 ${context.availableTimeWindows && context.availableTimeWindows.length > 0 

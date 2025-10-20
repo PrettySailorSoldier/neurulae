@@ -71,6 +71,54 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_entries: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          end_time: string
+          id: string
+          is_recurring: boolean | null
+          location: string | null
+          recurrence_pattern: Json | null
+          source: string | null
+          start_time: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_time: string
+          id?: string
+          is_recurring?: boolean | null
+          location?: string | null
+          recurrence_pattern?: Json | null
+          source?: string | null
+          start_time: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_time?: string
+          id?: string
+          is_recurring?: boolean | null
+          location?: string | null
+          recurrence_pattern?: Json | null
+          source?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       stuck_sessions: {
         Row: {
           completed: boolean | null

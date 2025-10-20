@@ -11,6 +11,8 @@ import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
+import { ScheduleManager } from "@/components/ScheduleManager";
+import { Separator } from "@/components/ui/separator";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -326,6 +328,9 @@ export default function Settings() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Schedule Manager */}
+        <ScheduleManager />
 
         {/* Subscription Management */}
         {!isAdmin && (
