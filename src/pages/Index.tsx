@@ -240,14 +240,20 @@ const Index = () => {
     }
   }, [theme, customTheme]);
 
-  const handleAddTask = (title: string) => {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title,
-      completed: false,
-      recurring: 'none',
-      createdAt: new Date().toISOString(),
-    };
+  const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>) => {
+    const newTask: Task = typeof taskOrTitle === 'string'
+      ? {
+          id: crypto.randomUUID(),
+          title: taskOrTitle,
+          completed: false,
+          recurring: 'none',
+          createdAt: new Date().toISOString(),
+        }
+      : {
+          id: crypto.randomUUID(),
+          ...taskOrTitle,
+          createdAt: new Date().toISOString(),
+        };
     setTasks(prev => [...prev, newTask]);
   };
 
@@ -1275,6 +1281,7 @@ const Index = () => {
         onUpdateTask={handleUpdateTaskById}
         onUpdateTimeBlock={handleUpdateTimeBlock}
         onAddTimeBlock={handleAddTimeBlock}
+        onAddTask={handleAddTask}
         tasks={[...tasks, ...priorities]}
         timeBlocks={timeBlocks}
         playbooks={playbooks}

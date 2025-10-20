@@ -22,6 +22,7 @@ interface AIAssistantProps {
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onUpdateTimeBlock: (blockId: string, updates: Partial<TimeBlock>) => void;
   onAddTimeBlock: (block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
+  onAddTask?: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   tasks: Task[];
   timeBlocks: TimeBlock[];
   playbooks: Playbook[];
@@ -68,6 +69,7 @@ export function AIAssistant({
   onUpdateTask,
   onUpdateTimeBlock,
   onAddTimeBlock,
+  onAddTask,
   tasks,
   timeBlocks,
   playbooks,
@@ -299,6 +301,23 @@ export function AIAssistant({
         description: 'Time block has been updated.',
       });
     }
+    if (actions.createTasks && onAddTask) {
+      const tasksToCreate = Array.isArray(actions.createTasks) ? actions.createTasks : [actions.createTasks];
+      tasksToCreate.forEach((task: any) => {
+        onAddTask({
+          title: task.title,
+          eisenhowerQuadrant: task.eisenhowerQuadrant || 'not-urgent-important',
+          focusTimeMinutes: task.estimatedMinutes || null,
+          completed: false,
+          notes: task.notes || '',
+          subtasks: [],
+        });
+      });
+      toast({
+        title: 'Tasks Added',
+        description: `Added ${tasksToCreate.length} task(s) to your list.`,
+      });
+    }
     if (actions.createPlaybook) {
       onAddPlaybook({
         title: actions.createPlaybook.title,
@@ -323,6 +342,35 @@ export function AIAssistant({
       toast({
         title: 'Playbook Updated',
         description: 'Playbook has been modified.',
+      });
+    }
+    if (actions.createProject && onAddTask && onAddPlaybook) {
+      // Create a main project task
+      onAddTask({
+        title: actions.createProject.title,
+        eisenhowerQuadrant: 'not-urgent-important',
+        focusTimeMinutes: null,
+        completed: false,
+        notes: actions.createProject.description || '',
+        subtasks: [],
+      });
+      
+      // Create associated playbook if provided
+      if (actions.createProject.playbook) {
+        onAddPlaybook({
+          title: actions.createProject.playbook.title,
+          description: actions.createProject.playbook.description || '',
+          category: actions.createProject.playbook.category || 'productivity',
+          steps: actions.createProject.playbook.steps,
+          isTemplate: false,
+          linkedTaskIds: [],
+          resetOnRecurrence: false,
+        });
+      }
+      
+      toast({
+        title: 'Project Created',
+        description: `"${actions.createProject.title}" project and playbook have been created.`,
       });
     }
     // Handle both single and multiple time blocks
