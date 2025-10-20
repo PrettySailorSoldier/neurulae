@@ -15,12 +15,13 @@ interface KeyboardShortcutsDialogProps {
 
 export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcutsDialogProps) {
   const shortcuts = [
-    { key: 'Cmd/Ctrl + K', action: 'Toggle AI Assistant' },
-    { key: '?', action: 'Show keyboard shortcuts' },
-    { key: 'Tab', action: 'Navigate between elements' },
-    { key: 'Enter', action: 'Activate focused element' },
-    { key: 'Space', action: 'Toggle checkboxes/buttons' },
-    { key: 'Esc', action: 'Close dialogs/cancel' },
+    { key: 'Cmd/Ctrl + K', action: 'Toggle AI Assistant', description: 'Open or close the AI chat' },
+    { key: '?', action: 'Show keyboard shortcuts', description: 'View this help dialog' },
+    { key: 'Tab', action: 'Navigate between elements', description: 'Move focus to next interactive element' },
+    { key: 'Shift + Tab', action: 'Navigate backwards', description: 'Move focus to previous element' },
+    { key: 'Enter', action: 'Activate focused element', description: 'Click buttons, submit forms' },
+    { key: 'Space', action: 'Toggle checkboxes/buttons', description: 'Check/uncheck, activate buttons' },
+    { key: 'Esc', action: 'Close dialogs', description: 'Close open dialogs and modals' },
   ];
 
   return (
@@ -37,10 +38,13 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
         </DialogHeader>
         <div className="space-y-2">
           {shortcuts.map((shortcut, index) => (
-            <Card key={index} className="bg-card/50">
-              <CardContent className="flex items-center justify-between p-3">
-                <span className="text-sm">{shortcut.action}</span>
-                <kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded border border-border">
+            <Card key={index} className="bg-card/50 transition-shadow hover:shadow-md">
+              <CardContent className="flex items-start justify-between p-3 gap-4">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{shortcut.action}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{shortcut.description}</p>
+                </div>
+                <kbd className="px-2 py-1 text-xs font-semibold bg-muted rounded border border-border shrink-0">
                   {shortcut.key}
                 </kbd>
               </CardContent>

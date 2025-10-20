@@ -139,82 +139,94 @@ export function DailyFlowTimeline({
   };
 
   return (
-    <div className="relative bg-card border-2 border-border rounded-lg p-4" data-tutorial="timeline">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
-        <Button onClick={handleAddBlock} size="sm" className="bg-primary hover:bg-primary/90">
-          <Plus className="h-4 w-4 mr-1" />
-          Add Block
-        </Button>
-      </div>
-
-      <div className="relative bg-card/50 border border-border rounded-lg p-4 min-h-[600px]">
-        {/* Hour markers */}
-        <div className="absolute left-0 top-0 bottom-0 w-12 text-xs text-muted-foreground">
-          {Array.from({ length: 25 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute left-0"
-              style={{ top: `${(i / 24) * 100}%` }}
-            >
-              {i.toString().padStart(2, '0')}:00
-            </div>
-          ))}
-        </div>
-
-        {/* Timeline grid */}
-        <div className="ml-14 grid grid-cols-2 gap-4 relative h-full">
-          {/* Main blocks (left) */}
-          <div className="relative border-r border-border pr-2">
-            <p className="text-xs text-muted-foreground mb-2 text-center sticky top-0 bg-card/90 backdrop-blur-sm py-1">
-              Main Activities
-            </p>
-            <div className="relative h-[600px]">
-              {mainBlocks.map(block => renderBlock(block, block.id === activeMainBlock?.id))}
-            </div>
-          </div>
-
-          {/* Dedicated blocks (right) */}
-          <div className="relative pl-2">
-            <p className="text-xs text-muted-foreground mb-2 text-center sticky top-0 bg-card/90 backdrop-blur-sm py-1">
-              Dedicated Time
-            </p>
-            <div className="relative h-[600px]">
-              {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
-            </div>
-          </div>
-
-          {/* Current time indicator */}
-          <div
-            className="absolute left-0 right-0 h-0.5 bg-accent shadow-lg z-10 transition-all duration-1000"
-            style={{ top: `${currentTimePercentage}%` }}
+    <>
+      <section 
+        className="relative bg-card border-2 border-border rounded-lg p-4" 
+        data-tutorial="timeline"
+        aria-label="Daily Flow Timeline"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
+          <Button 
+            onClick={handleAddBlock} 
+            size="sm" 
+            className="bg-primary hover:bg-primary/90"
+            aria-label="Add new time block"
           >
-            <div className="absolute right-0 -top-2 text-xs font-bold text-accent">
-              NOW
-            </div>
-          </div>
+            <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+            Add Block
+          </Button>
         </div>
 
-        {visibleBlocks.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <div className="text-center space-y-3">
-              <p className="mb-2">No time blocks yet</p>
-              <p className="text-sm">Click "Add Block" to create your first one</p>
-              {showQuickActions && onAskAI && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onAskAI('Help me create a daily schedule')}
-                  className="gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Ask AI to help
-                </Button>
-              )}
+        <div className="relative bg-card/50 border border-border rounded-lg p-4 min-h-[600px]">
+          {/* Hour markers */}
+          <div className="absolute left-0 top-0 bottom-0 w-12 text-xs text-muted-foreground">
+            {Array.from({ length: 25 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute left-0"
+                style={{ top: `${(i / 24) * 100}%` }}
+              >
+                {i.toString().padStart(2, '0')}:00
+              </div>
+            ))}
+          </div>
+
+          {/* Timeline grid */}
+          <div className="ml-14 grid grid-cols-2 gap-4 relative h-full">
+            {/* Main blocks (left) */}
+            <div className="relative border-r border-border pr-2">
+              <p className="text-xs text-muted-foreground mb-2 text-center sticky top-0 bg-card/90 backdrop-blur-sm py-1">
+                Main Activities
+              </p>
+              <div className="relative h-[600px]">
+                {mainBlocks.map(block => renderBlock(block, block.id === activeMainBlock?.id))}
+              </div>
+            </div>
+
+            {/* Dedicated blocks (right) */}
+            <div className="relative pl-2">
+              <p className="text-xs text-muted-foreground mb-2 text-center sticky top-0 bg-card/90 backdrop-blur-sm py-1">
+                Dedicated Time
+              </p>
+              <div className="relative h-[600px]">
+                {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
+              </div>
+            </div>
+
+            {/* Current time indicator */}
+            <div
+              className="absolute left-0 right-0 h-0.5 bg-accent shadow-lg z-10 transition-all duration-1000"
+              style={{ top: `${currentTimePercentage}%` }}
+            >
+              <div className="absolute right-0 -top-2 text-xs font-bold text-accent">
+                NOW
+              </div>
             </div>
           </div>
-        )}
-      </div>
+
+          {visibleBlocks.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground" role="status">
+              <div className="text-center space-y-3">
+                <p className="mb-2">No time blocks yet</p>
+                <p className="text-sm">Click "Add Block" to create your first one</p>
+                {showQuickActions && onAskAI && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onAskAI('Help me create a daily schedule')}
+                    className="gap-2"
+                    aria-label="Ask AI assistant to help create a daily schedule"
+                  >
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                    Ask AI to help
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       <TimeBlockEditor
         open={editorOpen}
@@ -223,6 +235,6 @@ export function DailyFlowTimeline({
         onSave={handleSaveBlock}
         onDelete={editingBlock ? handleDeleteBlock : undefined}
       />
-    </div>
+    </>
   );
 }

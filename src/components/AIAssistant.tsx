@@ -31,6 +31,7 @@ interface AIAssistantProps {
   onUpdatePlaybook: (id: string, updates: Partial<Playbook>) => void;
   stuckMode?: boolean;
   onStuckModeComplete?: () => void;
+  initialMessage?: string;
 }
 
 const calculateAvailableWindows = (blocks: TimeBlock[]) => {
@@ -78,6 +79,7 @@ export function AIAssistant({
   onUpdatePlaybook,
   stuckMode = false,
   onStuckModeComplete,
+  initialMessage,
 }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -162,6 +164,13 @@ export function AIAssistant({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Handle initial message from quick actions
+  useEffect(() => {
+    if (initialMessage && open) {
+      setInput(initialMessage);
+    }
+  }, [initialMessage, open]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !conversationId) return;
@@ -306,15 +315,17 @@ export function AIAssistant({
     if (actions.updateTask) {
       onUpdateTask(actions.updateTask.taskId, actions.updateTask.updates);
       toast({
-        title: 'Task Updated',
+        title: '✅ Task Updated',
         description: 'Task has been updated based on AI suggestion.',
+        className: 'animate-fade-in',
       });
     }
     if (actions.updateTimeBlock) {
       onUpdateTimeBlock(actions.updateTimeBlock.blockId, actions.updateTimeBlock.updates);
       toast({
-        title: 'Time Block Updated',
+        title: '⏰ Time Block Updated',
         description: 'Time block has been updated.',
+        className: 'animate-fade-in',
       });
     }
     if (actions.createTasks && onAddTask) {
@@ -330,8 +341,9 @@ export function AIAssistant({
         });
       });
       toast({
-        title: 'Tasks Added',
-        description: `Added ${tasksToCreate.length} task(s) to your list.`,
+        title: `✅ ${tasksToCreate.length === 1 ? 'Task' : 'Tasks'} Created`,
+        description: `Added ${tasksToCreate.length} task${tasksToCreate.length > 1 ? 's' : ''} to your list.`,
+        className: 'animate-scale-in border-primary/50',
       });
     }
     if (actions.createPlaybook) {
@@ -345,8 +357,9 @@ export function AIAssistant({
         resetOnRecurrence: false,
       });
       toast({
-        title: 'Playbook Created',
-        description: `"${actions.createPlaybook.title}" has been added to your playbooks.`,
+        title: '📖 Playbook Created',
+        description: `"${actions.createPlaybook.title}" is ready to use.`,
+        className: 'animate-scale-in border-primary/50',
       });
     }
     if (actions.updatePlaybook) {
@@ -356,8 +369,9 @@ export function AIAssistant({
         description: actions.updatePlaybook.description,
       });
       toast({
-        title: 'Playbook Updated',
+        title: '📖 Playbook Updated',
         description: 'Playbook has been modified.',
+        className: 'animate-fade-in',
       });
     }
     if (actions.createProject && onAddTask && onAddPlaybook) {
@@ -385,8 +399,9 @@ export function AIAssistant({
       }
       
       toast({
-        title: 'Project Created',
-        description: `"${actions.createProject.title}" project and playbook have been created.`,
+        title: '🎯 Project Created',
+        description: `"${actions.createProject.title}" project and resources are ready.`,
+        className: 'animate-scale-in border-primary/50',
       });
     }
     // Handle both single and multiple time blocks
@@ -406,8 +421,9 @@ export function AIAssistant({
       });
       
       toast({
-        title: 'Time Block(s) Added',
-        description: `Added ${blocks.length} time block(s) to your calendar.`,
+        title: `⏰ Time Block${blocks.length > 1 ? 's' : ''} Added`,
+        description: `Added ${blocks.length} time block${blocks.length > 1 ? 's' : ''} to your calendar.`,
+        className: 'animate-scale-in border-primary/50',
       });
     }
     if (actions.createTimeBlock) {
@@ -426,8 +442,9 @@ export function AIAssistant({
       });
       
       toast({
-        title: 'Schedule Updated',
-        description: `Added ${blocks.length} time block(s) to your calendar.`,
+        title: '📅 Schedule Updated',
+        description: `Added ${blocks.length} time block${blocks.length > 1 ? 's' : ''} to your calendar.`,
+        className: 'animate-scale-in border-primary/50',
       });
     }
   };
@@ -441,15 +458,18 @@ export function AIAssistant({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
+      <DialogContent className="max-w-2xl h-[600px] flex flex-col" aria-describedby="ai-assistant-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5" />
+            <Brain className="w-5 h-5" aria-hidden="true" />
             {stuckMode ? "I'm Stuck - Let's Figure This Out" : "AI Productivity Coach"}
           </DialogTitle>
+          <p id="ai-assistant-description" className="sr-only">
+            Chat with your AI productivity coach to manage tasks, schedule time, and achieve your goals
+          </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
+        <ScrollArea className="flex-1 pr-4" ref={scrollRef} role="log" aria-label="Chat messages" aria-live="polite">
           <div className="space-y-4">
             {messages.map((message, index) => (
               <div

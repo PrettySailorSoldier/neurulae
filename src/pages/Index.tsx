@@ -894,9 +894,18 @@ const Index = () => {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // ? for keyboard shortcuts (only when not in an input field)
-      if (e.key === '?' && !e.shiftKey && 
-          !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+      // Only handle shortcuts when not in an input field
+      const isInputField = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      
+      // Cmd/Ctrl + K for AI Assistant
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !isInputField) {
+        e.preventDefault();
+        setAiDrawerOpen(prev => !prev);
+        setInitialAIMessage(undefined); // Clear any initial message when toggling manually
+      }
+      
+      // ? for keyboard shortcuts
+      if (e.key === '?' && !e.shiftKey && !isInputField) {
         e.preventDefault();
         setKeyboardShortcutsOpen(true);
       }

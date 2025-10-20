@@ -68,20 +68,23 @@ export function AICommandBar(props: AICommandBarProps) {
         <div className="flex items-center justify-between h-full px-4">
           <button
             onClick={() => setIsDialogOpen(true)}
-            className="flex-1 flex items-center gap-3 text-left py-3 px-4 rounded-lg hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-            aria-label="Open AI Assistant"
+            className="flex-1 flex items-center gap-3 text-left py-3 px-4 rounded-lg hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            aria-label="Open AI Assistant (Keyboard shortcut: Command or Control plus K)"
           >
-            <Brain className="h-5 w-5 text-primary" />
-            <span className="text-muted-foreground">What do you need to accomplish? 💬 (Press <kbd className="text-xs px-1 py-0.5 bg-muted rounded">Cmd+K</kbd>)</span>
+            <Brain className="h-5 w-5 text-primary" aria-hidden="true" />
+            <span className="text-muted-foreground">
+              What do you need to accomplish? 💬 (Press <kbd className="text-xs px-1 py-0.5 bg-muted rounded border border-border">Cmd+K</kbd>)
+            </span>
           </button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setDrawerState('minimized')}
-            aria-label="Minimize to corner"
+            aria-label="Minimize AI assistant to floating button"
             title="Minimize AI bar"
+            className="focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
-            <Minimize2 className="h-4 w-4" />
+            <Minimize2 className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -89,6 +92,7 @@ export function AICommandBar(props: AICommandBarProps) {
       <AIAssistant
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
+        initialMessage={initialMessage}
         {...restProps}
       />
     </>
