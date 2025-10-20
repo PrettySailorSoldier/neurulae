@@ -1,0 +1,630 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FocusFlow Application Schema",
+  "description": "Complete data model for FocusFlow - AI-powered productivity and time management application",
+  "version": "1.0.0",
+  "definitions": {
+    "Task": {
+      "type": "object",
+      "description": "A user task that can be scheduled or unscheduled",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique task identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Task name or description"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the task is completed"
+        },
+        "scheduledDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Date when task is scheduled (YYYY-MM-DD)"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "format": "time",
+          "description": "Time when task is scheduled (HH:mm)"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Expected duration in minutes"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Task priority level"
+        },
+        "category": {
+          "type": "string",
+          "description": "User-defined category for task organization"
+        },
+        "energy": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Energy level required for task"
+        },
+        "eisenhowerQuadrant": {
+          "type": "string",
+          "enum": ["urgent-important", "not-urgent-important", "urgent-not-important", "not-urgent-not-important"],
+          "description": "Eisenhower Matrix classification"
+        },
+        "projectId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Associated project ID"
+        }
+      },
+      "required": ["id", "title", "completed"]
+    },
+    "Project": {
+      "type": "object",
+      "description": "A collection of related tasks",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "description": "Project name"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Project color in hex format"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional project description"
+        }
+      },
+      "required": ["id", "name", "color"]
+    },
+    "TimeBlock": {
+      "type": "object",
+      "description": "A scheduled time block on the calendar",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "description": "Block title"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 datetime"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 datetime"
+        },
+        "color": {
+          "type": "string",
+          "description": "Block color"
+        },
+        "taskId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Associated task ID if block represents a task"
+        }
+      },
+      "required": ["id", "title", "startTime", "endTime"]
+    },
+    "RecurringTimeBlock": {
+      "type": "object",
+      "description": "Database table: recurring_time_blocks - Weekly recurring schedule entries",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "References auth.users"
+        },
+        "day_of_week": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6,
+          "description": "0=Sunday, 6=Saturday"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "time",
+          "description": "HH:MM:SS format"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "time",
+          "description": "HH:MM:SS format"
+        },
+        "title": {
+          "type": "string",
+          "description": "Block title (e.g., 'Work')"
+        },
+        "block_type": {
+          "type": "string",
+          "description": "Type of recurring block (e.g., 'work', 'class')"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "user_id", "day_of_week", "start_time", "end_time", "title"]
+    },
+    "ScheduleEntry": {
+      "type": "object",
+      "description": "Database table: schedule_entries - One-time schedule entries (homework, meetings)",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "description": "Event title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Event details"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event start (ISO 8601)"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event end (ISO 8601)"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["work", "class", "homework", "meeting", "other"],
+          "description": "Event category"
+        },
+        "location": {
+          "type": "string",
+          "description": "Physical or virtual location"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["manual", "pdf_upload"],
+          "description": "How entry was created"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "user_id", "title", "start_time", "end_time", "category"]
+    },
+    "UserProfile": {
+      "type": "object",
+      "description": "Database table: user_profiles - Extended user information",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "ai_coaching_style": {
+          "type": "string",
+          "enum": ["supportive", "direct", "analytical"],
+          "description": "Preferred AI personality"
+        },
+        "living_situation": {
+          "type": "string",
+          "description": "Free text describing living situation"
+        },
+        "wake_time": {
+          "type": "string",
+          "format": "time",
+          "description": "Typical wake time (HH:MM)"
+        },
+        "sleep_time": {
+          "type": "string",
+          "format": "time",
+          "description": "Typical sleep time (HH:MM)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "user_id"]
+    },
+    "Conversation": {
+      "type": "object",
+      "description": "Database table: conversations - AI chat conversation threads",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "description": "Conversation title (auto-generated or user-set)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "user_id"]
+    },
+    "ChatMessage": {
+      "type": "object",
+      "description": "Database table: chat_messages - Individual AI chat messages",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "conversation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant", "system"],
+          "description": "Message sender role"
+        },
+        "content": {
+          "type": "string",
+          "description": "Message text content"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "conversation_id", "role", "content"]
+    },
+    "Widget": {
+      "type": "object",
+      "description": "Dashboard widget configuration",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Widget type identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether widget is visible"
+        },
+        "position": {
+          "type": "integer",
+          "description": "Sort order"
+        },
+        "config": {
+          "type": "object",
+          "description": "Widget-specific configuration",
+          "additionalProperties": true
+        }
+      },
+      "required": ["id", "title", "enabled"]
+    },
+    "Playbook": {
+      "type": "object",
+      "description": "Productivity workflow template",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["morning", "work", "study", "evening", "custom"]
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "number",
+                "description": "Minutes"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "duration"]
+          }
+        },
+        "isTemplate": {
+          "type": "boolean",
+          "description": "Whether this is a system template"
+        }
+      },
+      "required": ["id", "title", "steps"]
+    },
+    "FocusSession": {
+      "type": "object",
+      "description": "Pomodoro or focus timer session",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "taskId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Actual duration in minutes"
+        },
+        "completed": {
+          "type": "boolean"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["pomodoro", "flowtime", "custom"]
+        }
+      },
+      "required": ["id", "startTime", "type"]
+    },
+    "AIAssistantContext": {
+      "type": "object",
+      "description": "Context provided to AI assistant for personalized responses",
+      "properties": {
+        "userProfile": {
+          "$ref": "#/definitions/UserProfile"
+        },
+        "upcomingSchedule": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ScheduleEntry"
+          },
+          "description": "Next 14 days of schedule entries"
+        },
+        "recentTasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Task"
+          },
+          "description": "Recently created or modified tasks"
+        },
+        "currentTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ParseScheduleRequest": {
+      "type": "object",
+      "description": "API request to parse-schedule edge function",
+      "properties": {
+        "file": {
+          "type": "string",
+          "format": "binary",
+          "description": "PDF file as multipart/form-data"
+        }
+      },
+      "required": ["file"]
+    },
+    "ParseScheduleResponse": {
+      "type": "object",
+      "description": "API response from parse-schedule edge function",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "startTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "category": {
+                "type": "string",
+                "enum": ["work", "class", "homework", "meeting", "other"]
+              },
+              "location": {
+                "type": "string"
+              }
+            },
+            "required": ["title", "startTime", "endTime", "category"]
+          }
+        }
+      },
+      "required": ["entries"]
+    }
+  },
+  "localStorage": {
+    "description": "Client-side localStorage keys and their data types",
+    "keys": {
+      "focusflow-tasks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/Task"
+        }
+      },
+      "focusflow-projects": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/Project"
+        }
+      },
+      "focusflow-timeBlocks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/TimeBlock"
+        }
+      },
+      "focusflow-widgets": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/Widget"
+        }
+      },
+      "focusflow-playbooks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/Playbook"
+        }
+      },
+      "focusflow-theme": {
+        "type": "string",
+        "enum": ["light", "dark", "system"]
+      },
+      "focusflow-onboarding-completed": {
+        "type": "boolean"
+      }
+    }
+  },
+  "edgeFunctions": {
+    "description": "Lovable Cloud backend edge functions",
+    "functions": {
+      "ai-assistant": {
+        "description": "Streams AI coaching responses using Lovable AI (gemini-2.5-flash)",
+        "method": "POST",
+        "authentication": "optional",
+        "request": {
+          "type": "object",
+          "properties": {
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["user", "assistant", "system"]
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "userProfile": {
+              "$ref": "#/definitions/UserProfile"
+            },
+            "upcomingSchedule": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ScheduleEntry"
+              }
+            }
+          }
+        },
+        "response": {
+          "type": "string",
+          "description": "Server-sent events stream of text/event-stream"
+        }
+      },
+      "parse-schedule": {
+        "description": "Extracts schedule entries from PDF using Lovable AI vision",
+        "method": "POST",
+        "authentication": "required",
+        "request": {
+          "$ref": "#/definitions/ParseScheduleRequest"
+        },
+        "response": {
+          "$ref": "#/definitions/ParseScheduleResponse"
+        }
+      },
+      "organize-tasks": {
+        "description": "AI-powered task organization and scheduling",
+        "method": "POST",
+        "authentication": "optional",
+        "request": {
+          "type": "object",
+          "properties": {
+            "tasks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Task"
+              }
+            },
+            "preferences": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "generate-playbook": {
+        "description": "AI-generated productivity playbook from prompt",
+        "method": "POST",
+        "authentication": "optional",
+        "request": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "description": "User description of desired workflow"
+            }
+          }
+        },
+        "response": {
+          "$ref": "#/definitions/Playbook"
+        }
+      }
+    }
+  }
+}

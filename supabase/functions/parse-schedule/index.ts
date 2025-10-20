@@ -18,9 +18,16 @@ serve(async (req) => {
       throw new Error('No file provided');
     }
 
-    // Read file content
+    // Read file content and convert to base64 in chunks to avoid stack overflow
     const fileContent = await file.arrayBuffer();
-    const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileContent)));
+    const uint8Array = new Uint8Array(fileContent);
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, i + chunkSize);
+      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Content = btoa(binaryString);
 
     // Use Lovable AI to parse the schedule
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
