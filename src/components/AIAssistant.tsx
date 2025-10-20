@@ -218,17 +218,25 @@ export function AIAssistant({
         scheduleEntries = entries || [];
       }
 
-      // Build comprehensive temporal context
+      // Build comprehensive temporal context with accurate local time
       const now = new Date();
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      
+      // Format current time accurately
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      const formattedTime = `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
       
       const temporalContext = {
         timestamp: now.toISOString(),
         localDate: now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        localTime: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        localTime: formattedTime,
         dayOfWeek: now.getDay(),
         dayName: dayNames[now.getDay()],
-        hour24: now.getHours(),
+        hour24: hours,
+        minute: minutes,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
 
@@ -240,7 +248,7 @@ export function AIAssistant({
             timeBlocks,
             playbooks,
             currentDate: now.toISOString(),
-            currentTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            currentTime: formattedTime,
             temporal: temporalContext,
             todaySchedule: timeBlocks
               .filter(block => {
