@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TimeBlock, Playbook } from '@/types';
 import { format, isToday } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -208,6 +209,20 @@ export function AIAssistant({
         scheduleEntries = entries || [];
       }
 
+      // Build comprehensive temporal context
+      const now = new Date();
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      
+      const temporalContext = {
+        timestamp: now.toISOString(),
+        localDate: now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        localTime: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        dayOfWeek: now.getDay(),
+        dayName: dayNames[now.getDay()],
+        hour24: now.getHours(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
+
       const { data: functionData, error: functionError } = await supabase.functions.invoke('ai-assistant', {
         body: {
           messages: messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
@@ -215,8 +230,9 @@ export function AIAssistant({
             tasks,
             timeBlocks,
             playbooks,
-            currentDate: new Date().toISOString(),
-            currentTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            currentDate: now.toISOString(),
+            currentTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            temporal: temporalContext,
             todaySchedule: timeBlocks
               .filter(block => {
                 const blockDate = new Date(block.startTime);
@@ -449,7 +465,23 @@ export function AIAssistant({
                       : 'bg-muted'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.role === 'user' ? (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  ) : (
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                          ul: ({ children }) => <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>,
+                          li: ({ children }) => <li className="text-sm">{children}</li>,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                   <p className="text-xs opacity-70 mt-2">
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </p>

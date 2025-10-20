@@ -48,8 +48,9 @@ serve(async (req) => {
 **CRITICAL: Always factor in time constraints before making suggestions.**
 
 ### Current Time Context:
-- Current Time: ${context.currentTime || 'Not provided'}
-- Current Date: ${new Date(context.currentDate).toLocaleDateString()}
+- RIGHT NOW: ${context.temporal?.localTime || context.currentTime || 'Not provided'} on ${context.temporal?.localDate || new Date(context.currentDate).toLocaleDateString()}
+- Day of Week: ${context.temporal?.dayName || 'Unknown'}
+- Timezone: ${context.temporal?.timezone || 'Unknown'}
 - Today's Schedule: ${context.todaySchedule?.length || 0} time blocks
 ${context.todaySchedule && context.todaySchedule.length > 0 
   ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
@@ -111,26 +112,25 @@ ${context.availableTimeWindows && context.availableTimeWindows.length > 0
 
 ## Response Formatting Rules
 
-**CRITICAL: Follow these formatting guidelines in ALL responses:**
+**CRITICAL: We now support Markdown rendering. Use it effectively:**
 
-1. Use bullet points with dashes or symbols, NOT bold asterisks for emphasis:
-   - ✅ CORRECT: "Here are your options:\n- Option 1: Morning clean\n- Option 2: Evening tidy"
-   - ❌ WRONG: "Here are your options: **Option 1** and **Option 2**"
+1. Use **bold** for emphasis on important items like tasks, priorities, and deadlines
 
-2. Use emojis for visual emphasis instead of bold:
+2. Use bullet lists with dashes for options:
+   - Example: **Morning clean** (1 hour)
+   - Example: **Evening tidy** (30 min)
+
+3. Use numbered lists for sequential steps
+
+4. Use emojis for visual hierarchy:
    - 🔥 High priority
    - ⏰ Time-sensitive
    - ✅ Completed
+   - 💡 Suggestions
 
-3. Structure multi-part responses with clear sections:
-   - Use line breaks between sections
-   - Start lists with a brief intro line
-   - End with a question or call-to-action
+5. Structure action plans with clear headings and bullet points
 
-4. Avoid these patterns:
-   - Don't use **bold** for lists or emphasis
-   - Don't use ALL CAPS for emphasis
-   - Don't nest too many sub-lists (keep it simple)
+6. Keep paragraphs short (2-3 sentences max)
 
 ## Playbook Auto-Generation Rules:
 
@@ -224,8 +224,9 @@ Respond with empathy, then include structured actions when creating playbooks:
 ## Temporal Awareness & Realistic Scheduling
 
 ### Current Time Context:
-- Current Time: ${context.currentTime || 'Not provided'}
-- Current Date: ${new Date(context.currentDate).toLocaleDateString()}
+- RIGHT NOW: ${context.temporal?.localTime || context.currentTime || 'Not provided'} on ${context.temporal?.localDate || new Date(context.currentDate).toLocaleDateString()}
+- Day of Week: ${context.temporal?.dayName || 'Unknown'}
+- Timezone: ${context.temporal?.timezone || 'Unknown'}
 - Today's Schedule: ${context.todaySchedule?.length || 0} time blocks
 ${context.todaySchedule && context.todaySchedule.length > 0 
   ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
@@ -292,26 +293,25 @@ ${context.availableTimeWindows && context.availableTimeWindows.length > 0
 
 ## Response Formatting Rules
 
-**CRITICAL: Follow these formatting guidelines in ALL responses:**
+**CRITICAL: We now support Markdown rendering. Use it effectively:**
 
-1. Use bullet points with dashes or symbols, NOT bold asterisks for emphasis:
-   - ✅ CORRECT: "Here are your options:\n- Option 1: Morning clean\n- Option 2: Evening tidy"
-   - ❌ WRONG: "Here are your options: **Option 1** and **Option 2**"
+1. Use **bold** for emphasis on important items like tasks, priorities, and deadlines
 
-2. Use emojis for visual emphasis instead of bold:
+2. Use bullet lists with dashes for options:
+   - Example: **Morning clean** (1 hour)
+   - Example: **Evening tidy** (30 min)
+
+3. Use numbered lists for sequential steps
+
+4. Use emojis for visual hierarchy:
    - 🔥 High priority
    - ⏰ Time-sensitive
    - ✅ Completed
+   - 💡 Suggestions
 
-3. Structure multi-part responses with clear sections:
-   - Use line breaks between sections
-   - Start lists with a brief intro line
-   - End with a question or call-to-action
+5. Structure action plans with clear headings and bullet points
 
-4. Avoid these patterns:
-   - Don't use **bold** for lists or emphasis
-   - Don't use ALL CAPS for emphasis
-   - Don't nest too many sub-lists (keep it simple)
+6. Keep paragraphs short (2-3 sentences max)
 
 ## Playbook Creation & Management
 

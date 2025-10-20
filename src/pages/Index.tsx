@@ -14,7 +14,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
 import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles, Compass } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
-import { AIAssistant } from '@/components/AIAssistant';
+import { AICommandBar } from '@/components/AICommandBar';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
