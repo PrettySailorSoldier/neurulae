@@ -1272,12 +1272,7 @@ const Index = () => {
         onUpdateTask={handleUpdateTaskById}
       />
       
-      <AIAssistant
-        open={isAIAssistantOpen}
-        onOpenChange={(open) => {
-          setIsAIAssistantOpen(open);
-          if (!open) setIsStuckMode(false);
-        }}
+      <AICommandBar
         onUpdateTask={handleUpdateTaskById}
         onUpdateTimeBlock={handleUpdateTimeBlock}
         onAddTimeBlock={handleAddTimeBlock}
