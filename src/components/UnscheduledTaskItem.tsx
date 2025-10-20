@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,13 +11,17 @@ interface UnscheduledTaskItemProps {
   onToggleComplete: (id: string) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
+  onAskAI?: (message: string) => void;
+  showQuickActions?: boolean;
 }
 
 export function UnscheduledTaskItem({ 
   task, 
   onToggleComplete, 
   onUpdateTask,
-  onDeleteTask 
+  onDeleteTask,
+  onAskAI,
+  showQuickActions = true
 }: UnscheduledTaskItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [newSubtask, setNewSubtask] = useState('');
@@ -93,6 +97,22 @@ export function UnscheduledTaskItem({
           <span className="text-xs text-muted-foreground">
             {task.focusTimeMinutes}m
           </span>
+        )}
+
+        {showQuickActions && onAskAI && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAskAI(`Help me schedule: ${task.title}`);
+            }}
+            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Schedule with AI (S)"
+            aria-label="Schedule task with AI"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+          </Button>
         )}
 
         <Button

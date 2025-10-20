@@ -24,6 +24,8 @@ interface TaskListProps {
     estimatedMinutes?: number;
     order?: number;
   }>) => void;
+  onAskAI?: (message: string) => void;
+  showQuickActions?: boolean;
 }
 
 export function TaskList({ 
@@ -35,6 +37,8 @@ export function TaskList({
   onDeleteTask,
   onPrioritize,
   onScheduleTasks,
+  onAskAI,
+  showQuickActions = true,
 }: TaskListProps) {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,6 +206,8 @@ export function TaskList({
                   onToggleComplete={onToggleComplete}
                   onUpdateTask={onUpdateTask}
                   onDeleteTask={onDeleteTask}
+                  onAskAI={onAskAI}
+                  showQuickActions={showQuickActions}
                 />
               ))
             )}

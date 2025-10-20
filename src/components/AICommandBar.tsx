@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Brain, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -19,13 +19,26 @@ interface AICommandBarProps {
   stuckMode?: boolean;
   onStuckModeComplete?: () => void;
   initialMessage?: string;
+  onInitialMessageHandled?: () => void;
 }
 
 type DrawerState = 'minimized' | 'compact' | 'expanded';
 
 export function AICommandBar(props: AICommandBarProps) {
+  const { initialMessage, onInitialMessageHandled, ...restProps } = props;
   const [drawerState, setDrawerState] = useLocalStorage<DrawerState>('neurulae-ai-drawer-state', 'compact');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Auto-open when initialMessage is provided
+  useEffect(() => {
+    if (initialMessage) {
+      setIsDialogOpen(true);
+      if (onInitialMessageHandled) {
+        // Clear the message after opening
+        setTimeout(() => onInitialMessageHandled(), 100);
+      }
+    }
+  }, [initialMessage, onInitialMessageHandled]);
 
   if (drawerState === 'minimized') {
     return (
@@ -76,7 +89,7 @@ export function AICommandBar(props: AICommandBarProps) {
       <AIAssistant
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        {...props}
+        {...restProps}
       />
     </>
   );

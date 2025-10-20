@@ -8,16 +8,20 @@ interface TodaysPrioritiesProps {
   priorities: Task[];
   onToggleComplete: (id: string) => void;
   onAddPriority: () => void;
+  showAIHint?: boolean;
 }
 
-export function TodaysPriorities({ priorities, onToggleComplete, onAddPriority }: TodaysPrioritiesProps) {
+export function TodaysPriorities({ priorities, onToggleComplete, onAddPriority, showAIHint = true }: TodaysPrioritiesProps) {
   return (
-    <Card className="card-elevated border-2" data-tutorial="priorities">
+    <Card className="shadow-lg border-2 transition-shadow hover:shadow-xl" data-tutorial="priorities">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Star className="h-5 w-5 fill-current" />
+          <Star className="h-5 w-5 fill-current text-primary" />
           Today's Priorities
         </CardTitle>
+        {showAIHint && priorities.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-1">💡 Need help? Ask AI below</p>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {priorities.length === 0 ? (

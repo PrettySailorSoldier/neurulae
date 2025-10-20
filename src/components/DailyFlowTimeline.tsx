@@ -3,7 +3,7 @@ import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
 import { ScheduledTaskCard } from './ScheduledTaskCard';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { timeToPercentage, getCurrentTimePercentage, getCurrentTime, isTimeInRange, timeToMinutes, isWeekday } from '@/lib/timeUtils';
 
 interface DailyFlowTimelineProps {
@@ -15,6 +15,8 @@ interface DailyFlowTimelineProps {
   onDeleteBlock: (id: string) => void;
   onToggleComplete: (taskId: string) => void;
   onUpdateTask?: (task: Task) => void;
+  onAskAI?: (message: string) => void;
+  showQuickActions?: boolean;
 }
 
 export function DailyFlowTimeline({
@@ -26,6 +28,8 @@ export function DailyFlowTimeline({
   onDeleteBlock,
   onToggleComplete,
   onUpdateTask,
+  onAskAI,
+  showQuickActions = true,
 }: DailyFlowTimelineProps) {
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
   const [editorOpen, setEditorOpen] = useState(false);
@@ -193,9 +197,20 @@ export function DailyFlowTimeline({
 
         {visibleBlocks.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
+            <div className="text-center space-y-3">
               <p className="mb-2">No time blocks yet</p>
               <p className="text-sm">Click "Add Block" to create your first one</p>
+              {showQuickActions && onAskAI && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onAskAI('Help me create a daily schedule')}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Ask AI to help
+                </Button>
+              )}
             </div>
           </div>
         )}

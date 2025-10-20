@@ -40,6 +40,7 @@ import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from '@/components/premium/UpgradeModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProfileSetupDialog } from '@/components/ProfileSetupDialog';
+import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
@@ -105,6 +106,15 @@ const Index = () => {
   // AI Assistant
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isStuckMode, setIsStuckMode] = useState(false);
+  const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [initialAIMessage, setInitialAIMessage] = useState<string | undefined>();
+  const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
+  
+  // AI Preferences
+  const [showAI] = useLocalStorage('neurulae-ai-enabled', true);
+  const [aiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
+  const [showQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
   
   const { toast } = useToast();
 
@@ -873,6 +883,31 @@ const Index = () => {
     setIsStuckMode(false);
   };
 
+  const handleAskAI = (message: string) => {
+    setInitialAIMessage(message);
+  };
+
+  const handleClearInitialMessage = () => {
+    setInitialAIMessage(undefined);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ? for keyboard shortcuts (only when not in an input field)
+      if (e.key === '?' && !e.shiftKey && 
+          !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setKeyboardShortcutsOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Remove AI-First Mode effect since we can't control AICommandBar externally
+
   return (
     <div className="min-h-screen">
       {/* Sync Banner for non-authenticated users */}
@@ -994,21 +1029,24 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-6" role="main">
+        {/* Tier 1: High Priority - Today's Priorities */}
+        <div className="mb-8">
+          <TodaysPriorities
+            priorities={priorities}
+            onToggleComplete={handleToggleComplete}
+            onAddPriority={handleAddPriority}
+            showAIHint={showQuickActions}
+          />
+        </div>
+
         {/* Top Widgets Row */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
-          <div className="md:col-span-4">
+          <div className="md:col-span-6">
             <FocusTimer />
           </div>
-          <div className="md:col-span-2">
-            <CalendarWidget onOpenScheduler={() => setSchedulerOpen(true)} />
-          </div>
           <div className="md:col-span-6">
-            <TodaysPriorities
-              priorities={priorities}
-              onToggleComplete={handleToggleComplete}
-              onAddPriority={handleAddPriority}
-            />
+            <CalendarWidget onOpenScheduler={() => setSchedulerOpen(true)} />
           </div>
         </div>
 
@@ -1041,9 +1079,10 @@ const Index = () => {
           </div>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Daily Flow Timeline - Left */}
-              <div className="lg:col-span-1">
+            {/* Tier 2: Main Workflow - Timeline & Today's Schedule */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+              {/* Daily Flow Timeline - Left (3/5) */}
+              <div className="lg:col-span-3">
                 <DailyFlowTimeline
                   timeBlocks={timeBlocks}
                   scheduledTasks={scheduledTasks}
@@ -1053,13 +1092,14 @@ const Index = () => {
                   onDeleteBlock={handleDeleteTimeBlock}
                   onToggleComplete={handleToggleComplete}
                   onUpdateTask={handleUpdateTask}
+                  onAskAI={showQuickActions ? handleAskAI : undefined}
+                  showQuickActions={showQuickActions}
                 />
               </div>
 
-              {/* Today's Schedule & Unscheduled Tasks - Right */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Today's Schedule */}
-                <div className="bg-card rounded-lg border-2 border-border p-4">
+              {/* Today's Schedule - Right (2/5) */}
+              <div className="lg:col-span-2">
+                <div className="bg-card rounded-lg border border-border shadow-md p-4 h-full" role="region" aria-label="Today's Schedule">
                   <h3 className="text-lg font-semibold mb-4">📅 Today's Schedule</h3>
                   <div className="space-y-3">
                     {scheduledTasks
@@ -1083,24 +1123,26 @@ const Index = () => {
                     )}
                   </div>
                 </div>
-
-                {/* Unscheduled Tasks */}
-                <div className="bg-card rounded-lg border-2 border-border p-4" data-tutorial="tasks">
-                  <h3 className="text-lg font-semibold mb-4">📋 Unscheduled Tasks</h3>
-                  <TaskList
-                    tasks={tasks.filter(
-                      task => !scheduledTasks.some(st => st.taskId === task.id && st.date === getTodayString())
-                    )}
-                    timeBlocks={timeBlocks}
-                    onAddTask={handleAddTask}
-                    onToggleComplete={handleToggleComplete}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    onPrioritize={handlePrioritizeTasks}
-                    onScheduleTasks={handleScheduleTasks}
-                  />
-                </div>
               </div>
+            </div>
+
+            {/* Tier 3: Secondary Tools - Task List */}
+            <div className="bg-card rounded-lg border border-border shadow-sm p-4" data-tutorial="tasks" role="region" aria-label="Unscheduled Tasks">
+              <h3 className="text-lg font-semibold mb-4">📋 Unscheduled Tasks</h3>
+              <TaskList
+                tasks={tasks.filter(
+                  task => !scheduledTasks.some(st => st.taskId === task.id && st.date === getTodayString())
+                )}
+                timeBlocks={timeBlocks}
+                onAddTask={handleAddTask}
+                onToggleComplete={handleToggleComplete}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onPrioritize={handlePrioritizeTasks}
+                onScheduleTasks={handleScheduleTasks}
+                onAskAI={showQuickActions ? handleAskAI : undefined}
+                showQuickActions={showQuickActions}
+              />
             </div>
           </TabsContent>
 
@@ -1272,18 +1314,27 @@ const Index = () => {
         onUpdateTask={handleUpdateTaskById}
       />
       
-      <AICommandBar
-        onUpdateTask={handleUpdateTaskById}
-        onUpdateTimeBlock={handleUpdateTimeBlock}
-        onAddTimeBlock={handleAddTimeBlock}
-        onAddTask={handleAddTask}
-        tasks={[...tasks, ...priorities]}
-        timeBlocks={timeBlocks}
-        playbooks={playbooks}
-        onAddPlaybook={handleAddPlaybook}
-        onUpdatePlaybook={handleUpdatePlaybook}
-        stuckMode={isStuckMode}
-        onStuckModeComplete={handleStuckModeComplete}
+      {showAI && (
+        <AICommandBar
+          onUpdateTask={handleUpdateTaskById}
+          onUpdateTimeBlock={handleUpdateTimeBlock}
+          onAddTimeBlock={handleAddTimeBlock}
+          onAddTask={handleAddTask}
+          tasks={[...tasks, ...priorities]}
+          timeBlocks={timeBlocks}
+          playbooks={playbooks}
+          onAddPlaybook={handleAddPlaybook}
+          onUpdatePlaybook={handleUpdatePlaybook}
+          stuckMode={isStuckMode}
+          onStuckModeComplete={handleStuckModeComplete}
+          initialMessage={initialAIMessage}
+          onInitialMessageHandled={handleClearInitialMessage}
+        />
+      )}
+
+      <KeyboardShortcutsDialog 
+        open={keyboardShortcutsOpen}
+        onOpenChange={setKeyboardShortcutsOpen}
       />
 
       <UpgradeModal

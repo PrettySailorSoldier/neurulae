@@ -6,13 +6,15 @@ import { usePremium } from "@/contexts/PremiumContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles } from "lucide-react";
+import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { ScheduleManager } from "@/components/ScheduleManager";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -28,6 +30,11 @@ export default function Settings() {
   const [workEndTime, setWorkEndTime] = useState('17:00');
   const [wakeTime, setWakeTime] = useState('07:00');
   const [sleepTime, setSleepTime] = useState('23:00');
+  
+  // AI Preferences
+  const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
+  const [aiFirstMode, setAiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
+  const [showQuickActions, setShowQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
 
   useEffect(() => {
     if (user) {
@@ -326,6 +333,46 @@ export default function Settings() {
             <Button onClick={handleSaveProfile} disabled={profileLoading} className="w-full">
               {profileLoading ? 'Saving...' : 'Save Profile'}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* AI Assistant Preferences */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5" />
+              AI Assistant Preferences
+            </CardTitle>
+            <CardDescription>Control how the AI assistant appears and behaves</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="show-ai">Show AI Assistant</Label>
+                <p className="text-sm text-muted-foreground">Display the AI command bar at the bottom</p>
+              </div>
+              <Switch id="show-ai" checked={showAI} onCheckedChange={setShowAI} />
+            </div>
+            
+            <Separator />
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="ai-first-mode">AI-First Mode</Label>
+                <p className="text-sm text-muted-foreground">Expand AI bar by default on app load</p>
+              </div>
+              <Switch id="ai-first-mode" checked={aiFirstMode} onCheckedChange={setAiFirstMode} />
+            </div>
+            
+            <Separator />
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="quick-actions">Show Quick Actions</Label>
+                <p className="text-sm text-muted-foreground">Display "Ask AI" buttons throughout the app</p>
+              </div>
+              <Switch id="quick-actions" checked={showQuickActions} onCheckedChange={setShowQuickActions} />
+            </div>
           </CardContent>
         </Card>
 
