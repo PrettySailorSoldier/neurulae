@@ -8,14 +8,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { syncService } from '@/services/syncService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, Check, X } from 'lucide-react';
 
 export function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Password validation
+  const passwordValidation = {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password)
+  };
+  
+  const isPasswordValid = Object.values(passwordValidation).every(v => v);
 
   // Redirect if already logged in
   if (user) {
@@ -71,6 +84,17 @@ export function AuthPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password before submitting
+    if (!isPasswordValid) {
+      toast({
+        title: 'Invalid password',
+        description: 'Please meet all password requirements',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -174,7 +198,8 @@ export function AuthPage() {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(e.target.value.trim())}
+                    maxLength={255}
                     required
                   />
                 </div>
@@ -185,11 +210,58 @@ export function AuthPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onBlur={() => setPasswordTouched(true)}
+                    maxLength={100}
                     required
-                    minLength={6}
                   />
+                  
+                  {passwordTouched && (
+                    <div className="space-y-1 text-sm mt-2">
+                      <p className="text-muted-foreground mb-1">Password requirements:</p>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.minLength ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <X className="h-3 w-3 text-destructive" />
+                        )}
+                        <span className={passwordValidation.minLength ? 'text-green-500' : 'text-muted-foreground'}>
+                          At least 8 characters
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.hasUppercase ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <X className="h-3 w-3 text-destructive" />
+                        )}
+                        <span className={passwordValidation.hasUppercase ? 'text-green-500' : 'text-muted-foreground'}>
+                          One uppercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.hasLowercase ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <X className="h-3 w-3 text-destructive" />
+                        )}
+                        <span className={passwordValidation.hasLowercase ? 'text-green-500' : 'text-muted-foreground'}>
+                          One lowercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {passwordValidation.hasNumber ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <X className="h-3 w-3 text-destructive" />
+                        )}
+                        <span className={passwordValidation.hasNumber ? 'text-green-500' : 'text-muted-foreground'}>
+                          One number
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || (passwordTouched && !isPasswordValid)}>
                   {loading ? 'Creating account...' : 'Sign Up'}
                 </Button>
               </form>

@@ -18,6 +18,18 @@ serve(async (req) => {
       throw new Error('No file provided');
     }
 
+    // Validate file size (10MB max)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error('File too large. Maximum 10MB allowed.');
+    }
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Invalid file type. Only PDF and images (PNG, JPEG, WebP) allowed.');
+    }
+
     // Read file content and convert to base64 in chunks to avoid stack overflow
     const fileContent = await file.arrayBuffer();
     const uint8Array = new Uint8Array(fileContent);

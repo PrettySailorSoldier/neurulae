@@ -10,15 +10,15 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.organize-tasks]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-assistant]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-schedule]
 verify_jwt = true
 
 [functions.generate-playbook]
-verify_jwt = false
+verify_jwt = true
 
 

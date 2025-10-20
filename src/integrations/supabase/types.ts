@@ -183,7 +183,7 @@ export type Database = {
           playbooks_generated: string[] | null
           session_date: string | null
           tasks_created: number | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           completed?: boolean | null
@@ -192,7 +192,7 @@ export type Database = {
           playbooks_generated?: string[] | null
           session_date?: string | null
           tasks_created?: number | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           completed?: boolean | null
@@ -201,7 +201,7 @@ export type Database = {
           playbooks_generated?: string[] | null
           session_date?: string | null
           tasks_created?: number | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -251,7 +251,7 @@ export type Database = {
           id: string
           last_sync_timestamp: string | null
           pending_changes: Json | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -259,7 +259,7 @@ export type Database = {
           id?: string
           last_sync_timestamp?: string | null
           pending_changes?: Json | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -267,7 +267,7 @@ export type Database = {
           id?: string
           last_sync_timestamp?: string | null
           pending_changes?: Json | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
