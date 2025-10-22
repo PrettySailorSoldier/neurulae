@@ -491,7 +491,7 @@ export function AIAssistant({
                 }`}
               >
                 <Card
-                  className={`max-w-[80%] p-4 ${
+                  className={`max-w-[80%] p-4 break-words ${
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
@@ -500,7 +500,7 @@ export function AIAssistant({
                   {message.role === 'user' ? (
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   ) : (
-                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
                       <ReactMarkdown
                         components={{
                           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,

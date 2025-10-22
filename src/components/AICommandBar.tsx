@@ -20,19 +20,28 @@ interface AICommandBarProps {
   onStuckModeComplete?: () => void;
   initialMessage?: string;
   onInitialMessageHandled?: () => void;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 }
 
 type DrawerState = 'minimized' | 'compact' | 'expanded';
 
 export function AICommandBar(props: AICommandBarProps) {
-  const { initialMessage, onInitialMessageHandled, ...restProps } = props;
+  const { initialMessage, onInitialMessageHandled, externalOpen, onExternalOpenChange, ...restProps } = props;
   const [drawerState, setDrawerState] = useLocalStorage<DrawerState>('neurulae-ai-drawer-state', 'compact');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Sync external open state with internal state
+  useEffect(() => {
+    if (externalOpen !== undefined && externalOpen !== isDialogOpen) {
+      setIsDialogOpen(externalOpen);
+    }
+  }, [externalOpen]);
 
   // Auto-open when initialMessage is provided
   useEffect(() => {
     if (initialMessage) {
-      setIsDialogOpen(true);
+      handleOpenChange(true);
       if (onInitialMessageHandled) {
         // Clear the message after opening
         setTimeout(() => onInitialMessageHandled(), 100);
@@ -40,12 +49,18 @@ export function AICommandBar(props: AICommandBarProps) {
     }
   }, [initialMessage, onInitialMessageHandled]);
 
+  // Notify parent when internal state changes
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    onExternalOpenChange?.(open);
+  };
+
   if (drawerState === 'minimized') {
     return (
       <button
         onClick={() => {
           setDrawerState('compact');
-          setIsDialogOpen(true);
+          handleOpenChange(true);
         }}
         className="fixed bottom-4 right-4 z-50 rounded-full bg-primary text-primary-foreground p-4 shadow-lg hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         aria-label="Open AI Assistant"
@@ -67,7 +82,7 @@ export function AICommandBar(props: AICommandBarProps) {
       >
         <div className="flex items-center justify-between h-full px-4">
           <button
-            onClick={() => setIsDialogOpen(true)}
+            onClick={() => handleOpenChange(true)}
             className="flex-1 flex items-center gap-3 text-left py-3 px-4 rounded-lg hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             aria-label="Open AI Assistant (Keyboard shortcut: Command or Control plus K)"
           >
@@ -91,7 +106,7 @@ export function AICommandBar(props: AICommandBarProps) {
       
       <AIAssistant
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleOpenChange}
         initialMessage={initialMessage}
         {...restProps}
       />

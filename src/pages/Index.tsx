@@ -1338,6 +1338,8 @@ const Index = () => {
           onStuckModeComplete={handleStuckModeComplete}
           initialMessage={initialAIMessage}
           onInitialMessageHandled={handleClearInitialMessage}
+          externalOpen={isAIAssistantOpen}
+          onExternalOpenChange={setIsAIAssistantOpen}
         />
       )}
 
