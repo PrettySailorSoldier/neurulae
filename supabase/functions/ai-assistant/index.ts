@@ -8,9 +8,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to determine time of day
-const getTimeOfDay = (dateString: string) => {
-  const hour = new Date(dateString).getHours();
+// Helper function to determine time of day from hour
+const getTimeOfDay = (hour: number) => {
   if (hour >= 5 && hour < 12) return 'morning';
   if (hour >= 12 && hour < 17) return 'afternoon';
   if (hour >= 17 && hour < 21) return 'evening';
@@ -26,22 +25,23 @@ serve(async (req) => {
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Auth session missing' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    const token = authHeader.replace('Bearer ', '');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
     );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       console.error('Authentication error:', authError);
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Auth session missing' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -93,7 +93,10 @@ serve(async (req) => {
 
     // Build enhanced system prompt with context
     const isStuckMode = mode === 'stuck_interview';
-    const timeOfDay = context?.currentDate ? getTimeOfDay(context.currentDate) : 'unknown';
+    // Use client-provided hour24 from temporal context for accurate time-of-day calculation
+    const timeOfDay = context?.temporal?.hour24 !== undefined 
+      ? getTimeOfDay(context.temporal.hour24) 
+      : 'unknown';
     
     // All UI components
     // - Tasks

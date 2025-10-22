@@ -52,12 +52,19 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      // Check subscription status via edge function
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
+      // Check subscription status via edge function (SDK adds auth header automatically)
+      let { data, error } = await supabase.functions.invoke('check-subscription');
+
+      // If auth error, refresh session and retry once
+      if (error && (error.message?.includes('Auth') || error.message?.includes('401'))) {
+        console.log('Auth error detected, refreshing session...');
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError) {
+          const retry = await supabase.functions.invoke('check-subscription');
+          data = retry.data;
+          error = retry.error;
         }
-      });
+      }
 
       if (error) throw error;
       

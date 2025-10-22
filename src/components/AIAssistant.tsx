@@ -280,7 +280,11 @@ export function AIAssistant({
         },
       });
 
-      if (functionError) throw functionError;
+      if (functionError) {
+        // Extract specific error message from backend if available
+        const errorMsg = functionData?.error || functionError.message || 'Failed to get AI response';
+        throw new Error(errorMsg);
+      }
 
       const assistantMessage: Message = {
         role: 'assistant',
