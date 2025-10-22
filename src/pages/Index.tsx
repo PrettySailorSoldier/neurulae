@@ -991,7 +991,7 @@ const Index = () => {
               <Button
                 variant="default"
                 size="sm"
-                onClick={() => setIsAIAssistantOpen(true)}
+                onClick={() => { setShowAI(true); setIsAIAssistantOpen(true); }}
                 className="gap-2"
               >
                 <Sparkles className="h-4 w-4" />

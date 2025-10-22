@@ -171,7 +171,7 @@ export function AIAssistant({
   }, [initialMessage, open]);
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading || !conversationId) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
       role: 'user',
@@ -183,12 +183,31 @@ export function AIAssistant({
     setInput('');
     setIsLoading(true);
 
-    // Save user message to database
-    await supabase.from('chat_messages').insert({
-      conversation_id: conversationId,
-      role: 'user',
-      content: userMessage.content
-    });
+    // Ensure conversation exists or create one
+    let convId = conversationId;
+    if (!convId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: newConversation } = await supabase
+          .from('conversations')
+          .insert({ user_id: user.id, title: 'New Conversation' })
+          .select()
+          .single();
+        if (newConversation) {
+          convId = newConversation.id as string;
+          setConversationId(newConversation.id);
+        }
+      }
+    }
+
+    // Save user message to database (if we have a conversation id)
+    if (convId) {
+      await supabase.from('chat_messages').insert({
+        conversation_id: convId,
+        role: 'user',
+        content: userMessage.content
+      });
+    }
 
     try {
       // Fetch user profile
@@ -293,17 +312,21 @@ export function AIAssistant({
       setMessages(prev => [...prev, assistantMessage]);
 
       // Save assistant message to database
-      await supabase.from('chat_messages').insert({
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: assistantMessage.content
-      });
+      if (convId) {
+        await supabase.from('chat_messages').insert({
+          conversation_id: convId,
+          role: 'assistant',
+          content: assistantMessage.content
+        });
+      }
 
       // Update conversation's updated_at timestamp
-      await supabase
-        .from('conversations')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', conversationId);
+      if (convId) {
+        await supabase
+          .from('conversations')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', convId);
+      }
 
       // Handle any AI-suggested actions
       if (functionData.actions) {
