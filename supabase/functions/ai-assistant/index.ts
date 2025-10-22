@@ -613,13 +613,7 @@ Want me to schedule these for you?"`;
     }
 
     const data = await response.json();
-    const assistantMessageRaw = data.choices[0].message.content;
-
-    // Prepend canonical time banner using client-provided temporal context
-    const banner = (context?.temporal?.localDate && context?.temporal?.localTime)
-      ? `Today is ${context.temporal.localDate}.\nIt is ${context.temporal.localTime} in your timezone (${context.temporal.timezone}).\n\n`
-      : '';
-    const assistantMessage = `${banner}${assistantMessageRaw}`;
+    const assistantMessage = data.choices[0].message.content;
 
     // Extract JSON actions from the response
     const jsonBlocks = assistantMessage.match(/```json\n([\s\S]*?)\n```/g) || [];

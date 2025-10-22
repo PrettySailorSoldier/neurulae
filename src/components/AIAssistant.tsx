@@ -171,6 +171,7 @@ export function AIAssistant({
   }, [initialMessage, open]);
 
   const sendMessage = async () => {
+    console.log('[AIAssistant] sendMessage triggered', { hasInput: !!input.trim(), isLoading, hasConversation: !!conversationId });
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -334,9 +335,10 @@ export function AIAssistant({
       }
     } catch (error) {
       console.error('Error in AI assistant:', error);
+      const msg = error instanceof Error ? error.message : 'Failed to send message';
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to send message',
+        description: msg.includes('Auth session missing') ? 'Please sign in to use the AI assistant.' : msg,
         variant: 'destructive',
       });
     } finally {
@@ -514,7 +516,7 @@ export function AIAssistant({
                 <Card
                   className={`max-w-[80%] p-4 break-words ${
                     message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground ring-1 ring-primary/30'
                       : 'bg-muted'
                   }`}
                 >
