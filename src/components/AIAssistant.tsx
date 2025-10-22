@@ -86,7 +86,7 @@ export function AIAssistant({
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const { toast } = useToast();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   // Load or create conversation on mount
   useEffect(() => {
@@ -160,9 +160,7 @@ export function AIAssistant({
   }, [open, stuckMode]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   // Handle initial message from quick actions
@@ -481,7 +479,7 @@ export function AIAssistant({
           </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4" ref={scrollRef} role="log" aria-label="Chat messages" aria-live="polite">
+        <ScrollArea className="flex-1 pr-4" role="log" aria-label="Chat messages" aria-live="polite">
           <div className="space-y-4">
             {messages.map((message, index) => (
               <div
@@ -500,14 +498,14 @@ export function AIAssistant({
                   {message.role === 'user' ? (
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   ) : (
-                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words whitespace-pre-wrap">
                       <ReactMarkdown
                         components={{
-                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap break-words">{children}</p>,
                           strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
                           ul: ({ children }) => <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>,
                           ol: ({ children }) => <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>,
-                          li: ({ children }) => <li className="text-sm">{children}</li>,
+                          li: ({ children }) => <li className="text-sm whitespace-pre-wrap break-words">{children}</li>,
                         }}
                       >
                         {message.content}
@@ -527,6 +525,7 @@ export function AIAssistant({
                 </Card>
               </div>
             )}
+            <div ref={endRef} />
           </div>
         </ScrollArea>
 

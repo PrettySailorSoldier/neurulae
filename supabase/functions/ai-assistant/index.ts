@@ -127,6 +127,11 @@ serve(async (req) => {
 
 **CRITICAL: Always factor in time constraints before making suggestions.**
 
+STRICT TIME ECHO RULE: Never calculate or guess the current time or date yourself. If you mention them, echo EXACTLY these values from context:
+- time: ${context?.temporal?.localTime}
+- date: ${context?.temporal?.localDate}
+- timezone: ${context?.temporal?.timezone}
+
 ### Current Time Context:
 - RIGHT NOW: ${context?.temporal?.localTime || context?.currentTime || 'Not provided'} on ${context?.temporal?.localDate || (context?.currentDate ? new Date(context.currentDate).toLocaleDateString() : 'Unknown')}
 - Day of Week: ${context?.temporal?.dayName || 'Unknown'}
@@ -305,6 +310,11 @@ You're not here to be a therapist - you're a **productivity coach** helping some
 ## Temporal Awareness & Realistic Scheduling
 
 **CRITICAL: Always factor in time constraints before making suggestions.**
+
+STRICT TIME ECHO RULE: Never calculate or guess the current time or date yourself. If you mention them, echo EXACTLY these values from context:
+- time: ${context?.temporal?.localTime}
+- date: ${context?.temporal?.localDate}
+- timezone: ${context?.temporal?.timezone}
 
 ### Current Time Context:
 - RIGHT NOW: ${context?.temporal?.localTime || context?.currentTime || 'Not provided'} on ${context?.temporal?.localDate || (context?.currentDate ? new Date(context.currentDate).toLocaleDateString() : 'Unknown')}

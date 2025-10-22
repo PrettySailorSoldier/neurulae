@@ -112,7 +112,7 @@ const Index = () => {
   const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
   
   // AI Preferences
-  const [showAI] = useLocalStorage('neurulae-ai-enabled', true);
+  const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
   const [aiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
   const [showQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
   
