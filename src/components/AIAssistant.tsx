@@ -116,7 +116,7 @@ export function AIAssistant({
           .order('created_at', { ascending: true });
 
         if (messageHistory && messageHistory.length > 0) {
-          setMessages(messageHistory.map(msg => ({
+          setMessages(prev => prev.length > 0 ? prev : messageHistory.map(msg => ({
             role: msg.role as 'user' | 'assistant',
             content: msg.content,
             timestamp: msg.created_at
@@ -142,13 +142,13 @@ export function AIAssistant({
 
     const setInitialMessage = () => {
       if (stuckMode) {
-        setMessages([{
+        setMessages(prev => prev.length > 0 ? prev : [{
           role: 'assistant',
           content: "I'm here to help you figure out what needs your attention today. Let's take this step by step. First, do you have work or school today?",
           timestamp: new Date().toISOString(),
         }]);
       } else {
-        setMessages([{
+        setMessages(prev => prev.length > 0 ? prev : [{
           role: 'assistant',
           content: "Hello! I'm your AI productivity coach. I'm here to help you prioritize tasks, balance your schedule, and achieve your goals. What would you like to work on today?",
           timestamp: new Date().toISOString(),

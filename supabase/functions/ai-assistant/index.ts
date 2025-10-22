@@ -566,7 +566,10 @@ Want me to schedule these for you?"`;
       userId: user.id,
       mode: mode || 'direct',
       messageCount: messages.length,
-      hasContext: !!context
+      hasContext: !!context,
+      localTime: context?.temporal?.localTime,
+      localDate: context?.temporal?.localDate,
+      timezone: context?.temporal?.timezone,
     });
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -610,7 +613,13 @@ Want me to schedule these for you?"`;
     }
 
     const data = await response.json();
-    const assistantMessage = data.choices[0].message.content;
+    const assistantMessageRaw = data.choices[0].message.content;
+
+    // Prepend canonical time banner using client-provided temporal context
+    const banner = (context?.temporal?.localDate && context?.temporal?.localTime)
+      ? `Today is ${context.temporal.localDate}.\nIt is ${context.temporal.localTime} in your timezone (${context.temporal.timezone}).\n\n`
+      : '';
+    const assistantMessage = `${banner}${assistantMessageRaw}`;
 
     // Extract JSON actions from the response
     const jsonBlocks = assistantMessage.match(/```json\n([\s\S]*?)\n```/g) || [];
