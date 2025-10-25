@@ -86,7 +86,7 @@ export function AIAssistant({
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const { toast } = useToast();
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load or create conversation on mount
   useEffect(() => {
@@ -160,7 +160,9 @@ export function AIAssistant({
   }, [open, stuckMode]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages]);
 
   // Handle initial message from quick actions
@@ -493,7 +495,7 @@ export function AIAssistant({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[600px] flex flex-col" aria-describedby="ai-assistant-description">
+      <DialogContent className="max-w-2xl h-[600px] flex flex-col text-left" aria-describedby="ai-assistant-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5" aria-hidden="true" />
@@ -504,8 +506,8 @@ export function AIAssistant({
           </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4" role="log" aria-label="Chat messages" aria-live="polite">
-          <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto pr-4 text-left" ref={scrollRef} role="log" aria-label="Chat messages" aria-live="polite">
+          <div className="space-y-4 text-left">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -514,16 +516,16 @@ export function AIAssistant({
                 }`}
               >
                 <Card
-                  className={`max-w-[80%] p-4 break-words ${
+                  className={`max-w-[85%] md:max-w-[75%] p-4 text-left ${
                     message.role === 'user'
-                      ? 'bg-primary text-primary-foreground ring-1 ring-primary/30'
+                      ? 'bg-primary text-primary-foreground ring-1 ring-primary/30 break-all break-words whitespace-pre-wrap'
                       : 'bg-muted'
                   }`}
                 >
                   {message.role === 'user' ? (
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap break-all break-words text-left">{message.content}</p>
                   ) : (
-                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words whitespace-pre-wrap">
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-all break-words whitespace-pre-wrap text-left [&_*]:break-words [&_*]:whitespace-pre-wrap">
                       <ReactMarkdown
                         components={{
                           p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap break-words">{children}</p>,
@@ -537,8 +539,8 @@ export function AIAssistant({
                       </ReactMarkdown>
                     </div>
                   )}
-                  <p className="text-xs opacity-70 mt-2">
-                    {new Date(message.timestamp).toLocaleTimeString()}
+                  <p className="text-xs opacity-70 mt-2 text-left">
+                    {new Date(message.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </p>
                 </Card>
               </div>
@@ -550,9 +552,8 @@ export function AIAssistant({
                 </Card>
               </div>
             )}
-            <div ref={endRef} />
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex gap-2 mt-4">
           <Textarea
@@ -560,7 +561,7 @@ export function AIAssistant({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={stuckMode ? "Tell me what's on your mind..." : "Ask me about your tasks, schedule, or productivity..."}
-            className="resize-none bg-card text-foreground caret-foreground"
+            className="resize-none bg-card text-foreground caret-foreground text-left"
             rows={2}
           />
           <Button

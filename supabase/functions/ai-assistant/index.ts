@@ -127,13 +127,11 @@ serve(async (req) => {
 
 **CRITICAL: Always factor in time constraints before making suggestions.**
 
-STRICT TIME ECHO RULE: Never calculate or guess the current time or date yourself. If you mention them, echo EXACTLY these values from context:
-- time: ${context?.temporal?.localTime}
-- date: ${context?.temporal?.localDate}
-- timezone: ${context?.temporal?.timezone}
+STRICT TIME RULE: NEVER mention the current time or date unless explicitly asked. If asked, reply ONLY with: "It's {localTime}" using the exact value from context.temporal.localTime.
 
 ### Current Time Context:
-- RIGHT NOW: ${context?.temporal?.localTime || context?.currentTime || 'Not provided'} on ${context?.temporal?.localDate || (context?.currentDate ? new Date(context.currentDate).toLocaleDateString() : 'Unknown')}
+- Time: ${context?.temporal?.localTime || 'Not provided'}
+- Date: ${context?.temporal?.localDate || 'Unknown'}
 - Day of Week: ${context?.temporal?.dayName || 'Unknown'}
 - Timezone: ${context?.temporal?.timezone || 'Unknown'}
 - Today's Schedule: ${context?.todaySchedule?.length || 0} time blocks
@@ -183,18 +181,10 @@ ${context?.availableTimeWindows && context.availableTimeWindows.length > 0
 - ✅ GOOD: Quiet activities (reading, planning, journaling), personal hobbies, sleep prep
 - ❌ AVOID: Any noisy tasks (vacuuming, blenders, power tools), anything that disturbs others
 - ⚠️ CRITICAL: If user lives with others, emphasize quiet-only activities
-- 💡 If suggesting tasks late at night: "It's ${context?.currentTime} - maybe time to wind down? Let's save [task] for tomorrow morning."
+- 💡 If suggesting tasks late at night, mention winding down without stating the time
 
 **Living Situation Context: ${livingAlone ? 'Lives alone' : 'Lives with others'}**
 ${!livingAlone ? '⚠️ EXTRA CONSIDERATION: Be mindful of noise levels and shared spaces when suggesting tasks.' : ''}
-
-### Examples of Time-Aware Responses:
-
-❌ BAD: "Let's vacuum the living room!" (when it's 10pm and user lives with others)
-✅ GOOD: "It's 10pm and you live with others - vacuuming would be too loud now. How about we add that to tomorrow morning's schedule? For tonight, maybe a quick surface wipe-down instead?"
-
-❌ BAD: "You should start that 2-hour project now." (when it's 4:30pm and work ends at 5pm)
-✅ GOOD: "It's 4:30pm and you finish work at 5pm - not enough time for a 2-hour project. Let's schedule it for tomorrow morning at 9am when you'll have a clear block. For now, maybe knock out some quick 10-minute tasks?"
 
 ## Interview Philosophy
 
@@ -311,13 +301,11 @@ You're not here to be a therapist - you're a **productivity coach** helping some
 
 **CRITICAL: Always factor in time constraints before making suggestions.**
 
-STRICT TIME ECHO RULE: Never calculate or guess the current time or date yourself. If you mention them, echo EXACTLY these values from context:
-- time: ${context?.temporal?.localTime}
-- date: ${context?.temporal?.localDate}
-- timezone: ${context?.temporal?.timezone}
+STRICT TIME RULE: NEVER mention the current time or date unless explicitly asked. If asked, reply ONLY with: "It's {localTime}" using the exact value from context.temporal.localTime.
 
 ### Current Time Context:
-- RIGHT NOW: ${context?.temporal?.localTime || context?.currentTime || 'Not provided'} on ${context?.temporal?.localDate || (context?.currentDate ? new Date(context.currentDate).toLocaleDateString() : 'Unknown')}
+- Time: ${context?.temporal?.localTime || 'Not provided'}
+- Date: ${context?.temporal?.localDate || 'Unknown'}
 - Day of Week: ${context?.temporal?.dayName || 'Unknown'}
 - Timezone: ${context?.temporal?.timezone || 'Unknown'}
 - Today's Schedule: ${context?.todaySchedule?.length || 0} time blocks
@@ -367,18 +355,10 @@ ${context?.availableTimeWindows && context.availableTimeWindows.length > 0
 - ✅ GOOD: Quiet activities (reading, planning, journaling), personal hobbies, sleep prep
 - ❌ AVOID: Any noisy tasks (vacuuming, blenders, power tools), anything that disturbs others
 - ⚠️ CRITICAL: If user lives with others, emphasize quiet-only activities
-- 💡 If suggesting tasks late at night: "It's ${context?.currentTime} - maybe time to wind down? Let's save [task] for tomorrow morning."
+- 💡 If suggesting tasks late at night, mention winding down without stating the time
 
 **Living Situation Context: ${livingAlone ? 'Lives alone' : 'Lives with others'}**
 ${!livingAlone ? '⚠️ EXTRA CONSIDERATION: Be mindful of noise levels and shared spaces when suggesting tasks.' : ''}
-
-### Examples of Time-Aware Responses:
-
-❌ BAD: "Let's vacuum the living room!" (when it's 10pm and user lives with others)
-✅ GOOD: "It's 10pm and you live with others - vacuuming would be too loud now. How about we add that to tomorrow morning's schedule? For tonight, maybe a quick surface wipe-down instead?"
-
-❌ BAD: "You should start that 2-hour project now." (when it's 4:30pm and work ends at 5pm)
-✅ GOOD: "It's 4:30pm and you finish work at 5pm - not enough time for a 2-hour project. Let's schedule it for tomorrow morning at 9am when you'll have a clear block. For now, maybe knock out some quick 10-minute tasks?"
 
 ## Current Context
 You have access to the user's:
@@ -554,7 +534,7 @@ Try the Pomodoro technique: 25 min work, 5 min break. Your brain will thank you 
 
 🎯 **Top recommendation**: Start with 'Review client feedback' (30 min, due today)
 
-It's currently ${context?.currentTime} and you have ${context?.availableTimeWindows?.[0]?.duration || 'some time'} available before your next commitment. This task fits perfectly and will give you momentum.
+You have ${context?.availableTimeWindows?.[0]?.duration || 'some time'} available before your next commitment. This task fits perfectly and will give you momentum.
 
 After that, I'd suggest tackling 'Update project timeline' while you're in work mode.
 
@@ -613,7 +593,23 @@ Want me to schedule these for you?"`;
     }
 
     const data = await response.json();
-    const assistantMessage = data.choices[0].message.content;
+    let assistantMessage = data.choices[0].message.content;
+
+    // Post-processing: Replace any incorrect time patterns with the correct time
+    const correctTime = context?.temporal?.localTime;
+    if (correctTime) {
+      // Find all time patterns in the message (e.g., "3:07 PM", "1:56 AM")
+      const timePattern = /\b\d{1,2}:\d{2}\s*[APap][Mm]\b/g;
+      const timesInMessage = assistantMessage.match(timePattern) || [];
+      
+      // Replace any time that doesn't match the correct time
+      timesInMessage.forEach((foundTime: string) => {
+        if (foundTime.toUpperCase() !== correctTime.toUpperCase()) {
+          assistantMessage = assistantMessage.replace(new RegExp(foundTime, 'g'), correctTime);
+          console.log(`Replaced incorrect time "${foundTime}" with correct time "${correctTime}"`);
+        }
+      });
+    }
 
     // Extract JSON actions from the response
     const jsonBlocks = assistantMessage.match(/```json\n([\s\S]*?)\n```/g) || [];
