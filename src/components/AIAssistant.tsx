@@ -560,7 +560,7 @@ export function AIAssistant({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={stuckMode ? "Tell me what's on your mind..." : "Ask me about your tasks, schedule, or productivity..."}
-            className="resize-none"
+            className="resize-none bg-card text-foreground caret-foreground"
             rows={2}
           />
           <Button
