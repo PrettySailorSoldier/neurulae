@@ -8,6 +8,8 @@ import { Brain, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TimeBlock, Playbook } from '@/types';
+import { useDeviceInfo } from '@/hooks/useDeviceInfo';
+import { cn } from '@/lib/utils';
 import { format, isToday } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 
@@ -87,6 +89,7 @@ export function AIAssistant({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { isMobile } = useDeviceInfo();
 
   // Load or create conversation on mount
   useEffect(() => {
@@ -495,7 +498,12 @@ export function AIAssistant({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[600px] flex flex-col text-left" aria-describedby="ai-assistant-description">
+      <DialogContent className={cn(
+        "flex flex-col text-left",
+        isMobile 
+          ? "w-full max-w-full h-[100dvh] rounded-none" 
+          : "max-w-2xl h-[600px]"
+      )} aria-describedby="ai-assistant-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5" aria-hidden="true" />
@@ -555,20 +563,23 @@ export function AIAssistant({
           </div>
         </div>
 
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-4 items-end">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={stuckMode ? "Tell me what's on your mind..." : "Ask me about your tasks, schedule, or productivity..."}
-            className="resize-none bg-card text-foreground caret-foreground text-left"
+            className={cn(
+              "flex-1 resize-none bg-card text-foreground caret-foreground text-left",
+              isMobile ? "text-base text-[16px] min-h-[48px]" : "text-sm"
+            )}
             rows={2}
           />
           <Button
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
             size="icon"
-            className="shrink-0"
+            className={cn("shrink-0", isMobile && "min-w-[48px] min-h-[48px]")}
           >
             <Send className="h-4 w-4" />
           </Button>

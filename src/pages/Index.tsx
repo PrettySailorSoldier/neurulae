@@ -42,12 +42,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ProfileSetupDialog } from '@/components/ProfileSetupDialog';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 const Index = () => {
   const { user } = useAuth();
   const { plan, isPremium, isAdmin } = usePremium();
   const { canUseStuckMode, incrementStuckSession, stuckSessionsRemaining, showUpgradeModal, upgradeModalOpen, setUpgradeModalOpen, blockedFeature } = useFeatureLimit();
   const [showSyncBanner, setShowSyncBanner] = useState(true);
+  const isMobile = useIsMobile();
   const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
   const [tasks, setTasks] = useLocalStorage<Task[]>('neurulae-tasks', []);
   const [priorities, setPriorities] = useLocalStorage<Task[]>('neurulae-priorities', []);
@@ -918,7 +922,7 @@ const Index = () => {
   // Remove AI-First Mode effect since we can't control AICommandBar externally
 
   return (
-    <div className="min-h-screen">
+    <div className={cn("min-h-screen", isMobile && "pb-16")}>
       {/* Sync Banner for non-authenticated users */}
       {!user && showSyncBanner && (
         <Alert className="rounded-none border-x-0 border-t-0">
@@ -1361,6 +1365,8 @@ const Index = () => {
           if (!open) setHasProfile(true);
         }}
       />
+      
+      {isMobile && <MobileBottomNav />}
     </div>
   );
 };

@@ -6,7 +6,7 @@ import { usePremium } from "@/contexts/PremiumContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain } from "lucide-react";
+import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain, MessageSquarePlus } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -15,6 +15,8 @@ import { ScheduleManager } from "@/components/ScheduleManager";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { FeedbackHistory } from "@/components/FeedbackHistory";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -35,6 +37,10 @@ export default function Settings() {
   const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
   const [aiFirstMode, setAiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
   const [showQuickActions, setShowQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
+  
+  // Feedback Dialog
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [showFeedbackHistory, setShowFeedbackHistory] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -379,6 +385,46 @@ export default function Settings() {
         {/* Schedule Manager */}
         <ScheduleManager />
 
+        {/* Feedback & Support */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquarePlus className="h-5 w-5" />
+              Feedback & Support
+            </CardTitle>
+            <CardDescription>Share your thoughts, ideas, or report issues</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => setFeedbackDialogOpen(true)}
+            >
+              <MessageSquarePlus className="h-4 w-4 mr-2" />
+              Submit Feedback
+            </Button>
+            
+            <Separator />
+            
+            <div>
+              <Button
+                variant="ghost"
+                className="w-full justify-between"
+                onClick={() => setShowFeedbackHistory(!showFeedbackHistory)}
+              >
+                <span>My Feedback History</span>
+                <Badge variant="secondary">View</Badge>
+              </Button>
+              
+              {showFeedbackHistory && (
+                <div className="mt-4">
+                  <FeedbackHistory />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Subscription Management */}
         {!isAdmin && (
           <Card className="mb-6">
@@ -441,6 +487,8 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
+      
+      <FeedbackDialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen} />
     </div>
   );
 }
