@@ -57,7 +57,7 @@ serve(async (req) => {
       messages: z.array(z.object({
         role: z.enum(['user', 'assistant', 'system']),
         content: z.string().max(5000)
-      })).max(50),
+      })).max(100),
       context: z.object({
         tasks: z.array(z.any()).max(1000).optional(),
         timeBlocks: z.array(z.any()).max(500).optional(),

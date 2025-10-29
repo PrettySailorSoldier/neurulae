@@ -4,9 +4,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Brain, Send, Loader2 } from 'lucide-react';
+import { Brain, Send, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 import { Task, TimeBlock, Playbook } from '@/types';
 import { useDeviceInfo } from '@/hooks/useDeviceInfo';
 import { cn } from '@/lib/utils';
@@ -496,6 +497,69 @@ export function AIAssistant({
     }
   };
 
+  const handleClearConversation = async () => {
+    if (!conversationId) return;
+    
+    try {
+      // Delete all messages for this conversation
+      await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+      
+      // Delete the conversation
+      await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId);
+      
+      // Reset state
+      setMessages([]);
+      setConversationId(null);
+      
+      // Create new conversation and set initial message
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: newConversation } = await supabase
+          .from('conversations')
+          .insert({ user_id: user.id, title: 'New Conversation' })
+          .select()
+          .single();
+
+        if (newConversation) {
+          setConversationId(newConversation.id);
+        }
+      }
+      
+      // Set initial message based on mode
+      if (stuckMode) {
+        setMessages([{
+          role: 'assistant',
+          content: "I'm here to help you figure out what needs your attention today. Let's take this step by step. First, do you have work or school today?",
+          timestamp: new Date().toISOString(),
+        }]);
+      } else {
+        setMessages([{
+          role: 'assistant',
+          content: "Hello! I'm your AI productivity coach. I'm here to help you prioritize tasks, balance your schedule, and achieve your goals. What would you like to work on today?",
+          timestamp: new Date().toISOString(),
+        }]);
+      }
+      
+      toast({
+        title: 'Conversation Cleared',
+        description: 'Started a new conversation.',
+      });
+    } catch (error) {
+      console.error('Error clearing conversation:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to clear conversation.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
@@ -505,9 +569,26 @@ export function AIAssistant({
           : "max-w-2xl h-[600px]"
       )} aria-describedby="ai-assistant-description">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5" aria-hidden="true" />
-            {stuckMode ? "I'm Stuck - Let's Figure This Out" : "AI Productivity Coach"}
+          <DialogTitle className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5" aria-hidden="true" />
+              {stuckMode ? "I'm Stuck - Let's Figure This Out" : "AI Productivity Coach"}
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                {messages.length}/100
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearConversation}
+                disabled={!conversationId || messages.length === 0}
+                className="h-8 w-8 p-0"
+                title="Clear conversation"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </DialogTitle>
           <p id="ai-assistant-description" className="sr-only">
             Chat with your AI productivity coach to manage tasks, schedule time, and achieve your goals
