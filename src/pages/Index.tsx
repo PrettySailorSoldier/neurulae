@@ -1043,15 +1043,6 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6" role="main">
-        {/* Tier 1: High Priority - Today's Priorities */}
-        <div className="mb-8">
-          <TodaysPriorities
-            priorities={priorities}
-            onToggleComplete={handleToggleComplete}
-            onAddPriority={handleAddPriority}
-            showAIHint={showQuickActions}
-          />
-        </div>
 
         {/* Top Widgets Row */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
@@ -1092,9 +1083,9 @@ const Index = () => {
           </div>
 
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Tier 2: Main Workflow - Timeline & Today's Schedule */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-              {/* Daily Flow Timeline - Left (3/5) */}
+            {/* Main Workflow - Visual Timeline & Unified To-Do List */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Daily Flow Timeline - Visual Representation (Left 3/5) */}
               <div className="lg:col-span-3">
                 <DailyFlowTimeline
                   timeBlocks={timeBlocks}
@@ -1110,52 +1101,21 @@ const Index = () => {
                 />
               </div>
 
-              {/* Today's Schedule - Right (2/5) */}
+              {/* Unified To-Do List - All Tasks (Right 2/5) */}
               <div className="lg:col-span-2">
-                <div className="bg-card rounded-lg border border-border shadow-md p-4 h-full" role="region" aria-label="Today's Schedule">
-                  <h3 className="text-lg font-semibold mb-4">📅 Today's Schedule</h3>
-                  <div className="space-y-3">
-                    {scheduledTasks
-                      .filter(task => task.date === getTodayString())
-                      .map(scheduledTask => {
-                        const task = tasks.find(t => t.id === scheduledTask.taskId);
-                        return task ? (
-                          <ScheduledTaskCard
-                            key={scheduledTask.id}
-                            task={task}
-                            onToggleComplete={() => handleToggleComplete(task.id)}
-                            onUpdateTask={handleUpdateTask}
-                            estimatedMinutes={scheduledTask.estimatedMinutes}
-                          />
-                        ) : null;
-                      })}
-                    {scheduledTasks.filter(task => task.date === getTodayString()).length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">
-                        No tasks scheduled for today. Add time blocks to schedule tasks.
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <TaskList
+                  tasks={tasks}
+                  timeBlocks={timeBlocks}
+                  onAddTask={handleAddTask}
+                  onToggleComplete={handleToggleComplete}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onPrioritize={handlePrioritizeTasks}
+                  onScheduleTasks={handleScheduleTasks}
+                  onAskAI={showQuickActions ? handleAskAI : undefined}
+                  showQuickActions={showQuickActions}
+                />
               </div>
-            </div>
-
-            {/* Tier 3: Secondary Tools - Task List */}
-            <div className="bg-card rounded-lg border border-border shadow-sm p-4" data-tutorial="tasks" role="region" aria-label="Unscheduled Tasks">
-              <h3 className="text-lg font-semibold mb-4">📋 Unscheduled Tasks</h3>
-              <TaskList
-                tasks={tasks.filter(
-                  task => !scheduledTasks.some(st => st.taskId === task.id && st.date === getTodayString())
-                )}
-                timeBlocks={timeBlocks}
-                onAddTask={handleAddTask}
-                onToggleComplete={handleToggleComplete}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onPrioritize={handlePrioritizeTasks}
-                onScheduleTasks={handleScheduleTasks}
-                onAskAI={showQuickActions ? handleAskAI : undefined}
-                showQuickActions={showQuickActions}
-              />
             </div>
           </TabsContent>
 

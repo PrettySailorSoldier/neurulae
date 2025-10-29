@@ -607,21 +607,21 @@ export function AIAssistant({
                 <Card
                   className={`max-w-[85%] md:max-w-[75%] p-4 text-left ${
                     message.role === 'user'
-                      ? 'bg-primary text-primary-foreground ring-1 ring-primary/30 break-all break-words whitespace-pre-wrap'
+                      ? 'bg-primary text-primary-foreground ring-1 ring-primary/30'
                       : 'bg-muted'
                   }`}
                 >
                   {message.role === 'user' ? (
-                    <p className="text-sm whitespace-pre-wrap break-all break-words text-left">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words text-left">{message.content}</p>
                   ) : (
-                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-all break-words whitespace-pre-wrap text-left [&_*]:break-words [&_*]:whitespace-pre-wrap">
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words text-left">
                       <ReactMarkdown
                         components={{
-                          p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap break-words">{children}</p>,
+                          p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-normal break-words">{children}</p>,
                           strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
                           ul: ({ children }) => <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>,
                           ol: ({ children }) => <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>,
-                          li: ({ children }) => <li className="text-sm whitespace-pre-wrap break-words">{children}</li>,
+                          li: ({ children }) => <li className="text-sm break-words">{children}</li>,
                         }}
                       >
                         {message.content}

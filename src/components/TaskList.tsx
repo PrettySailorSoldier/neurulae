@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Task, TimeBlock } from '@/types';
 import { UnscheduledTaskItem } from './UnscheduledTaskItem';
 import { AIOrganizeDialog } from './AIOrganizeDialog';
@@ -115,10 +116,15 @@ export function TaskList({
 
   return (
     <>
-      <Card className="card-elevated h-full">
+      <Card className="card-elevated h-full flex flex-col">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Unscheduled Tasks</CardTitle>
+            <div>
+              <CardTitle>✓ To-Do List</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                All your tasks - add details, subtasks, and notes
+              </p>
+            </div>
             <Button
               onClick={handleAIOrganize}
               variant="outline"
@@ -148,7 +154,7 @@ export function TaskList({
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 flex-1 flex flex-col overflow-hidden">
           <div className="space-y-2">
             <div className="flex gap-2 items-center">
               <Button
@@ -193,25 +199,27 @@ export function TaskList({
             )}
           </div>
 
-          <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {filteredTasks.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No tasks yet. Add one above!</p>
-              </div>
-            ) : (
-              filteredTasks.map((task) => (
-                <UnscheduledTaskItem
-                  key={task.id}
-                  task={task}
-                  onToggleComplete={onToggleComplete}
-                  onUpdateTask={onUpdateTask}
-                  onDeleteTask={onDeleteTask}
-                  onAskAI={onAskAI}
-                  showQuickActions={showQuickActions}
-                />
-              ))
-            )}
-          </div>
+          <ScrollArea className="flex-1 pr-2">
+            <div className="space-y-2">
+              {filteredTasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No tasks yet. Add one above!</p>
+                </div>
+              ) : (
+                filteredTasks.map((task) => (
+                  <UnscheduledTaskItem
+                    key={task.id}
+                    task={task}
+                    onToggleComplete={onToggleComplete}
+                    onUpdateTask={onUpdateTask}
+                    onDeleteTask={onDeleteTask}
+                    onAskAI={onAskAI}
+                    showQuickActions={showQuickActions}
+                  />
+                ))
+              )}
+            </div>
+          </ScrollArea>
 
           <div className="text-sm text-muted-foreground pt-2 border-t border-border">
             {filteredTasks.filter(t => !t.completed).length} active •{' '}
