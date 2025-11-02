@@ -72,7 +72,7 @@ export function CalendarScheduler({
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className={cn("rounded-md border pointer-events-auto")}
+              className="rounded-md border"
               modifiers={{
                 scheduled: (date) => getTasksForDate(date).length > 0
               }}
