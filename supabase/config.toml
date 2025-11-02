@@ -20,5 +20,3 @@ verify_jwt = true
 
 [functions.generate-playbook]
 verify_jwt = true
-
-

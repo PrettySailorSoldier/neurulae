@@ -1,4 +1,5 @@
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +28,66 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check stuck sessions quota (server-side enforcement)
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    // Check premium status
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+
+    const isPremium = roles?.some(r => ['premium', 'lifetime', 'admin'].includes(r.role));
+
+    // Only check quota for non-premium users
+    if (!isPremium) {
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('stuck_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .gte('created_at', startOfMonth.toISOString());
+
+      if (sessionsError) {
+        console.error('Error checking stuck sessions:', sessionsError);
+      }
+
+      const sessionCount = sessions?.length || 0;
+      if (sessionCount >= 3) {
+        return new Response(JSON.stringify({ 
+          error: 'You\'ve reached your free tier limit of 3 stuck sessions this month. Upgrade to premium for unlimited access.',
+          quota: { used: sessionCount, limit: 3 }
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Parse and validate input
     const body = await req.json();
     const validation = playbookSchema.safeParse(body);
@@ -190,6 +251,18 @@ Remember to respond with ONLY valid JSON, no markdown or explanations.`;
     }));
 
     console.log('Generated playbook with', steps.length, 'steps');
+
+    // Record this stuck session (only for non-premium users)
+    if (!isPremium) {
+      const { error: insertError } = await supabase.from('stuck_sessions').insert({
+        user_id: user.id,
+        session_date: new Date().toISOString()
+      });
+      
+      if (insertError) {
+        console.error('Error recording stuck session:', insertError);
+      }
+    }
 
     return new Response(
       JSON.stringify({
