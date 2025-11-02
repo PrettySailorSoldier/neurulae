@@ -209,6 +209,16 @@
   }
 }
 
+@layer base {
+  /* Ensure react-day-picker calendars don't overlap surrounding content */
+  .rdp {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+}
+
+
 @layer components {
   .card-elevated {
     @apply bg-card border-border rounded-lg shadow-lg transition-all duration-300;
