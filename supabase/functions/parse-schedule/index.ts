@@ -161,7 +161,7 @@ Rules:
     console.error('Error parsing schedule:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to parse schedule',
+        error: 'Failed to parse schedule. Please try again or check your file format.',
         entries: []
       }),
       { 

@@ -58,8 +58,7 @@ serve(async (req) => {
       console.error('Validation error:', validation.error.errors);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid input', 
-          details: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+          error: 'Invalid request format. Please check your input and try again.'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -236,7 +235,7 @@ Be specific with task IDs and block IDs from the provided data. Include reasonin
   } catch (error) {
     console.error('Error in organize-tasks function:', error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: 'An unexpected error occurred. Please try again.'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

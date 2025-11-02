@@ -82,8 +82,7 @@ serve(async (req) => {
       console.error('Validation error:', validation.error.errors);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid input', 
-          details: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+          error: 'Invalid request format. Please check your input and try again.'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -633,7 +632,7 @@ Want me to schedule these for you?"`;
   } catch (error) {
     console.error('Error in ai-assistant function:', error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: 'An unexpected error occurred. Please try again.'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
