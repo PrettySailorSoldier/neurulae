@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Calendar as CalendarIcon, Plus, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,7 @@ export function CalendarScheduler({
             <CalendarIcon className="h-5 w-5" />
             Schedule Tasks
           </DialogTitle>
+          <DialogDescription className="sr-only">Schedule a task to a date and time block</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -72,7 +73,7 @@ export function CalendarScheduler({
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className="rounded-md border"
+              className="rounded-xl border bg-card/40 p-1"
               modifiers={{
                 scheduled: (date) => getTasksForDate(date).length > 0
               }}
