@@ -90,11 +90,19 @@ export function DailyFlowTimeline({
 
     setUploading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
       const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', {
         body: formData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (parseError) throw parseError;
