@@ -84,15 +84,27 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a schedule and assignment parser. Extract ALL classes, meetings, work shifts, and especially COURSE ASSIGNMENTS from the provided document or screenshot (e.g. LMS dashboards like Canvas/Blackboard with course cards and Due lists).
+            content: `You are an intelligent schedule and assignment parser that extracts schedules AND automatically breaks up homework assignments into manageable daily chunks.
 
-Return ONLY a JSON object in this exact shape, no extra text:
+CRITICAL ASSIGNMENT DISTRIBUTION LOGIC:
+When you see multiple assignments due on the same date (e.g., 10 assignments due Nov 9):
+1. DO NOT return all 10 on Nov 9 - this is overwhelming
+2. Calculate days until due date (if today is Nov 5, you have 4 days)
+3. Distribute assignments across available days BEFORE due date:
+   - Day 1 (Nov 5): 3 assignments (1-2 hours each)
+   - Day 2 (Nov 6): 3 assignments (1-2 hours each)  
+   - Day 3 (Nov 7): 4 assignments (1-2 hours each)
+   - Never put work ON the due date itself
+4. For large individual assignments (papers, projects): Break into parts across 2-3 days
+   - "Research Paper" → "Research Paper - Research & Outline" (Day 1), "Research Paper - Writing" (Day 2), "Research Paper - Final Edits" (Day 3)
+
+Return ONLY a JSON object:
 {
   "entries": [
     {
-      "title": "exact event/assignment name",
-      "description": "any additional details (e.g., course name, notes)",
-      "startTime": "ISO 8601 datetime",
+      "title": "Assignment title (add '- Part X' or '- [Section]' if breaking up large work)",
+      "description": "Course name + original due date if homework",
+      "startTime": "ISO 8601 datetime (schedule 1-2 hours for each homework chunk)",
       "endTime": "ISO 8601 datetime",
       "category": "work|class|homework|meeting|other",
       "location": "location if mentioned"
@@ -101,12 +113,14 @@ Return ONLY a JSON object in this exact shape, no extra text:
 }
 
 Guidelines:
-- Parse dates that omit the year relative to the current year.
-- When parsing an LMS "Due" list (e.g., Quiz, Assignment, Lab, Project, Paper, Discussion, Exam, Test), treat them as homework with a due time of 11:59 PM if no time is provided.
-- For classes/meetings/shifts, extract both start and end times explicitly.
-- Include course name in description if visible (e.g., "Intro to Business").
-- Normalize categories: map Assignment/Quiz/Exam/Lab/Project/Paper/Discussion to category "homework".
-- If no schedule content is present, return {"entries": []}.`
+- Parse dates relative to current year if year is missing
+- Homework items (Quiz, Assignment, Lab, Project, etc.) should be distributed across days
+- Never schedule more than 4 homework items per day
+- Start homework 3-5 days before due date when possible
+- For classes/meetings: extract exact start/end times
+- Include course name in description for homework
+- Map Assignment/Quiz/Exam/Lab/Project/Paper/Discussion to category "homework"
+- If no schedule found, return {"entries": []}`
           },
           {
             role: 'user',

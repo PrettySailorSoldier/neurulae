@@ -3,8 +3,11 @@ import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
 import { ScheduledTaskCard } from './ScheduledTaskCard';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { timeToPercentage, getCurrentTimePercentage, getCurrentTime, isTimeInRange, timeToMinutes, isWeekday } from '@/lib/timeUtils';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface DailyFlowTimelineProps {
   timeBlocks: TimeBlock[];
@@ -31,9 +34,12 @@ export function DailyFlowTimeline({
   onAskAI,
   showQuickActions = true,
 }: DailyFlowTimelineProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<TimeBlock | undefined>();
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -65,6 +71,75 @@ export function DailyFlowTimeline({
     if (editingBlock) {
       onDeleteBlock(editingBlock.id);
       setEditorOpen(false);
+    }
+  };
+
+  const handleScheduleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toast({
+        title: 'Unsupported file',
+        description: 'Upload a PDF or image (PNG/JPG/WEBP).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', {
+        body: formData,
+      });
+
+      if (parseError) throw parseError;
+
+      if (parseResult?.entries && parseResult.entries.length > 0) {
+        // Insert schedule entries to database
+        const scheduleEntries = parseResult.entries.map((entry: any) => ({
+          user_id: user.id,
+          title: entry.title,
+          description: entry.description,
+          start_time: entry.startTime,
+          end_time: entry.endTime,
+          category: entry.category || 'other',
+          location: entry.location,
+          source: 'pdf',
+        }));
+
+        const { error: insertError } = await supabase
+          .from('schedule_entries')
+          .insert(scheduleEntries);
+
+        if (insertError) throw insertError;
+
+        toast({
+          title: 'Schedule Imported!',
+          description: `Added ${scheduleEntries.length} entries (including distributed assignments)`,
+        });
+      } else {
+        toast({
+          title: 'No Schedule Found',
+          description: 'Could not extract schedule information from the file',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error uploading schedule:', error);
+      const status = error?.status || error?.cause?.status;
+      let description = 'Failed to parse schedule.';
+      if (status === 429) description = 'Rate limit hit. Please wait and try again.';
+      else if (status === 402) description = 'AI usage limit reached. Please add credits.';
+      else if (error?.message) description = String(error.message);
+      toast({ title: 'Upload Failed', description, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -147,15 +222,43 @@ export function DailyFlowTimeline({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
-          <Button 
-            onClick={handleAddBlock} 
-            size="sm" 
-            className="bg-primary hover:bg-primary/90"
-            aria-label="Add new time block"
-          >
-            <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-            Add Block
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => document.getElementById('timeline-schedule-upload')?.click()}
+              size="sm"
+              variant="outline"
+              disabled={uploading}
+              aria-label="Upload schedule"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" aria-hidden="true" />
+                  Parsing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-1" aria-hidden="true" />
+                  Upload Schedule
+                </>
+              )}
+            </Button>
+            <input
+              id="timeline-schedule-upload"
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+              onChange={handleScheduleUpload}
+            />
+            <Button 
+              onClick={handleAddBlock} 
+              size="sm" 
+              className="bg-primary hover:bg-primary/90"
+              aria-label="Add new time block"
+            >
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+              Add Block
+            </Button>
+          </div>
         </div>
 
         <div className="relative bg-card/50 border border-border rounded-lg p-4 min-h-[600px]">
