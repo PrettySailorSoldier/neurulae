@@ -71,10 +71,11 @@ export function ScheduleManager() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if (file.type !== 'application/pdf') {
+    const allowed = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp'];
+    if (!allowed.includes(file.type)) {
       toast({
-        title: 'Invalid File',
-        description: 'Please upload a PDF file',
+        title: 'Unsupported file',
+        description: 'Upload a PDF or image (PNG/JPG/WEBP).',
         variant: 'destructive',
       });
       return;
@@ -119,17 +120,18 @@ export function ScheduleManager() {
       } else {
         toast({
           title: 'No Schedule Found',
-          description: 'Could not extract schedule information from the PDF',
+          description: 'Could not extract schedule information from the file',
           variant: 'destructive',
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading schedule:', error);
-      toast({
-        title: 'Upload Failed',
-        description: 'Failed to parse schedule from PDF',
-        variant: 'destructive',
-      });
+      const status = error?.status || error?.cause?.status;
+      let description = 'Failed to parse schedule.';
+      if (status === 429) description = 'Rate limit hit. Please wait a minute and try again.';
+      else if (status === 402) description = 'AI usage limit reached. Please add credits and retry.';
+      else if (error?.message) description = String(error.message);
+      toast({ title: 'Upload Failed', description, variant: 'destructive' });
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -254,7 +256,7 @@ export function ScheduleManager() {
           <input
             id="schedule-upload"
             type="file"
-            accept=".pdf"
+            accept=".pdf,.png,.jpg,.jpeg,.webp"
             className="hidden"
             onChange={handleFileUpload}
           />

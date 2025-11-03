@@ -42,10 +42,10 @@ serve(async (req) => {
       throw new Error('No file provided');
     }
 
-    // Validate file size (10MB max)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    // Validate file size (20MB max)
+    const MAX_FILE_SIZE = 20 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error('File too large. Maximum 10MB allowed.');
+      throw new Error('File too large. Maximum 20MB allowed.');
     }
 
     // Validate file type
@@ -84,13 +84,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a schedule parser. Extract all work shifts, classes, meetings, and homework deadlines from the provided document. Return ONLY a JSON array with this exact structure, no other text:
+            content: `You are a schedule and assignment parser. Extract ALL classes, meetings, work shifts, and especially COURSE ASSIGNMENTS from the provided document or screenshot (e.g. LMS dashboards like Canvas/Blackboard with course cards and Due lists).
 
+Return ONLY a JSON object in this exact shape, no extra text:
 {
   "entries": [
     {
-      "title": "exact event name",
-      "description": "any additional details",
+      "title": "exact event/assignment name",
+      "description": "any additional details (e.g., course name, notes)",
       "startTime": "ISO 8601 datetime",
       "endTime": "ISO 8601 datetime",
       "category": "work|class|homework|meeting|other",
@@ -99,12 +100,13 @@ serve(async (req) => {
   ]
 }
 
-Rules:
-- Parse ALL dates relative to current date if year not specified
-- For homework deadlines, assume end of day (11:59 PM) if no time given
-- For classes, extract start and end times from schedule
-- Use category: "work" for shifts, "class" for classes, "homework" for assignments, "meeting" for meetings
-- If document contains no schedule, return {"entries": []}`
+Guidelines:
+- Parse dates that omit the year relative to the current year.
+- When parsing an LMS "Due" list (e.g., Quiz, Assignment, Lab, Project, Paper, Discussion, Exam, Test), treat them as homework with a due time of 11:59 PM if no time is provided.
+- For classes/meetings/shifts, extract both start and end times explicitly.
+- Include course name in description if visible (e.g., "Intro to Business").
+- Normalize categories: map Assignment/Quiz/Exam/Lab/Project/Paper/Discussion to category "homework".
+- If no schedule content is present, return {"entries": []}.`
           },
           {
             role: 'user',
@@ -116,7 +118,7 @@ Rules:
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:application/pdf;base64,${base64Content}`
+                  url: `data:${file.type || 'application/octet-stream'};base64,${base64Content}`
                 }
               }
             ]
@@ -129,6 +131,18 @@ Rules:
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI API error:', response.status, errorText);
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please wait a minute and try again.', entries: [] }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI usage limit reached. Please add credits to continue.', entries: [] }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       throw new Error(`AI parsing failed: ${response.status}`);
     }
 
@@ -151,10 +165,55 @@ Rules:
       throw new Error('Failed to parse schedule from AI response');
     }
 
-    console.log(`Successfully parsed ${parsedData.entries?.length || 0} schedule entries`);
+    // Normalize categories, ensure datetimes, and dedupe entries
+    const rawEntries = Array.isArray(parsedData?.entries) ? parsedData.entries : [];
+
+    const normalizeCategory = (c: any) => {
+      if (!c) return 'other';
+      const v = String(c).toLowerCase();
+      if (['assignment','homework','quiz','exam','lab','project','paper','discussion'].some(k => v.includes(k))) return 'homework';
+      if (v.includes('class') || v.includes('lecture') || v.includes('course')) return 'class';
+      if (v.includes('work') || v.includes('shift')) return 'work';
+      if (v.includes('meeting')) return 'meeting';
+      return 'other';
+    };
+
+    const toISO = (s: any) => {
+      try { return new Date(s).toISOString(); } catch { return undefined; }
+    };
+
+    const seen = new Set<string>();
+    const normalized = rawEntries
+      .map((e: any) => {
+        const start = e.startTime || e.start_time;
+        const end = e.endTime || e.end_time;
+        let startISO = start ? toISO(start) : undefined;
+        let endISO = end ? toISO(end) : undefined;
+        if (!startISO && endISO) startISO = endISO;
+        if (!endISO && startISO) endISO = startISO;
+        return {
+          title: String(e.title || '').trim().slice(0, 200),
+          description: e.description || null,
+          startTime: startISO,
+          endTime: endISO,
+          category: normalizeCategory(e.category),
+          location: e.location || null,
+        };
+      })
+      .filter((e: any) => e.startTime && e.endTime && e.title)
+      .filter((e: any) => {
+        const dayKey = (e.startTime as string).slice(0, 10);
+        const key = `${e.title}|${dayKey}`.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 500);
+
+    console.log(`Successfully parsed ${normalized.length} schedule entries`);
 
     return new Response(
-      JSON.stringify(parsedData),
+      JSON.stringify({ entries: normalized }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
