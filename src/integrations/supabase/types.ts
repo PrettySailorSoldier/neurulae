@@ -202,6 +202,48 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_preferences: {
+        Row: {
+          avoid_late_night: boolean | null
+          buffer_minutes: number | null
+          created_at: string | null
+          id: string
+          max_daily_study_hours: number | null
+          max_session_length: number | null
+          min_session_length: number | null
+          preferred_study_end: string | null
+          preferred_study_start: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avoid_late_night?: boolean | null
+          buffer_minutes?: number | null
+          created_at?: string | null
+          id?: string
+          max_daily_study_hours?: number | null
+          max_session_length?: number | null
+          min_session_length?: number | null
+          preferred_study_end?: string | null
+          preferred_study_start?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avoid_late_night?: boolean | null
+          buffer_minutes?: number | null
+          created_at?: string | null
+          id?: string
+          max_daily_study_hours?: number | null
+          max_session_length?: number | null
+          min_session_length?: number | null
+          preferred_study_end?: string | null
+          preferred_study_start?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       stuck_sessions: {
         Row: {
           completed: boolean | null
