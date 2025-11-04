@@ -10,7 +10,7 @@ import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
-import { SmartScheduler } from '@/components/SmartScheduler';
+
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
 import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles, Compass, Calendar, CalendarCheck } from 'lucide-react';
@@ -1098,16 +1098,6 @@ const Index = () => {
           </div>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <SmartScheduler
-              onAddTask={handleAddTask}
-              onScheduleGenerated={() => {
-                window.location.reload();
-              }}
-              onUploadComplete={() => {
-                window.location.reload();
-              }}
-              tasks={tasks}
-            />
             {/* Main Workflow - Visual Timeline & Unified To-Do List */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               {/* Daily Flow Timeline - Visual Representation (Left 3/5) */}
@@ -1122,6 +1112,7 @@ const Index = () => {
                   onToggleComplete={handleToggleComplete}
                   onUpdateTask={handleUpdateTask}
                   onAskAI={showQuickActions ? handleAskAI : undefined}
+                  onAddTask={handleAddTask}
                   showQuickActions={showQuickActions}
                 />
               </div>

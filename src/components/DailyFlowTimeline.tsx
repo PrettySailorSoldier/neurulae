@@ -3,8 +3,22 @@ import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
 import { ScheduledTaskCard } from './ScheduledTaskCard';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { timeToPercentage, getCurrentTimePercentage, getCurrentTime, isTimeInRange, timeToMinutes, isWeekday } from '@/lib/timeUtils';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface ScheduleEntry {
+  id: string;
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  category: string;
+  source: string;
+  location?: string;
+}
 
 interface DailyFlowTimelineProps {
   timeBlocks: TimeBlock[];
@@ -16,6 +30,7 @@ interface DailyFlowTimelineProps {
   onToggleComplete: (taskId: string) => void;
   onUpdateTask?: (task: Task) => void;
   onAskAI?: (message: string) => void;
+  onAddTask?: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   showQuickActions?: boolean;
 }
 
@@ -29,20 +44,177 @@ export function DailyFlowTimeline({
   onToggleComplete,
   onUpdateTask,
   onAskAI,
+  onAddTask,
   showQuickActions = true,
 }: DailyFlowTimelineProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<TimeBlock | undefined>();
+  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
+  const [uploading, setUploading] = useState(false);
   
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTimePercentage(getCurrentTimePercentage());
-    }, 60000); // Update every minute
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
+
+  // Load schedule entries from database
+  useEffect(() => {
+    if (user) {
+      loadScheduleEntries();
+    }
+  }, [user]);
+
+  const loadScheduleEntries = async () => {
+    if (!user) return;
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const { data, error } = await supabase
+        .from('schedule_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('start_time', today.toISOString())
+        .lt('start_time', tomorrow.toISOString())
+        .order('start_time', { ascending: true });
+
+      if (error) throw error;
+      setScheduleEntries(data || []);
+    } catch (error) {
+      console.error('Error loading schedule entries:', error);
+    }
+  };
+
+  const handleScheduleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !user) return;
+
+    setUploading(true);
+
+    let totalEntries = 0;
+    let totalHomework = 0;
+    const allEntries: any[] = [];
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        const allowedTypes = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp','image/heic'];
+        const ext = file.name?.split('.').pop()?.toLowerCase() || '';
+        const allowedExts = ['pdf','png','jpg','jpeg','webp','heic'];
+        if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+          continue;
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+
+          const invokeOptions: any = { body: formData };
+          if (session?.access_token) {
+            invokeOptions.headers = { Authorization: `Bearer ${session.access_token}` };
+          }
+
+          const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', invokeOptions);
+
+          if (parseError) throw parseError;
+
+          if (parseResult?.entries && parseResult.entries.length > 0) {
+            const scheduleEntries = parseResult.entries.map((entry: any) => {
+              let source = 'manual';
+              if (entry.category === 'work') source = 'work';
+              else if (entry.category === 'class') source = 'class';
+              else if (entry.category === 'homework') {
+                source = 'homework';
+                // Add homework as tasks
+                if (onAddTask) {
+                  onAddTask({
+                    title: entry.title,
+                    completed: false,
+                    recurring: 'none',
+                    notes: entry.description || '',
+                    dueDate: entry.startTime,
+                  });
+                }
+                totalHomework++;
+              }
+              
+              return {
+                user_id: user.id,
+                title: entry.title,
+                description: entry.description,
+                start_time: entry.startTime,
+                end_time: entry.endTime,
+                category: entry.category || 'other',
+                location: entry.location,
+                source: source,
+              };
+            });
+
+            allEntries.push(...scheduleEntries);
+            totalEntries += scheduleEntries.length;
+          }
+        } catch (fileError: any) {
+          console.error(`Error processing file ${file.name}:`, fileError);
+        }
+      }
+
+      if (allEntries.length > 0) {
+        const { error: insertError } = await supabase
+          .from('schedule_entries')
+          .insert(allEntries);
+
+        if (insertError) throw insertError;
+
+        let message = `Imported ${totalEntries} entries from ${files.length} file${files.length > 1 ? 's' : ''}`;
+        if (totalHomework > 0) {
+          message += `. ${totalHomework} homework tasks added to your to-do list`;
+        }
+
+        toast({
+          title: '✓ Schedule uploaded!',
+          description: message,
+        });
+
+        // Reload schedule entries
+        await loadScheduleEntries();
+      } else {
+        toast({
+          title: 'No entries found',
+          description: 'Could not extract schedule from files',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error uploading schedule:', error);
+      const status = error?.status || error?.cause?.status;
+      let description = 'Failed to parse schedule';
+      if (status === 429) description = 'Rate limit exceeded. Please wait a minute.';
+      else if (status === 402) description = 'AI usage limit reached. Please add credits.';
+      else if (error?.message) description = error.message;
+      
+      toast({ 
+        title: 'Upload Failed', 
+        description, 
+        variant: 'destructive' 
+      });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const handleAddBlock = () => {
     setEditingBlock(undefined);
@@ -140,6 +312,51 @@ export function DailyFlowTimeline({
     );
   };
 
+  // Render schedule entries from database
+  const renderScheduleEntry = (entry: ScheduleEntry) => {
+    const startDate = new Date(entry.start_time);
+    const endDate = new Date(entry.end_time);
+    const startTime = `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`;
+    const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+    
+    const topPercentage = timeToPercentage(startTime);
+    const bottomPercentage = timeToPercentage(endTime);
+    const height = bottomPercentage - topPercentage;
+    const duration = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+
+    const categoryColors: Record<string, string> = {
+      work: '#ef4444',
+      class: '#3b82f6',
+      homework: '#f59e0b',
+      other: '#6b7280',
+    };
+
+    const color = categoryColors[entry.category] || categoryColors.other;
+
+    return (
+      <div
+        key={entry.id}
+        className="absolute left-0 right-0 border-2 rounded-lg p-3 pointer-events-none"
+        style={{
+          top: `${topPercentage}%`,
+          height: `${height}%`,
+          backgroundColor: `${color}20`,
+          borderColor: color,
+        }}
+      >
+        <div>
+          <h4 className="font-semibold text-sm">{entry.title}</h4>
+          <p className="text-xs text-muted-foreground">
+            {startTime} - {endTime} ({Math.round(duration / 60)}h)
+          </p>
+          {entry.location && (
+            <p className="text-xs text-muted-foreground mt-1">📍 {entry.location}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <section 
@@ -149,15 +366,43 @@ export function DailyFlowTimeline({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
-          <Button 
-            onClick={handleAddBlock} 
-            size="sm" 
-            className="bg-primary hover:bg-primary/90"
-            aria-label="Add new time block"
-          >
-            <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-            Add Block
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById('schedule-upload-input')?.click()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </>
+              )}
+            </Button>
+            <input
+              id="schedule-upload-input"
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.heic"
+              className="hidden"
+              multiple
+              onChange={handleScheduleUpload}
+            />
+            <Button 
+              onClick={handleAddBlock} 
+              size="sm" 
+              className="bg-primary hover:bg-primary/90"
+              aria-label="Add new time block"
+            >
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+              Add Block
+            </Button>
+          </div>
         </div>
 
         <div className="relative bg-card/50 border border-border rounded-lg p-4 min-h-[600px]">
@@ -186,13 +431,14 @@ export function DailyFlowTimeline({
               </div>
             </div>
 
-            {/* Dedicated blocks (right) */}
+            {/* Dedicated blocks (right) - includes schedule entries from uploads */}
             <div className="relative pl-2">
               <p className="text-xs text-muted-foreground mb-2 text-center sticky top-0 bg-card/90 backdrop-blur-sm py-1">
                 Dedicated Time
               </p>
               <div className="relative h-[600px]">
                 {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
+                {scheduleEntries.map(entry => renderScheduleEntry(entry))}
               </div>
             </div>
 
@@ -207,7 +453,7 @@ export function DailyFlowTimeline({
             </div>
           </div>
 
-          {visibleBlocks.length === 0 && (
+          {visibleBlocks.length === 0 && scheduleEntries.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground" role="status">
               <div className="text-center space-y-3">
                 <p className="mb-2">No time blocks yet</p>
