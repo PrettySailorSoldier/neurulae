@@ -37,9 +37,16 @@ serve(async (req) => {
 
     console.log('Processing screenshot for assignment extraction...');
 
-    // Convert image to base64
+    // Convert image to base64 (chunk to avoid stack overflow)
     const arrayBuffer = await imageFile.arrayBuffer();
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Image = btoa(binary);
     const imageUrl = `data:${imageFile.type};base64,${base64Image}`;
 
     // Call Lovable AI with vision
