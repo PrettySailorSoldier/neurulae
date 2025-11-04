@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Task, TimeBlock } from '@/types';
 import { UnscheduledTaskItem } from './UnscheduledTaskItem';
 import { AIOrganizeDialog } from './AIOrganizeDialog';
@@ -15,7 +17,7 @@ interface TaskListProps {
   tasks: Task[];
   timeBlocks: TimeBlock[];
   onToggleComplete: (id: string) => void;
-  onAddTask: (title: string) => void;
+  onAddTask: (title: string, estimatedMinutes?: number) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onPrioritize: (taskIds: string[]) => void;
@@ -44,6 +46,8 @@ export function TaskList({
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskMinutes, setNewTaskMinutes] = useState('');
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
@@ -55,10 +59,19 @@ export function TaskList({
     return matchesSearch && matchesCompleted;
   });
 
+  const handleOpenTaskDialog = () => {
+    setNewTaskTitle('');
+    setNewTaskMinutes('');
+    setTaskDialogOpen(true);
+  };
+
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
-      onAddTask(newTaskTitle);
+      const minutes = newTaskMinutes ? parseInt(newTaskMinutes) : undefined;
+      onAddTask(newTaskTitle, minutes);
       setNewTaskTitle('');
+      setNewTaskMinutes('');
+      setTaskDialogOpen(false);
     }
   };
 
@@ -185,17 +198,10 @@ export function TaskList({
                 </div>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <Input
-                  placeholder="New task..."
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                />
-                <Button onClick={handleAddTask} className="btn-primary">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button onClick={handleOpenTaskDialog} className="btn-primary w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Task
+              </Button>
             )}
           </div>
 
@@ -227,6 +233,45 @@ export function TaskList({
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="task-title">Task Title</Label>
+              <Input
+                id="task-title"
+                placeholder="e.g., Chapter 4 Quiz"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estimated-minutes">Estimated Minutes (optional)</Label>
+              <Input
+                id="estimated-minutes"
+                type="number"
+                placeholder="e.g., 30"
+                value={newTaskMinutes}
+                onChange={(e) => setNewTaskMinutes(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTaskDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
+              Add Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AIOrganizeDialog
         open={aiDialogOpen}

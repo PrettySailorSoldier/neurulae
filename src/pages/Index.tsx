@@ -254,7 +254,7 @@ const Index = () => {
     }
   }, [theme, customTheme]);
 
-  const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>) => {
+  const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number) => {
     const newTask: Task = typeof taskOrTitle === 'string'
       ? {
           id: crypto.randomUUID(),
@@ -262,6 +262,7 @@ const Index = () => {
           completed: false,
           recurring: 'none',
           createdAt: new Date().toISOString(),
+          ...(estimatedMinutes && { estimatedMinutes }),
         }
       : {
           id: crypto.randomUUID(),

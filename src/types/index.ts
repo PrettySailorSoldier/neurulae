@@ -11,6 +11,7 @@ export interface Task {
   dueDate?: string;
   projectId?: string;
   focusTimeMinutes?: number;
+  estimatedMinutes?: number;
   recurring?: 'none' | 'daily' | 'weekly';
   colorTag?: string;
   createdAt: string;
