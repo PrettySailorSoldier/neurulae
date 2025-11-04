@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { parse as parseJSON5 } from 'https://esm.sh/json5@2.2.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -152,11 +153,14 @@ Guidelines:
       throw new Error('No content in AI response');
     }
 
-    // Parse JSON from response (robust to code fences and extra text)
+    // Parse JSON from response (very robust)
     let parsedData;
     try {
-      // If the gateway already returned a JSON object, use it directly
-      if (typeof content === 'object' && content && 'entries' in (content as any)) {
+      // Prefer structured fields when available
+      const maybeParsed = (result?.choices?.[0]?.message as any)?.parsed;
+      if (maybeParsed && typeof maybeParsed === 'object' && 'entries' in maybeParsed) {
+        parsedData = maybeParsed;
+      } else if (typeof content === 'object' && content && 'entries' in (content as any)) {
         parsedData = content;
       } else {
         let text = typeof content === 'string' ? content.trim() : '';
@@ -168,24 +172,40 @@ Guidelines:
           return s;
         };
 
-        const tryParse = (s: string) => { try { return JSON.parse(s); } catch { return null; } };
+        const tryParseAny = (s: string) => {
+          try { return JSON.parse(s); } catch {}
+          try { return parseJSON5(s); } catch {}
+          return null;
+        };
 
-        // 1) Raw
-        let candidate = text ? tryParse(text) : null;
+        // Attempt raw and fence-stripped first
+        let candidate = text ? tryParseAny(text) : null;
+        if (!candidate && text) candidate = tryParseAny(stripCodeFences(text));
+        if (!candidate && text) candidate = tryParseAny(stripCodeFences(text).replace(/,\s*([}\]])/g, '$1'));
 
-        // 2) Strip code fences
+        // Brace-matching extractor for first well-formed JSON object
+        const extractFirstJSONObject = (s: string): string | null => {
+          let inString = false, escape = false, depth = 0, start = -1;
+          for (let i = 0; i < s.length; i++) {
+            const ch = s[i];
+            if (inString) {
+              if (escape) { escape = false; continue; }
+              if (ch === '\\') { escape = true; continue; }
+              if (ch === '"') inString = false;
+              continue;
+            } else {
+              if (ch === '"') { inString = true; continue; }
+              if (ch === '{') { if (depth === 0) start = i; depth++; continue; }
+              if (ch === '}') { depth--; if (depth === 0 && start !== -1) return s.slice(start, i + 1); }
+            }
+          }
+          return null;
+        };
+
         if (!candidate && text) {
-          const stripped = stripCodeFences(text);
-          candidate = tryParse(stripped) || tryParse(stripped.replace(/,\s*([}\]])/g, '$1')); // fix trailing commas
-        }
-
-        // 3) Extract innermost JSON object and retry (with trailing comma fix)
-        if (!candidate && text) {
-          const first = text.indexOf('{');
-          const last = text.lastIndexOf('}');
-          if (first !== -1 && last !== -1 && last > first) {
-            const inner = text.slice(first, last + 1);
-            candidate = tryParse(inner) || tryParse(inner.replace(/,\s*([}\]])/g, '$1'));
+          const inner = extractFirstJSONObject(text);
+          if (inner) {
+            candidate = tryParseAny(inner) || tryParseAny(inner.replace(/,\s*([}\]])/g, '$1'));
           }
         }
 
