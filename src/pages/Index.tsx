@@ -1101,7 +1101,9 @@ const Index = () => {
             <SmartScheduler
               onAddTask={handleAddTask}
               onScheduleGenerated={() => {
-                // Refresh or reload data if needed
+                window.location.reload();
+              }}
+              onUploadComplete={() => {
                 window.location.reload();
               }}
               tasks={tasks}

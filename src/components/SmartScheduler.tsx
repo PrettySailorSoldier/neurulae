@@ -18,10 +18,11 @@ type FileStatus = {
 interface SmartSchedulerProps {
   onAddTask?: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   onScheduleGenerated?: () => void;
+  onUploadComplete?: () => void;
   tasks: Task[];
 }
 
-export function SmartScheduler({ onAddTask, onScheduleGenerated, tasks }: SmartSchedulerProps) {
+export function SmartScheduler({ onAddTask, onScheduleGenerated, onUploadComplete, tasks }: SmartSchedulerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -122,11 +123,16 @@ export function SmartScheduler({ onAddTask, onScheduleGenerated, tasks }: SmartS
 
         toast({
           title: '✓ Busy times imported',
-          description: `Added ${totalEntries} entries from ${files.length} file${files.length > 1 ? 's' : ''}`,
+          description: `Added ${totalEntries} entries from ${files.length} file${files.length > 1 ? 's' : ''}. Refreshing...`,
         });
         
         setUploadSuccess(true);
         setUploadedEntriesCount(totalEntries);
+        
+        // Trigger refresh to show uploaded entries
+        if (onUploadComplete) {
+          setTimeout(() => onUploadComplete(), 1500);
+        }
       } else {
         toast({
           title: 'No entries found',
