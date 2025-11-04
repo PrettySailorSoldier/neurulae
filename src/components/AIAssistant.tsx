@@ -563,12 +563,12 @@ export function AIAssistant({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(
-        "flex flex-col text-left",
-        isMobile 
-          ? "w-full max-w-full h-[100dvh] rounded-none" 
-          : "max-w-6xl h-[70vh]"
-      )} aria-describedby="ai-assistant-description">
+        <DialogContent className={cn(
+          "flex flex-col text-left",
+          isMobile 
+            ? "w-full max-w-full h-[100dvh] rounded-none" 
+            : "w-[95vw] !max-w-[95vw] sm:!max-w-[95vw] md:!max-w-6xl lg:!max-w-7xl h-[70vh]"
+        )} aria-describedby="ai-assistant-description">
         <DialogHeader className="pr-10">
           <DialogTitle className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
