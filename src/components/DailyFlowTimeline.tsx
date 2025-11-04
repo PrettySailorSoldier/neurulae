@@ -244,24 +244,28 @@ export function DailyFlowTimeline({
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const nextWeek = new Date(today);
-      nextWeek.setDate(today.getDate() + 7);
-
-      const { error } = await supabase
+      
+      // Delete all schedule entries from today onwards (not just next 7 days)
+      // This covers entries with any source type (work, class, homework, imported)
+      const { data: deletedEntries, error } = await supabase
         .from('schedule_entries')
         .delete()
         .eq('user_id', user.id)
-        .eq('source', 'imported')
         .gte('start_time', today.toISOString())
-        .lte('start_time', nextWeek.toISOString());
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
+
+      console.log(`Deleted ${deletedEntries?.length || 0} schedule entries`);
 
       await loadScheduleEntries();
       
       toast({
         title: "Schedule Cleared",
-        description: "Imported schedule entries for the next week have been removed.",
+        description: `Removed ${deletedEntries?.length || 0} schedule entries from today onwards.`,
       });
     } catch (error) {
       console.error('Error clearing schedule:', error);
@@ -463,15 +467,15 @@ export function DailyFlowTimeline({
       <AlertDialog open={clearScheduleDialogOpen} onOpenChange={setClearScheduleDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear Imported Schedule?</AlertDialogTitle>
+            <AlertDialogTitle>Clear Schedule Entries?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove all imported schedule entries for the next 7 days. This action cannot be undone.
+              This will remove all schedule entries from today onwards. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleClearSchedule} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Clear Schedule
+              Clear All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
