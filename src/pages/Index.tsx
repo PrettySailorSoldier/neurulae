@@ -12,7 +12,7 @@ import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles, Compass } from 'lucide-react';
+import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles, Compass, Calendar, CalendarCheck } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { AICommandBar } from '@/components/AICommandBar';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
@@ -979,6 +979,24 @@ const Index = () => {
               >
                 <Grid3x3 className="h-5 w-5" />
               </Button>
+              <Link to="/my-availability">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="My Availability"
+                >
+                  <Calendar className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Link to="/my-plan">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="My Plan"
+                >
+                  <CalendarCheck className="h-5 w-5" />
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 size="sm"
