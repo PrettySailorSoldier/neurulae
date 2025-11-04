@@ -175,8 +175,8 @@ export function SmartScheduleUploader() {
       }
 
       toast({
-        title: 'Study Plan Generated! ✨',
-        description: data?.message || 'Your AI study plan is ready',
+        title: 'Life Plan Generated! ✨',
+        description: data?.message || 'Your AI-optimized schedule is ready',
       });
     } catch (error: any) {
       console.error('Error generating plan:', error);
@@ -201,10 +201,10 @@ export function SmartScheduleUploader() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          Smart Study Scheduler
+          AI Life Scheduler
         </CardTitle>
         <CardDescription>
-          Upload your work/class schedule and let AI plan your homework
+          Upload your work/class schedule and let AI plan everything you need to do
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -213,7 +213,7 @@ export function SmartScheduleUploader() {
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</div>
             <div className="flex-1">
               <p className="font-medium">Upload Your Schedule</p>
-              <p className="text-sm text-muted-foreground">Screenshot of work shifts or class times</p>
+              <p className="text-sm text-muted-foreground">Work shifts, class times, appointments - anything recurring</p>
               <Button
                 variant="outline"
                 className="mt-2 w-full"
@@ -265,16 +265,16 @@ export function SmartScheduleUploader() {
           <div className="flex items-start gap-3">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</div>
             <div className="flex-1">
-              <p className="font-medium">Add Your Tasks</p>
-              <p className="text-sm text-muted-foreground">Add homework/assignments below (estimates optional)</p>
+              <p className="font-medium">Add All Your Tasks</p>
+              <p className="text-sm text-muted-foreground">Homework, cleaning, errands, appointments - add everything below</p>
             </div>
           </div>
 
           <div className="flex items-start gap-3">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">3</div>
             <div className="flex-1">
-              <p className="font-medium">Generate Smart Plan</p>
-              <p className="text-sm text-muted-foreground">AI finds your free time and schedules everything</p>
+              <p className="font-medium">Let AI Plan Your Life</p>
+              <p className="text-sm text-muted-foreground">AI considers all your commitments and creates an optimal schedule</p>
               <Button
                 className="mt-2 w-full"
                 onClick={handleGeneratePlan}
@@ -288,7 +288,7 @@ export function SmartScheduleUploader() {
                 ) : (
                   <>
                     <Calendar className="h-4 w-4 mr-2" />
-                    Generate My Study Plan
+                    Generate My Schedule
                   </>
                 )}
               </Button>

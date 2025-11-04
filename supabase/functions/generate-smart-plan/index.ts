@@ -46,9 +46,9 @@ serve(async (req) => {
     // Keep a compatible shape for downstream code
     const user = { id: userId } as const;
 
-    console.log('Generating smart plan for user:', user.id);
+    console.log('Generating life plan for user:', user.id);
 
-    // Fetch all busy schedule entries (work, class, existing homework)
+    // Fetch all busy schedule entries (work, class, appointments, existing scheduled tasks)
     const { data: busyBlocks, error: busyError } = await supabase
       .from('schedule_entries')
       .select('*')
@@ -88,7 +88,7 @@ serve(async (req) => {
       min_session_length: 30,
       max_session_length: 180,
       buffer_minutes: 15,
-      max_daily_study_hours: 6,
+      max_daily_study_hours: 8, // Increased for general life tasks
     };
 
     // Use AI to generate optimal schedule
@@ -109,18 +109,28 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an intelligent study planner. Given a user's busy schedule (work/class) and pending tasks, create an optimal study schedule.
+            content: `You are an intelligent life scheduler and executive function coach. Given a user's busy schedule (work, classes, appointments) and all their pending tasks (homework, errands, cleaning, etc.), create an optimal life schedule.
 
 CRITICAL RULES:
-1. Find FREE TIME by inverting busy blocks
-2. Schedule homework ONLY in free time gaps
-3. Respect user preferences for study hours
+1. Find FREE TIME by analyzing all busy blocks (work, class, appointments)
+2. Schedule tasks ONLY in free time gaps
+3. Respect user preferences for working hours
 4. Add buffer time between activities
-5. Consider task difficulty and due dates
+5. Consider task difficulty, urgency, and due dates
 6. Don't schedule during late night if avoid_late_night is true
 7. Break large tasks into manageable sessions
 8. Estimate time for tasks without estimates based on task name/type
 9. Never overlap with existing busy blocks
+10. Prioritize urgent/due-soon tasks first
+11. Balance different task types throughout the week
+12. Consider user's executive function needs - don't overload any single day
+
+TASK TYPES & TIME ESTIMATES:
+- Homework/studying: 1-3 hours depending on complexity
+- Cleaning house: 1-2 hours
+- Errands (shopping, appointments): 30min-1 hour each
+- Doctor appointments: schedule 1 hour (includes travel/waiting)
+- Personal tasks: estimate based on description
 
 Return a JSON array of scheduled tasks:
 {
@@ -138,12 +148,12 @@ Return a JSON array of scheduled tasks:
           },
           {
             role: 'user',
-            content: `Schedule these tasks optimally:
+            content: `Schedule these tasks optimally across my life:
 
 BUSY SCHEDULE (DO NOT overlap with these):
 ${JSON.stringify(busyBlocks || [], null, 2)}
 
-TASKS TO SCHEDULE:
+ALL TASKS TO SCHEDULE (homework, cleaning, errands, appointments, etc.):
 ${JSON.stringify(tasks.map(t => ({
   id: t.id,
   name: t.name,
@@ -157,7 +167,7 @@ ${JSON.stringify(preferences, null, 2)}
 
 Current date/time: ${new Date().toISOString()}
 
-Generate an optimal 2-week study plan.`
+Generate an optimal 2-week life schedule that accounts for ALL my commitments and tasks. If I say "I need to clean the house," find time for it. If homework is due, prioritize it. Balance everything intelligently.`
           }
         ],
         max_tokens: 3000,
@@ -228,13 +238,13 @@ Generate an optimal 2-week study plan.`
       }
     }
 
-    console.log(`Successfully scheduled ${parsedPlan.length} tasks`);
+    console.log(`Successfully scheduled ${parsedPlan.length} life tasks`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         plan: parsedPlan,
-        message: `Successfully scheduled ${parsedPlan.length} study sessions`
+        message: `Successfully scheduled ${parsedPlan.length} tasks across your week`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

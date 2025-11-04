@@ -79,8 +79,8 @@ export default function MyPlan() {
       }
 
       toast({
-        title: 'Study Plan Generated! ✨',
-        description: data?.message || 'Your AI study plan is ready',
+        title: 'Schedule Generated! ✨',
+        description: data?.message || 'Your AI-optimized plan is ready',
       });
 
       // Reload schedule
@@ -140,8 +140,8 @@ export default function MyPlan() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">My Study Plan</h1>
-            <p className="text-muted-foreground">Your AI-generated study schedule</p>
+            <h1 className="text-3xl font-bold">My Schedule</h1>
+            <p className="text-muted-foreground">Your AI-optimized life plan</p>
           </div>
         </div>
 
@@ -149,9 +149,9 @@ export default function MyPlan() {
           <CardContent className="py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold mb-1">AI-Powered Study Scheduling</h3>
+                <h3 className="font-semibold mb-1">AI-Powered Life Scheduling</h3>
                 <p className="text-sm text-muted-foreground">
-                  Click to generate an optimized study plan based on your tasks and free time
+                  Click to generate an optimized schedule for all your tasks and commitments
                 </p>
               </div>
               <Button onClick={handleGeneratePlan} disabled={generating} size="lg">
