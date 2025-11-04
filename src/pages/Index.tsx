@@ -14,7 +14,7 @@ import { ScheduleOverview } from '@/components/ScheduleOverview';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles, Compass, Calendar, CalendarCheck } from 'lucide-react';
+import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Calendar, CalendarCheck } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { AIAssistant } from '@/components/AIAssistant';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
@@ -39,7 +39,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
-import { UpgradeModal } from '@/components/premium/UpgradeModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProfileSetupDialog } from '@/components/ProfileSetupDialog';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
@@ -51,7 +50,6 @@ import { cn } from '@/lib/utils';
 const Index = () => {
   const { user } = useAuth();
   const { plan, isPremium, isAdmin } = usePremium();
-  const { canUseStuckMode, incrementStuckSession, stuckSessionsRemaining, showUpgradeModal, upgradeModalOpen, setUpgradeModalOpen, blockedFeature } = useFeatureLimit();
   const [showSyncBanner, setShowSyncBanner] = useState(true);
   const isMobile = useIsMobile();
   const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
@@ -921,20 +919,6 @@ const Index = () => {
     toast({ title: "Tab removed" });
   };
 
-  const handleStuckClick = () => {
-    if (!canUseStuckMode()) {
-      showUpgradeModal("Unlimited 'I'm Stuck' guided planning sessions");
-      return;
-    }
-    incrementStuckSession();
-    setInitialAIMessage("I need help figuring out what to focus on today");
-    setIsAIAssistantOpen(true);
-    toast({
-      title: "Let's figure this out together",
-      description: stuckSessionsRemaining === 1 ? "This is your last free stuck session this month." : undefined,
-    });
-  };
-
   const handleAskAI = (message: string) => {
     setInitialAIMessage(message);
     setIsAIAssistantOpen(true);
@@ -1046,26 +1030,12 @@ const Index = () => {
                 </Button>
               </Link>
               <Button
-                variant="outline"
-                size="sm"
-                onClick={handleStuckClick}
-                className="flex items-center gap-2 bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 border-primary/20"
-              >
-                <Compass className="w-4 h-4" />
-                I'm Stuck
-                {!isPremium && !isAdmin && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {stuckSessionsRemaining} left
-                  </Badge>
-                )}
-              </Button>
-              <Button
                 variant="default"
                 size="sm"
                 onClick={() => { setShowAI(true); setIsAIAssistantOpen(true); }}
                 className="gap-2"
               >
-                <Sparkles className="h-4 w-4" />
+                <Brain className="h-4 w-4" />
                 AI Assistant
               </Button>
               <Button
@@ -1371,12 +1341,6 @@ const Index = () => {
       <KeyboardShortcutsDialog
         open={keyboardShortcutsOpen}
         onOpenChange={setKeyboardShortcutsOpen}
-      />
-
-      <UpgradeModal
-        open={upgradeModalOpen}
-        onOpenChange={setUpgradeModalOpen}
-        feature={blockedFeature}
       />
       
       <ProfileSetupDialog

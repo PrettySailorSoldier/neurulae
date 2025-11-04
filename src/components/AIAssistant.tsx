@@ -566,13 +566,13 @@ export function AIAssistant({
         "flex flex-col text-left",
         isMobile 
           ? "w-full max-w-full h-[100dvh] rounded-none" 
-          : "max-w-2xl h-[600px]"
+          : "max-w-4xl h-[85vh]"
       )} aria-describedby="ai-assistant-description">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5" aria-hidden="true" />
-              {stuckMode ? "I'm Stuck - Let's Figure This Out" : "AI Productivity Coach"}
+              AI Productivity Coach
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">

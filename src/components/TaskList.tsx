@@ -53,10 +53,36 @@ export function TaskList({
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const { canUseAIFeatures, showUpgradeModal, upgradeModalOpen, setUpgradeModalOpen } = useFeatureLimit();
 
+  // Filter out tasks without proper names and apply search/completion filters
   const filteredTasks = tasks.filter(task => {
+    const hasValidTitle = task.title && task.title.trim().length > 0;
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCompleted = showCompleted || !task.completed;
-    return matchesSearch && matchesCompleted;
+    return hasValidTitle && matchesSearch && matchesCompleted;
+  });
+
+  // Separate daily vs ongoing tasks
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(23, 59, 59, 999);
+
+  const dailyTasks = filteredTasks.filter(task => {
+    if (task.type === 'daily') return true;
+    if (task.dueDate) {
+      const dueDate = new Date(task.dueDate);
+      return dueDate <= tomorrow;
+    }
+    return false;
+  });
+
+  const ongoingTasks = filteredTasks.filter(task => {
+    if (task.type === 'ongoing') return true;
+    if (task.dueDate) {
+      const dueDate = new Date(task.dueDate);
+      return dueDate > tomorrow;
+    }
+    return !task.dueDate; // Tasks without due dates are ongoing
   });
 
   const handleOpenTaskDialog = () => {
@@ -206,29 +232,60 @@ export function TaskList({
           </div>
 
           <ScrollArea className="flex-1 pr-2">
-            <div className="space-y-2">
+            <div className="space-y-4">
               {filteredTasks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <p>No tasks yet. Add one above!</p>
                 </div>
               ) : (
-                filteredTasks.map((task) => (
-                  <UnscheduledTaskItem
-                    key={task.id}
-                    task={task}
-                    onToggleComplete={onToggleComplete}
-                    onUpdateTask={onUpdateTask}
-                    onDeleteTask={onDeleteTask}
-                    onAskAI={onAskAI}
-                    showQuickActions={showQuickActions}
-                  />
-                ))
+                <>
+                  {/* Daily/Urgent Section */}
+                  {dailyTasks.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                        📅 Today's Focus ({dailyTasks.length})
+                      </h3>
+                      {dailyTasks.map((task) => (
+                        <UnscheduledTaskItem
+                          key={task.id}
+                          task={task}
+                          onToggleComplete={onToggleComplete}
+                          onUpdateTask={onUpdateTask}
+                          onDeleteTask={onDeleteTask}
+                          onAskAI={onAskAI}
+                          showQuickActions={showQuickActions}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Ongoing/Future Section */}
+                  {ongoingTasks.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                        🎯 Ongoing & Future ({ongoingTasks.length})
+                      </h3>
+                      {ongoingTasks.map((task) => (
+                        <UnscheduledTaskItem
+                          key={task.id}
+                          task={task}
+                          onToggleComplete={onToggleComplete}
+                          onUpdateTask={onUpdateTask}
+                          onDeleteTask={onDeleteTask}
+                          onAskAI={onAskAI}
+                          showQuickActions={showQuickActions}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </ScrollArea>
 
           <div className="text-sm text-muted-foreground pt-2 border-t border-border">
-            {filteredTasks.filter(t => !t.completed).length} active •{' '}
+            {dailyTasks.filter(t => !t.completed).length} today •{' '}
+            {ongoingTasks.filter(t => !t.completed).length} ongoing •{' '}
             {filteredTasks.filter(t => t.completed).length} completed
           </div>
         </CardContent>
