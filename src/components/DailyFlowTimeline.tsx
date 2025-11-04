@@ -116,13 +116,13 @@ export function DailyFlowTimeline({
 
       if (error) throw error;
 
-      const { parsedData } = data;
-      console.log('Parsed schedule data:', parsedData);
+      const { entries } = data;
+      console.log('Parsed schedule data:', entries);
 
       // Check for duplicates before inserting
-      if (parsedData.schedule && parsedData.schedule.length > 0) {
-        const startDate = new Date(parsedData.schedule[0].startTime);
-        const endDate = new Date(parsedData.schedule[parsedData.schedule.length - 1].endTime);
+      if (entries && entries.length > 0) {
+        const startDate = new Date(entries[0].startTime);
+        const endDate = new Date(entries[entries.length - 1].endTime);
 
         const { data: existingEntries, error: checkError } = await supabase
           .from('schedule_entries')
@@ -134,7 +134,7 @@ export function DailyFlowTimeline({
         if (checkError) throw checkError;
 
         // Check for duplicates
-        const duplicates = parsedData.schedule.filter((newEntry: any) =>
+        const duplicates = entries.filter((newEntry: any) =>
           existingEntries?.some((existing: any) =>
             existing.title === newEntry.title &&
             existing.start_time === newEntry.startTime &&
@@ -144,7 +144,7 @@ export function DailyFlowTimeline({
 
         if (duplicates.length > 0 && existingEntries && existingEntries.length > 0) {
           // Show duplicate dialog
-          setPendingUploadData({ parsedData, existingEntries, startDate, endDate });
+          setPendingUploadData({ entries, existingEntries, startDate, endDate });
           setDuplicateDialogOpen(true);
           setIsUploading(false);
           if (event.target) event.target.value = '';
@@ -153,7 +153,7 @@ export function DailyFlowTimeline({
       }
 
       // No duplicates, proceed with upload
-      await proceedWithUpload(parsedData);
+      await proceedWithUpload(entries);
       
     } catch (error) {
       console.error('Error uploading schedule:', error);
@@ -170,25 +170,11 @@ export function DailyFlowTimeline({
     }
   };
 
-  const proceedWithUpload = async (parsedData: any, replaceExisting: boolean = false) => {
+  const proceedWithUpload = async (entries: any[], replaceExisting: boolean = false) => {
     if (!user) return;
 
     try {
-      if (parsedData.homework && parsedData.homework.length > 0) {
-        parsedData.homework.forEach((hw: any) => {
-          if (onAddTask) {
-            onAddTask({
-              title: `📚 ${hw.course} - ${hw.assignment}`,
-              completed: false,
-              recurring: 'none',
-              estimatedMinutes: hw.estimatedMinutes || 60,
-              dueDate: hw.dueDate,
-            });
-          }
-        });
-      }
-
-      if (parsedData.schedule && parsedData.schedule.length > 0) {
+      if (entries && entries.length > 0) {
         // If replacing, delete existing entries in date range
         if (replaceExisting && pendingUploadData) {
           const { startDate, endDate } = pendingUploadData;
@@ -202,13 +188,13 @@ export function DailyFlowTimeline({
           if (deleteError) throw deleteError;
         }
 
-        const scheduleEntries = parsedData.schedule.map((entry: any) => ({
+        const scheduleEntries = entries.map((entry: any) => ({
           user_id: user.id,
           title: entry.title || 'Untitled',
-          description: entry.description || entry.type || null,
+          description: entry.description || entry.category || null,
           start_time: entry.startTime,
           end_time: entry.endTime,
-          category: entry.type || 'other',
+          category: entry.category || 'other',
           location: entry.location || null,
           source: 'imported'
         }));
@@ -223,7 +209,7 @@ export function DailyFlowTimeline({
         
         toast({
           title: "✅ Schedule Imported",
-          description: `Added ${scheduleEntries.length} entries${parsedData.homework ? ` and ${parsedData.homework.length} homework tasks` : ''}.`,
+          description: `Added ${scheduleEntries.length} entries.`,
         });
       }
 
@@ -455,7 +441,7 @@ export function DailyFlowTimeline({
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingUploadData(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              proceedWithUpload(pendingUploadData.parsedData, true);
+              proceedWithUpload(pendingUploadData.entries, true);
               setDuplicateDialogOpen(false);
             }}>
               Replace All
