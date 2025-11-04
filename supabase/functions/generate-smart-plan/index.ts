@@ -46,7 +46,7 @@ serve(async (req) => {
     // Keep a compatible shape for downstream code
     const user = { id: userId } as const;
 
-    console.log('Generating life plan for user:', user.id);
+    console.log('Generating smart schedule for user:', user.id);
 
     // Fetch all busy schedule entries (work, class, appointments, existing scheduled tasks)
     const { data: busyBlocks, error: busyError } = await supabase
@@ -109,7 +109,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an intelligent life scheduler and executive function coach. Given a user's busy schedule (work, classes, appointments) and all their pending tasks (homework, errands, cleaning, etc.), create an optimal life schedule.
+            content: `You are a smart scheduler that helps people organize their time. Given a user's busy schedule (work, classes, appointments) and their to-do list (homework, errands, cleaning, etc.), create an optimized schedule.
 
 CRITICAL RULES:
 1. Find FREE TIME by analyzing all busy blocks (work, class, appointments)
@@ -148,12 +148,12 @@ Return a JSON array of scheduled tasks:
           },
           {
             role: 'user',
-            content: `Schedule these tasks optimally across my life:
+            content: `Schedule these tasks for me:
 
-BUSY SCHEDULE (DO NOT overlap with these):
+BUSY TIMES (DO NOT overlap with these):
 ${JSON.stringify(busyBlocks || [], null, 2)}
 
-ALL TASKS TO SCHEDULE (homework, cleaning, errands, appointments, etc.):
+TASKS TO SCHEDULE:
 ${JSON.stringify(tasks.map(t => ({
   id: t.id,
   name: t.name,
@@ -162,12 +162,12 @@ ${JSON.stringify(tasks.map(t => ({
   type: t.type,
 })), null, 2)}
 
-USER PREFERENCES:
+PREFERENCES:
 ${JSON.stringify(preferences, null, 2)}
 
 Current date/time: ${new Date().toISOString()}
 
-Generate an optimal 2-week life schedule that accounts for ALL my commitments and tasks. If I say "I need to clean the house," find time for it. If homework is due, prioritize it. Balance everything intelligently.`
+Create a 2-week schedule that fits everything around my busy times. Prioritize urgent tasks and balance my days.`
           }
         ],
         max_tokens: 3000,
@@ -238,13 +238,13 @@ Generate an optimal 2-week life schedule that accounts for ALL my commitments an
       }
     }
 
-    console.log(`Successfully scheduled ${parsedPlan.length} life tasks`);
+    console.log(`Successfully scheduled ${parsedPlan.length} tasks`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         plan: parsedPlan,
-        message: `Successfully scheduled ${parsedPlan.length} tasks across your week`
+        message: `Scheduled ${parsedPlan.length} tasks for you`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
