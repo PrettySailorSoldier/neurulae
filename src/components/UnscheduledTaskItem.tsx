@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +65,23 @@ export function UnscheduledTaskItem({
 
   const hasDetails = (task.subtasks && task.subtasks.length > 0) || task.notes || isExpanded;
 
+  const getTaskTypeIcon = () => {
+    switch (task.taskType) {
+      case 'school':
+        return <BookOpen className="h-4 w-4 text-primary" />;
+      case 'work':
+        return <Briefcase className="h-4 w-4 text-primary" />;
+      case 'home':
+        return <Home className="h-4 w-4 text-primary" />;
+      case 'appointment':
+        return <Calendar className="h-4 w-4 text-primary" />;
+      case 'call':
+        return <Phone className="h-4 w-4 text-primary" />;
+      default:
+        return <FileText className="h-4 w-4 text-primary" />;
+    }
+  };
+
   return (
     <div className="border border-border rounded-md bg-card hover:bg-card/80 transition-colors">
       {/* Main row - always visible */}
@@ -89,6 +106,12 @@ export function UnscheduledTaskItem({
           onCheckedChange={() => onToggleComplete(task.id)}
           className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
         />
+        
+        {task.taskType && (
+          <div className="flex-shrink-0">
+            {getTaskTypeIcon()}
+          </div>
+        )}
         
         <span className={`flex-1 text-sm ${task.completed ? 'line-through text-muted-foreground' : 'text-card-foreground'}`}>
           {task.title}

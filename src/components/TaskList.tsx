@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Filter, Sparkles } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,7 @@ interface TaskListProps {
   tasks: Task[];
   timeBlocks: TimeBlock[];
   onToggleComplete: (id: string) => void;
-  onAddTask: (title: string, estimatedMinutes?: number) => void;
+  onAddTask: (title: string, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onPrioritize: (taskIds: string[]) => void;
@@ -47,6 +48,7 @@ export function TaskList({
   const [searchQuery, setSearchQuery] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskMinutes, setNewTaskMinutes] = useState('');
+  const [newTaskType, setNewTaskType] = useState<'school' | 'work' | 'home' | 'appointment' | 'call' | 'other'>('school');
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -88,15 +90,17 @@ export function TaskList({
   const handleOpenTaskDialog = () => {
     setNewTaskTitle('');
     setNewTaskMinutes('');
+    setNewTaskType('school');
     setTaskDialogOpen(true);
   };
 
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
       const minutes = newTaskMinutes ? parseInt(newTaskMinutes) : undefined;
-      onAddTask(newTaskTitle, minutes);
+      onAddTask(newTaskTitle, minutes, newTaskType);
       setNewTaskTitle('');
       setNewTaskMinutes('');
+      setNewTaskType('school');
       setTaskDialogOpen(false);
     }
   };
@@ -306,6 +310,22 @@ export function TaskList({
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="task-type">Task Type</Label>
+              <Select value={newTaskType} onValueChange={(value: any) => setNewTaskType(value)}>
+                <SelectTrigger id="task-type">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="school">📚 School</SelectItem>
+                  <SelectItem value="work">💼 Work</SelectItem>
+                  <SelectItem value="home">🏠 Home</SelectItem>
+                  <SelectItem value="appointment">📅 Appointment</SelectItem>
+                  <SelectItem value="call">📞 Call</SelectItem>
+                  <SelectItem value="other">📋 Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="estimated-minutes">Estimated Minutes (optional)</Label>

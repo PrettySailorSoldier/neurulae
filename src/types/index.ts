@@ -21,6 +21,7 @@ export interface Task {
   eisenhowerQuadrant?: 'urgent-important' | 'not-urgent-important' | 'urgent-not-important' | 'not-urgent-not-important';
   course?: string;
   type?: 'daily' | 'ongoing';
+  taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other';
 }
 
 export interface Project {

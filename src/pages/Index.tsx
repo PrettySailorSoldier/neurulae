@@ -303,7 +303,7 @@ const Index = () => {
     }
   }, [theme, customTheme]);
 
-  const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number) => {
+  const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
     const newTask: Task = typeof taskOrTitle === 'string'
       ? {
           id: crypto.randomUUID(),
@@ -312,6 +312,7 @@ const Index = () => {
           recurring: 'none',
           createdAt: new Date().toISOString(),
           ...(estimatedMinutes && { estimatedMinutes }),
+          ...(taskType && { taskType }),
         }
       : {
           id: crypto.randomUUID(),
@@ -1011,11 +1012,11 @@ const Index = () => {
               >
                 <Grid3x3 className="h-5 w-5" />
               </Button>
-              <Link to="/my-availability">
+              <Link to="/my-schedule">
                 <Button
                   variant="ghost"
                   size="icon"
-                  title="My Availability"
+                  title="My Schedule"
                 >
                   <Calendar className="h-5 w-5" />
                 </Button>

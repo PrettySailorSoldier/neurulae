@@ -34,7 +34,7 @@ const App = () => (
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
               <Route path="/success" element={<Success />} />
-              <Route path="/my-availability" element={<RequireAuth><MyAvailability /></RequireAuth>} />
+              <Route path="/my-schedule" element={<RequireAuth><MyAvailability /></RequireAuth>} />
               <Route path="/my-plan" element={<RequireAuth><MyPlan /></RequireAuth>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

@@ -11,7 +11,7 @@ export function MobileBottomNav({ onNavigate }: MobileBottomNavProps) {
   
   const navItems = [
     { icon: Home, label: 'Dashboard', path: '/app', active: location.pathname === '/app' },
-    { icon: CheckSquare, label: 'Availability', path: '/my-availability', active: location.pathname === '/my-availability' },
+    { icon: CheckSquare, label: 'Schedule', path: '/my-schedule', active: location.pathname === '/my-schedule' },
     { icon: Timer, label: 'Plan', path: '/my-plan', active: location.pathname === '/my-plan' },
     { icon: Settings, label: 'Settings', path: '/settings', active: location.pathname === '/settings' },
   ];
