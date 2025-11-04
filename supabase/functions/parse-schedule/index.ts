@@ -28,10 +28,14 @@ serve(async (req) => {
       throw new Error('File too large. Maximum 20MB allowed.');
     }
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('Invalid file type. Only PDF and images (PNG, JPEG, WebP) allowed.');
+    // Validate file type (support missing/incorrect mime types by falling back to extension)
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
+    const name = (file as any).name || '';
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    const allowedExts = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
+    const typeOk = allowedTypes.includes(file.type || '') || allowedExts.includes(ext);
+    if (!typeOk) {
+      throw new Error('Invalid file type. Only PDF and images (PNG, JPEG, WEBP, HEIC) allowed.');
     }
 
     // Read file content and convert to base64 in chunks to avoid stack overflow
@@ -151,20 +155,29 @@ Guidelines:
     // Parse JSON from response (robust to code fences and extra text)
     let parsedData;
     try {
-      let text = typeof content === 'string' ? content.trim() : String(content ?? '').trim();
-      // Remove Markdown code fences if present
-      if (text.startsWith('```')) {
-        text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-      }
-      // If still not starting with '{', try to slice from first '{' to last '}'
-      if (!text.startsWith('{')) {
-        const first = text.indexOf('{');
-        const last = text.lastIndexOf('}');
-        if (first !== -1 && last !== -1) {
-          text = text.slice(first, last + 1);
+      // If the gateway already returned a JSON object, use it directly
+      if (typeof content === 'object' && content && 'entries' in (content as any)) {
+        parsedData = content;
+      } else {
+        let text = typeof content === 'string' ? content.trim() : '';
+        // Remove Markdown code fences if present
+        if (text.startsWith('```')) {
+          text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
         }
+        const tryParse = (s: string) => { try { return JSON.parse(s); } catch { return null; } };
+        // First attempt: parse as-is
+        let obj: any = text ? tryParse(text) : null;
+        // Fallback: slice from first '{' to last '}' if present and parse again
+        if (!obj && text) {
+          const first = text.indexOf('{');
+          const last = text.lastIndexOf('}');
+          if (first !== -1 && last !== -1 && last > first) {
+            obj = tryParse(text.slice(first, last + 1));
+          }
+        }
+        if (!obj) throw new Error('json_parse_failed');
+        parsedData = obj;
       }
-      parsedData = JSON.parse(text);
     } catch (e) {
       console.error('Failed to parse AI response as JSON (raw length):', String(content).length);
       console.error('Raw AI content head:', String(content).slice(0, 500));

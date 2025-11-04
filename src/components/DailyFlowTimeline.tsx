@@ -78,11 +78,13 @@ export function DailyFlowTimeline({
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!allowed.includes(file.type)) {
+    const allowedTypes = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp','image/heic','image/heif'];
+    const ext = file.name?.split('.').pop()?.toLowerCase() || '';
+    const allowedExts = ['pdf','png','jpg','jpeg','webp','heic','heif'];
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
       toast({
         title: 'Unsupported file',
-        description: 'Upload a PDF or image (PNG/JPG/WEBP).',
+        description: 'Upload a PDF or image (PNG/JPG/WEBP/HEIC).',
         variant: 'destructive',
       });
       return;
@@ -91,19 +93,15 @@ export function DailyFlowTimeline({
     setUploading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No active session');
-      }
 
       const formData = new FormData();
       formData.append('file', file);
 
-      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', {
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      const invokeOptions: any = { body: formData };
+      if (session?.access_token) {
+        invokeOptions.headers = { Authorization: `Bearer ${session.access_token}` };
+      }
+      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', invokeOptions);
 
       if (parseError) throw parseError;
 
@@ -253,7 +251,7 @@ export function DailyFlowTimeline({
             <input
               id="timeline-schedule-upload"
               type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif"
               className="hidden"
               onChange={handleScheduleUpload}
             />

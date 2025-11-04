@@ -71,11 +71,13 @@ export function ScheduleManager() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    const allowed = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp'];
-    if (!allowed.includes(file.type)) {
+    const allowedTypes = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp','image/heic','image/heif'];
+    const ext = file.name?.split('.').pop()?.toLowerCase() || '';
+    const allowedExts = ['pdf','png','jpg','jpeg','webp','heic','heif'];
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
       toast({
         title: 'Unsupported file',
-        description: 'Upload a PDF or image (PNG/JPG/WEBP).',
+        description: 'Upload a PDF or image (PNG/JPG/WEBP/HEIC).',
         variant: 'destructive',
       });
       return;
@@ -256,7 +258,7 @@ export function ScheduleManager() {
           <input
             id="schedule-upload"
             type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.webp"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif"
             className="hidden"
             onChange={handleFileUpload}
           />
