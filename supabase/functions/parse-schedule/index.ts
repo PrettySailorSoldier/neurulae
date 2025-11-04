@@ -70,43 +70,47 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are an intelligent schedule and assignment parser that extracts schedules AND automatically breaks up homework assignments into manageable daily chunks.
+              content: `You are an intelligent schedule parser that extracts work schedules, class schedules, and homework assignments.
 
-CRITICAL ASSIGNMENT DISTRIBUTION LOGIC:
-When you see multiple assignments due on the same date (e.g., 10 assignments due Nov 9):
-1. DO NOT return all 10 on Nov 9 - this is overwhelming
-2. Calculate days until due date (if today is Nov 5, you have 4 days)
-3. Distribute assignments across available days BEFORE due date:
-   - Day 1 (Nov 5): 3 assignments (1-2 hours each)
-   - Day 2 (Nov 6): 3 assignments (1-2 hours each)  
-   - Day 3 (Nov 7): 4 assignments (1-2 hours each)
-   - Never put work ON the due date itself
-4. For large individual assignments (papers, projects): Break into parts across 2-3 days
-   - "Research Paper" → "Research Paper - Research & Outline" (Day 1), "Research Paper - Writing" (Day 2), "Research Paper - Final Edits" (Day 3)
+IMPORTANT RECOGNITION RULES:
+1. WORK SCHEDULES: Look for shift times, store/company names (Target, Starbucks, etc.), departments
+   - Example: "Target 11/5 2:00 PM - 10:30 PM" → work shift
+   - Category: "work"
+   - Extract exact start/end times for each shift
 
-Return ONLY a JSON object:
+2. CLASS SCHEDULES: Look for course codes (MATH 101, ENG 202), room numbers, recurring patterns
+   - Example: "Business Communication MW 10:00-11:15 Room 204" → class
+   - Category: "class"  
+   - If recurring (M/T/W/Th/F pattern), create entries for next 2 weeks
+
+3. HOMEWORK/ASSIGNMENTS: Quizzes, papers, labs, projects, readings
+   - Example: "Chapter 4 Quiz Due Nov 8" → homework
+   - Category: "homework"
+   - Schedule 1-2 hours per assignment, 3-5 days before due date
+
+DATE HANDLING:
+- Current year is ${new Date().getFullYear()}
+- If year is missing or shows 2023/2024, use ${new Date().getFullYear()} instead
+- For dates that have passed this year, assume next occurrence (e.g., Nov 5 2025 if today is Dec 1 2025)
+- Convert all dates to ISO 8601 format with proper timezone
+
+Return ONLY valid JSON (no markdown, no explanation):
 {
   "entries": [
     {
-      "title": "Assignment title (add '- Part X' or '- [Section]' if breaking up large work)",
-      "description": "Course name + original due date if homework",
-      "startTime": "ISO 8601 datetime (schedule 1-2 hours for each homework chunk)",
-      "endTime": "ISO 8601 datetime",
+      "title": "Brief descriptive title",
+      "description": "Additional context (course name, store name, due date)",
+      "startTime": "2025-11-05T14:00:00Z",
+      "endTime": "2025-11-05T22:30:00Z", 
       "category": "work|class|homework|meeting|other",
-      "location": "location if mentioned"
+      "location": "Store/room location if mentioned"
     }
   ]
 }
 
-Guidelines:
-- Parse dates relative to current year if year is missing
-- Homework items (Quiz, Assignment, Lab, Project, etc.) should be distributed across days
-- Never schedule more than 4 homework items per day
-- Start homework 3-5 days before due date when possible
-- For classes/meetings: extract exact start/end times
-- Include course name in description for homework
-- Map Assignment/Quiz/Exam/Lab/Project/Paper/Discussion to category "homework"
-- If no schedule found, return {"entries": []}`
+If no schedule found, return: {"entries": []}
+
+Keep titles concise (under 50 chars). Prioritize accuracy over quantity.`
             },
             {
               role: 'user',
@@ -124,7 +128,7 @@ Guidelines:
               ]
             }
           ],
-          max_tokens: 2000,
+          max_tokens: 4000,
         }),
     });
 
@@ -237,8 +241,16 @@ Guidelines:
       return 'other';
     };
 
+    const currentYear = new Date().getFullYear();
     const toISO = (s: any) => {
-      try { return new Date(s).toISOString(); } catch { return undefined; }
+      try { 
+        const date = new Date(s);
+        // Adjust year if parsed as 2023 or 2024
+        if (date.getFullYear() < currentYear) {
+          date.setFullYear(currentYear);
+        }
+        return date.toISOString(); 
+      } catch { return undefined; }
     };
 
     const seen = new Set<string>();

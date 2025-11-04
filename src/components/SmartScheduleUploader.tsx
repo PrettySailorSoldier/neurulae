@@ -6,80 +6,118 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Calendar, Sparkles, Loader2, CheckCircle } from 'lucide-react';
 
+type FileStatus = {
+  name: string;
+  status: 'pending' | 'success' | 'error';
+  count?: number;
+};
+
 export function SmartScheduleUploader() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [fileStatuses, setFileStatuses] = useState<FileStatus[]>([]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    const allowedTypes = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp','image/heic'];
-    const ext = file.name?.split('.').pop()?.toLowerCase() || '';
-    const allowedExts = ['pdf','png','jpg','jpeg','webp','heic'];
-    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload a PDF or image of your schedule',
-        variant: 'destructive',
-      });
-      return;
-    }
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !user) return;
 
     setUploading(true);
     setUploadSuccess(false);
+    setProgress({ current: 0, total: files.length });
+    setFileStatuses(files.map(f => ({ name: f.name, status: 'pending' })));
+
+    let totalEntries = 0;
+    let totalWork = 0, totalClass = 0, totalHomework = 0;
+    const allEntries: any[] = [];
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const formData = new FormData();
-      formData.append('file', file);
 
-      const invokeOptions: any = { body: formData };
-      if (session?.access_token) {
-        invokeOptions.headers = { Authorization: `Bearer ${session.access_token}` };
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProgress({ current: i + 1, total: files.length });
+
+        const allowedTypes = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp','image/heic'];
+        const ext = file.name?.split('.').pop()?.toLowerCase() || '';
+        const allowedExts = ['pdf','png','jpg','jpeg','webp','heic'];
+        if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+          setFileStatuses(prev => prev.map((f, idx) => 
+            idx === i ? { ...f, status: 'error' as const } : f
+          ));
+          continue;
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+
+          const invokeOptions: any = { body: formData };
+          if (session?.access_token) {
+            invokeOptions.headers = { Authorization: `Bearer ${session.access_token}` };
+          }
+
+          const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', invokeOptions);
+
+          if (parseError) throw parseError;
+
+          if (parseResult?.entries && parseResult.entries.length > 0) {
+            const scheduleEntries = parseResult.entries.map((entry: any) => {
+              let source = 'manual';
+              if (entry.category === 'work') source = 'work';
+              else if (entry.category === 'class') source = 'class';
+              else if (entry.category === 'homework') source = 'homework';
+              
+              return {
+                user_id: user.id,
+                title: entry.title,
+                description: entry.description,
+                start_time: entry.startTime,
+                end_time: entry.endTime,
+                category: entry.category || 'other',
+                location: entry.location,
+                source: source,
+              };
+            });
+
+            allEntries.push(...scheduleEntries);
+            totalEntries += scheduleEntries.length;
+            totalWork += scheduleEntries.filter((e: any) => e.source === 'work').length;
+            totalClass += scheduleEntries.filter((e: any) => e.source === 'class').length;
+            totalHomework += scheduleEntries.filter((e: any) => e.source === 'homework').length;
+
+            setFileStatuses(prev => prev.map((f, idx) => 
+              idx === i ? { ...f, status: 'success' as const, count: scheduleEntries.length } : f
+            ));
+          } else {
+            setFileStatuses(prev => prev.map((f, idx) => 
+              idx === i ? { ...f, status: 'error' as const } : f
+            ));
+          }
+        } catch (fileError: any) {
+          console.error(`Error processing file ${file.name}:`, fileError);
+          setFileStatuses(prev => prev.map((f, idx) => 
+            idx === i ? { ...f, status: 'error' as const } : f
+          ));
+        }
       }
 
-      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', invokeOptions);
-
-      if (parseError) throw parseError;
-
-      if (parseResult?.entries && parseResult.entries.length > 0) {
-        // Determine source based on category
-        const scheduleEntries = parseResult.entries.map((entry: any) => {
-          let source = 'manual';
-          if (entry.category === 'work') source = 'work';
-          else if (entry.category === 'class') source = 'class';
-          else if (entry.category === 'homework') source = 'homework';
-          
-          return {
-            user_id: user.id,
-            title: entry.title,
-            description: entry.description,
-            start_time: entry.startTime,
-            end_time: entry.endTime,
-            category: entry.category || 'other',
-            location: entry.location,
-            source: source,
-          };
-        });
-
+      // Insert all entries at once
+      if (allEntries.length > 0) {
         const { error: insertError } = await supabase
           .from('schedule_entries')
-          .insert(scheduleEntries);
+          .insert(allEntries);
 
         if (insertError) throw insertError;
 
-        const workCount = scheduleEntries.filter((e: any) => e.source === 'work').length;
-        const classCount = scheduleEntries.filter((e: any) => e.source === 'class').length;
-        const homeworkCount = scheduleEntries.filter((e: any) => e.source === 'homework').length;
-
-        let summary = `Imported ${scheduleEntries.length} entries`;
+        let summary = `Imported ${totalEntries} entries from ${files.length} file${files.length > 1 ? 's' : ''}`;
         const parts = [];
-        if (workCount > 0) parts.push(`${workCount} work shifts`);
-        if (classCount > 0) parts.push(`${classCount} classes`);
-        if (homeworkCount > 0) parts.push(`${homeworkCount} homework items`);
+        if (totalWork > 0) parts.push(`${totalWork} work shifts`);
+        if (totalClass > 0) parts.push(`${totalClass} classes`);
+        if (totalHomework > 0) parts.push(`${totalHomework} homework items`);
         if (parts.length > 0) summary += `: ${parts.join(', ')}`;
 
         toast({
@@ -90,8 +128,8 @@ export function SmartScheduleUploader() {
         setUploadSuccess(true);
       } else {
         toast({
-          title: parseResult?.error ? 'Parsing Issue' : 'No Schedule Found',
-          description: parseResult?.error || 'Could not extract schedule from the file',
+          title: 'No Entries Found',
+          description: 'Could not extract schedule from any of the files',
           variant: 'destructive',
         });
       }
@@ -111,6 +149,7 @@ export function SmartScheduleUploader() {
     } finally {
       setUploading(false);
       e.target.value = '';
+      setProgress({ current: 0, total: 0 });
     }
   };
 
@@ -184,7 +223,7 @@ export function SmartScheduleUploader() {
                 {uploading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Parsing...
+                    Processing {progress.current} of {progress.total}...
                   </>
                 ) : uploadSuccess ? (
                   <>
@@ -194,7 +233,7 @@ export function SmartScheduleUploader() {
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    Upload Schedule Image
+                    Upload Schedule Images
                   </>
                 )}
               </Button>
@@ -203,8 +242,23 @@ export function SmartScheduleUploader() {
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.webp,.heic"
                 className="hidden"
+                multiple
                 onChange={handleFileUpload}
               />
+              {fileStatuses.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {fileStatuses.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs">
+                      {file.status === 'success' && <CheckCircle className="h-3 w-3 text-green-500" />}
+                      {file.status === 'error' && <span className="h-3 w-3 text-destructive">✗</span>}
+                      {file.status === 'pending' && <Loader2 className="h-3 w-3 animate-spin" />}
+                      <span className="truncate text-muted-foreground">
+                        {file.name} {file.count ? `(${file.count} entries)` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
