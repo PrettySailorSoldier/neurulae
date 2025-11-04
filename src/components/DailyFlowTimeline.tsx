@@ -312,10 +312,21 @@ export function DailyFlowTimeline({
     );
   };
 
+  // Format time to 12-hour format with AM/PM
+  const formatTime = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
   // Render schedule entries from database
-  const renderScheduleEntry = (entry: ScheduleEntry) => {
+  const renderScheduleEntry = (entry: ScheduleEntry, index: number) => {
     const startDate = new Date(entry.start_time);
     const endDate = new Date(entry.end_time);
+    
+    // Use 24-hour format for positioning
     const startTime = `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`;
     const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
     
@@ -328,6 +339,7 @@ export function DailyFlowTimeline({
       work: '#ef4444',
       class: '#3b82f6',
       homework: '#f59e0b',
+      meeting: '#8b5cf6',
       other: '#6b7280',
     };
 
@@ -336,21 +348,27 @@ export function DailyFlowTimeline({
     return (
       <div
         key={entry.id}
-        className="absolute left-0 right-0 border-2 rounded-lg p-3 pointer-events-none"
+        className="absolute border-2 rounded-lg p-2 overflow-hidden"
         style={{
           top: `${topPercentage}%`,
           height: `${height}%`,
+          left: `${index * 2}%`,
+          right: `${index * 2}%`,
           backgroundColor: `${color}20`,
           borderColor: color,
+          zIndex: 5 + index,
         }}
       >
-        <div>
-          <h4 className="font-semibold text-sm">{entry.title}</h4>
+        <div className="space-y-0.5">
+          <h4 className="font-bold text-sm leading-tight break-words">{entry.title}</h4>
+          <p className="text-xs font-medium text-foreground">
+            {formatTime(startDate)} - {formatTime(endDate)}
+          </p>
           <p className="text-xs text-muted-foreground">
-            {startTime} - {endTime} ({Math.round(duration / 60)}h)
+            ({Math.round(duration / 60)}h {duration % 60}m)
           </p>
           {entry.location && (
-            <p className="text-xs text-muted-foreground mt-1">📍 {entry.location}</p>
+            <p className="text-xs text-muted-foreground">📍 {entry.location}</p>
           )}
         </div>
       </div>
@@ -438,7 +456,7 @@ export function DailyFlowTimeline({
               </p>
               <div className="relative h-[600px]">
                 {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
-                {scheduleEntries.map(entry => renderScheduleEntry(entry))}
+                {scheduleEntries.map((entry, index) => renderScheduleEntry(entry, index))}
               </div>
             </div>
 
