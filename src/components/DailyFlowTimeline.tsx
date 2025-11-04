@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
 import { ScheduledTaskCard } from './ScheduledTaskCard';
-import { Plus, Sparkles, Upload, Loader2 } from 'lucide-react';
+import { Plus, Sparkles, Upload, Loader2, Calendar, CalendarCheck, Trash2 } from 'lucide-react';
 import { timeToPercentage, getCurrentTimePercentage, getCurrentTime, isTimeInRange, timeToMinutes, isWeekday } from '@/lib/timeUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ScheduleEntry {
   id: string;
@@ -15,56 +19,57 @@ interface ScheduleEntry {
   description?: string;
   start_time: string;
   end_time: string;
-  category: string;
-  source: string;
+  category?: string;
   location?: string;
+  source?: string;
 }
 
 interface DailyFlowTimelineProps {
   timeBlocks: TimeBlock[];
   scheduledTasks: ScheduledTask[];
   tasks: Task[];
-  onAddBlock: (block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
-  onUpdateBlock: (id: string, block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
-  onDeleteBlock: (id: string) => void;
-  onToggleComplete: (taskId: string) => void;
-  onUpdateTask?: (task: Task) => void;
-  onAskAI?: (message: string) => void;
+  onAddTimeBlock: (block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
+  onUpdateTimeBlock: (id: string, block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
+  onDeleteTimeBlock: (id: string) => void;
   onAddTask?: (task: Omit<Task, 'id' | 'createdAt'>) => void;
-  showQuickActions?: boolean;
 }
 
 export function DailyFlowTimeline({
   timeBlocks,
   scheduledTasks,
   tasks,
-  onAddBlock,
-  onUpdateBlock,
-  onDeleteBlock,
-  onToggleComplete,
-  onUpdateTask,
-  onAskAI,
+  onAddTimeBlock,
+  onUpdateTimeBlock,
+  onDeleteTimeBlock,
   onAddTask,
-  showQuickActions = true,
 }: DailyFlowTimelineProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingBlock, setEditingBlock] = useState<TimeBlock | undefined>();
-  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
+  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
+  const [isTimeBlockEditorOpen, setIsTimeBlockEditorOpen] = useState(false);
+  const [editingBlock, setEditingBlock] = useState<TimeBlock | undefined>();
+  const [scheduleType, setScheduleType] = useState<'weekday' | 'weekend'>(() => {
+    const day = new Date().getDay();
+    return (day === 0 || day === 6) ? 'weekend' : 'weekday';
+  });
+  const [activeDedicatedBlock, setActiveDedicatedBlock] = useState<TimeBlock | null>(null);
+  const [viewMode, setViewMode] = useState<'timeline' | 'list'>('timeline');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [pendingUploadData, setPendingUploadData] = useState<any>(null);
+  const [clearScheduleDialogOpen, setClearScheduleDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTimePercentage(getCurrentTimePercentage());
     }, 60000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Load schedule entries from database
   useEffect(() => {
     if (user) {
       loadScheduleEntries();
@@ -95,224 +100,182 @@ export function DailyFlowTimeline({
     }
   };
 
-  const handleScheduleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0 || !user) return;
-
-    setUploading(true);
-
-    let totalEntries = 0;
-    let totalHomework = 0;
-    const allEntries: any[] = [];
-
+  const handleScheduleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0] || !user) return;
+    
+    setIsUploading(true);
+    const file = event.target.files[0];
+    
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const formData = new FormData();
+      formData.append('file', file);
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      const { data, error } = await supabase.functions.invoke('parse-schedule', {
+        body: formData,
+      });
 
-        const allowedTypes = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp','image/heic'];
-        const ext = file.name?.split('.').pop()?.toLowerCase() || '';
-        const allowedExts = ['pdf','png','jpg','jpeg','webp','heic'];
-        if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
-          continue;
-        }
+      if (error) throw error;
 
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
+      const { parsedData } = data;
+      console.log('Parsed schedule data:', parsedData);
 
-          const invokeOptions: any = { body: formData };
-          if (session?.access_token) {
-            invokeOptions.headers = { Authorization: `Bearer ${session.access_token}` };
-          }
+      // Check for duplicates before inserting
+      if (parsedData.schedule && parsedData.schedule.length > 0) {
+        const startDate = new Date(parsedData.schedule[0].startTime);
+        const endDate = new Date(parsedData.schedule[parsedData.schedule.length - 1].endTime);
 
-          const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', invokeOptions);
+        const { data: existingEntries, error: checkError } = await supabase
+          .from('schedule_entries')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('start_time', startDate.toISOString())
+          .lte('start_time', endDate.toISOString());
 
-          if (parseError) throw parseError;
+        if (checkError) throw checkError;
 
-          if (parseResult?.entries && parseResult.entries.length > 0) {
-            const scheduleEntries = parseResult.entries.map((entry: any) => {
-              let source = 'manual';
-              if (entry.category === 'work') source = 'work';
-              else if (entry.category === 'class') source = 'class';
-              else if (entry.category === 'homework') {
-                source = 'homework';
-                // Add homework as tasks
-                if (onAddTask) {
-                  onAddTask({
-                    title: entry.title,
-                    completed: false,
-                    recurring: 'none',
-                    notes: entry.description || '',
-                    dueDate: entry.startTime,
-                  });
-                }
-                totalHomework++;
-              }
-              
-              return {
-                user_id: user.id,
-                title: entry.title,
-                description: entry.description,
-                start_time: entry.startTime,
-                end_time: entry.endTime,
-                category: entry.category || 'other',
-                location: entry.location,
-                source: source,
-              };
-            });
+        // Check for duplicates
+        const duplicates = parsedData.schedule.filter((newEntry: any) =>
+          existingEntries?.some((existing: any) =>
+            existing.title === newEntry.title &&
+            existing.start_time === newEntry.startTime &&
+            existing.end_time === newEntry.endTime
+          )
+        );
 
-            allEntries.push(...scheduleEntries);
-            totalEntries += scheduleEntries.length;
-          }
-        } catch (fileError: any) {
-          console.error(`Error processing file ${file.name}:`, fileError);
+        if (duplicates.length > 0 && existingEntries && existingEntries.length > 0) {
+          // Show duplicate dialog
+          setPendingUploadData({ parsedData, existingEntries, startDate, endDate });
+          setDuplicateDialogOpen(true);
+          setIsUploading(false);
+          if (event.target) event.target.value = '';
+          return;
         }
       }
 
-      if (allEntries.length > 0) {
+      // No duplicates, proceed with upload
+      await proceedWithUpload(parsedData);
+      
+    } catch (error) {
+      console.error('Error uploading schedule:', error);
+      toast({
+        title: "Upload Failed",
+        description: "There was an error processing your schedule file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  const proceedWithUpload = async (parsedData: any, replaceExisting: boolean = false) => {
+    if (!user) return;
+
+    try {
+      if (parsedData.homework && parsedData.homework.length > 0) {
+        parsedData.homework.forEach((hw: any) => {
+          if (onAddTask) {
+            onAddTask({
+              title: `📚 ${hw.course} - ${hw.assignment}`,
+              completed: false,
+              recurring: 'none',
+              priority: 'medium',
+              estimatedMinutes: hw.estimatedMinutes || 60,
+              dueDate: hw.dueDate,
+            });
+          }
+        });
+      }
+
+      if (parsedData.schedule && parsedData.schedule.length > 0) {
+        // If replacing, delete existing entries in date range
+        if (replaceExisting && pendingUploadData) {
+          const { startDate, endDate } = pendingUploadData;
+          const { error: deleteError } = await supabase
+            .from('schedule_entries')
+            .delete()
+            .eq('user_id', user.id)
+            .gte('start_time', startDate.toISOString())
+            .lte('start_time', endDate.toISOString());
+
+          if (deleteError) throw deleteError;
+        }
+
+        const scheduleEntries = parsedData.schedule.map((entry: any) => ({
+          user_id: user.id,
+          title: entry.title || 'Untitled',
+          description: entry.description || entry.type || null,
+          start_time: entry.startTime,
+          end_time: entry.endTime,
+          category: entry.type || 'other',
+          location: entry.location || null,
+          source: 'imported'
+        }));
+
         const { error: insertError } = await supabase
           .from('schedule_entries')
-          .insert(allEntries);
+          .insert(scheduleEntries);
 
         if (insertError) throw insertError;
 
-        let message = `Imported ${totalEntries} entries from ${files.length} file${files.length > 1 ? 's' : ''}`;
-        if (totalHomework > 0) {
-          message += `. ${totalHomework} homework tasks added to your to-do list`;
-        }
-
-        toast({
-          title: '✓ Schedule uploaded!',
-          description: message,
-        });
-
-        // Reload schedule entries
         await loadScheduleEntries();
-      } else {
+        
         toast({
-          title: 'No entries found',
-          description: 'Could not extract schedule from files',
-          variant: 'destructive',
+          title: "✅ Schedule Imported",
+          description: `Added ${scheduleEntries.length} entries${parsedData.homework ? ` and ${parsedData.homework.length} homework tasks` : ''}.`,
         });
       }
-    } catch (error: any) {
-      console.error('Error uploading schedule:', error);
-      const status = error?.status || error?.cause?.status;
-      let description = 'Failed to parse schedule';
-      if (status === 429) description = 'Rate limit exceeded. Please wait a minute.';
-      else if (status === 402) description = 'AI usage limit reached. Please add credits.';
-      else if (error?.message) description = error.message;
+
+      setPendingUploadData(null);
+    } catch (error) {
+      console.error('Error in proceedWithUpload:', error);
+      toast({
+        title: "Upload Failed",
+        description: "There was an error importing your schedule.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClearSchedule = async () => {
+    if (!user) return;
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
+
+      const { error } = await supabase
+        .from('schedule_entries')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('source', 'imported')
+        .gte('start_time', today.toISOString())
+        .lte('start_time', nextWeek.toISOString());
+
+      if (error) throw error;
+
+      await loadScheduleEntries();
       
-      toast({ 
-        title: 'Upload Failed', 
-        description, 
-        variant: 'destructive' 
+      toast({
+        title: "Schedule Cleared",
+        description: "Imported schedule entries for the next week have been removed.",
+      });
+    } catch (error) {
+      console.error('Error clearing schedule:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear schedule entries.",
+        variant: "destructive",
       });
     } finally {
-      setUploading(false);
-      e.target.value = '';
+      setClearScheduleDialogOpen(false);
     }
   };
 
-  const handleAddBlock = () => {
-    setEditingBlock(undefined);
-    setEditorOpen(true);
-  };
-
-  const handleEditBlock = (block: TimeBlock) => {
-    setEditingBlock(block);
-    setEditorOpen(true);
-  };
-
-  const handleSaveBlock = (blockData: Omit<TimeBlock, 'id' | 'createdAt'>) => {
-    if (editingBlock) {
-      onUpdateBlock(editingBlock.id, blockData);
-    } else {
-      onAddBlock(blockData);
-    }
-  };
-
-  const handleDeleteBlock = () => {
-    if (editingBlock) {
-      onDeleteBlock(editingBlock.id);
-      setEditorOpen(false);
-    }
-  };
-
-
-  const isToday = isWeekday();
-  const visibleBlocks = timeBlocks.filter(block => {
-    if (block.scheduleType === 'everyday') return true;
-    if (block.scheduleType === 'weekday') return isToday;
-    if (block.scheduleType === 'weekend') return !isToday;
-    return true;
-  });
-
-  const mainBlocks = visibleBlocks.filter(b => b.type === 'main');
-  const dedicatedBlocks = visibleBlocks.filter(b => b.type === 'dedicated');
-
-  const currentTime = getCurrentTime();
-  const activeMainBlock = mainBlocks.find(b => isTimeInRange(currentTime, b.startTime, b.endTime));
-  const activeDedicatedBlock = dedicatedBlocks.find(b => isTimeInRange(currentTime, b.startTime, b.endTime));
-
-  const renderBlock = (block: TimeBlock, isActive: boolean) => {
-    const topPercentage = timeToPercentage(block.startTime);
-    const bottomPercentage = timeToPercentage(block.endTime);
-    const height = bottomPercentage - topPercentage;
-    const duration = timeToMinutes(block.endTime) - timeToMinutes(block.startTime);
-
-    const blockTasks = scheduledTasks
-      .filter(st => st.blockId === block.id)
-      .map(st => tasks.find(t => t.id === st.taskId))
-      .filter(Boolean) as Task[];
-
-    return (
-      <div
-        key={block.id}
-        className={`absolute left-0 right-0 border border-border rounded-lg p-3 cursor-pointer transition-all hover:shadow-lg ${
-          isActive ? 'bg-primary/20 border-primary animate-pulse' : 'bg-card/80'
-        }`}
-        style={{
-          top: `${topPercentage}%`,
-          height: `${height}%`,
-          backgroundColor: block.color ? `${block.color}20` : undefined,
-          borderColor: block.color || undefined,
-        }}
-        onClick={() => handleEditBlock(block)}
-      >
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <h4 className="font-semibold text-sm">{block.title}</h4>
-            <p className="text-xs text-muted-foreground">
-              {block.startTime} - {block.endTime} ({Math.round(duration / 60)}h)
-            </p>
-          </div>
-        </div>
-        
-        {blockTasks.length > 0 && (
-          <div className="space-y-1 mt-2">
-            {blockTasks.slice(0, 3).map(task => (
-              <ScheduledTaskCard
-                key={task.id}
-                task={task}
-                onToggleComplete={onToggleComplete}
-                onUpdateTask={onUpdateTask}
-              />
-            ))}
-            {blockTasks.length > 3 && (
-              <p className="text-xs text-muted-foreground text-center">
-                +{blockTasks.length - 3} more
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Format time to 12-hour format with AM/PM
   const formatTime = (date: Date) => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
@@ -321,7 +284,17 @@ export function DailyFlowTimeline({
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
   };
 
-  // Group overlapping entries
+  const getCategoryColor = (category?: string) => {
+    const colors: Record<string, string> = {
+      work: 'hsl(var(--chart-1))',
+      class: 'hsl(var(--chart-2))',
+      homework: 'hsl(var(--chart-3))',
+      personal: 'hsl(var(--chart-4))',
+      other: 'hsl(var(--chart-5))',
+    };
+    return colors[category || 'other'] || colors.other;
+  };
+
   const groupOverlappingEntries = (entries: ScheduleEntry[]) => {
     const groups: ScheduleEntry[][] = [];
     
@@ -352,7 +325,6 @@ export function DailyFlowTimeline({
     return groups;
   };
 
-  // Remove exact duplicates (same title + start + end + location)
   const dedupeEntries = (entries: ScheduleEntry[]) => {
     const seen = new Set<string>();
     return entries.filter((e) => {
@@ -363,33 +335,18 @@ export function DailyFlowTimeline({
     });
   };
 
-  // Render schedule entries from database
   const renderScheduleEntry = (entry: ScheduleEntry, groupIndex: number, totalInGroup: number) => {
     const startDate = new Date(entry.start_time);
     const endDate = new Date(entry.end_time);
     
-    // Use 24-hour format for positioning
     const startTime = `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`;
     const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
     
     const topPercentage = timeToPercentage(startTime);
     const bottomPercentage = timeToPercentage(endTime);
     const height = bottomPercentage - topPercentage;
-    const duration = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
 
-    const categoryColors: Record<string, string> = {
-      work: '#ef4444',
-      class: '#3b82f6',
-      homework: '#f59e0b',
-      meeting: '#8b5cf6',
-      other: '#6b7280',
-    };
-
-    const color = categoryColors[entry.category] || categoryColors.other;
-    
-    // Calculate width and position for side-by-side display
-    const widthPercent = 100 / totalInGroup;
-    const leftPercent = widthPercent * groupIndex;
+    const color = getCategoryColor(entry.category);
 
     return (
       <div
@@ -418,134 +375,346 @@ export function DailyFlowTimeline({
     );
   };
 
-  return (
-    <>
-      <section 
-        className="relative bg-card border-2 border-border rounded-lg p-4" 
-        data-tutorial="timeline"
-        aria-label="Daily Flow Timeline"
+  const renderBlock = (block: TimeBlock, isActive: boolean) => {
+    const topPercentage = timeToPercentage(block.startTime);
+    const bottomPercentage = timeToPercentage(block.endTime);
+    const height = bottomPercentage - topPercentage;
+    const duration = timeToMinutes(block.endTime) - timeToMinutes(block.startTime);
+
+    const blockTasks = scheduledTasks
+      .filter(st => st.blockId === block.id)
+      .map(st => tasks.find(t => t.id === st.taskId))
+      .filter(Boolean) as Task[];
+
+    return (
+      <div
+        key={block.id}
+        className={`absolute left-0 right-0 border border-border rounded-lg p-2 cursor-pointer transition-all hover:shadow-lg ${
+          isActive ? 'bg-primary/20 border-primary animate-pulse' : 'bg-card/80'
+        }`}
+        style={{
+          top: `${topPercentage}%`,
+          height: `${height}%`,
+          backgroundColor: block.color ? `${block.color}20` : undefined,
+          borderColor: block.color || undefined,
+        }}
+        onClick={() => {
+          setEditingBlock(block);
+          setIsTimeBlockEditorOpen(true);
+        }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => document.getElementById('schedule-upload-input')?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
-                </>
-              )}
-            </Button>
-            <input
-              id="schedule-upload-input"
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.heic"
-              className="hidden"
-              multiple
-              onChange={handleScheduleUpload}
-            />
-            <Button 
-              onClick={handleAddBlock} 
-              size="sm" 
-              className="bg-primary hover:bg-primary/90"
-              aria-label="Add new time block"
-            >
-              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-              Add Block
-            </Button>
+        <div className="flex items-start justify-between">
+          <div>
+            <h4 className="font-semibold text-xs">{block.title}</h4>
+            <p className="text-[10px] text-muted-foreground">
+              {block.startTime} - {block.endTime}
+            </p>
           </div>
         </div>
+      </div>
+    );
+  };
 
-        <div className="relative bg-card/50 border border-border rounded-lg p-4 min-h-[600px]">
-          {/* Hour markers */}
-          <div className="absolute left-0 top-0 bottom-0 w-12 text-xs text-muted-foreground">
-            {Array.from({ length: 25 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute left-0"
-                style={{ top: `${(i / 24) * 100}%` }}
-              >
-                {i.toString().padStart(2, '0')}:00
-              </div>
-            ))}
+  const filteredBlocks = timeBlocks.filter(block => {
+    if (block.scheduleType === 'everyday') return true;
+    if (block.scheduleType === 'weekday') return scheduleType === 'weekday';
+    if (block.scheduleType === 'weekend') return scheduleType === 'weekend';
+    return true;
+  });
+
+  const mainBlocks = filteredBlocks.filter(b => b.type === 'main');
+  const dedicatedBlocks = filteredBlocks.filter(b => b.type === 'dedicated');
+
+  const currentTime = getCurrentTime();
+  const activeMainBlock = mainBlocks.find(b => isTimeInRange(currentTime, b.startTime, b.endTime));
+
+  const filteredEntries = categoryFilter
+    ? scheduleEntries.filter(e => e.category === categoryFilter)
+    : scheduleEntries;
+
+  const categoryCounts = scheduleEntries.reduce((acc, entry) => {
+    const cat = entry.category || 'other';
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <section className="space-y-6">
+      {/* Dialogs */}
+      <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate Schedule Entries Found</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some schedule entries for these dates already exist. Would you like to replace them with the new upload?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingUploadData(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              proceedWithUpload(pendingUploadData.parsedData, true);
+              setDuplicateDialogOpen(false);
+            }}>
+              Replace All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={clearScheduleDialogOpen} onOpenChange={setClearScheduleDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Imported Schedule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all imported schedule entries for the next 7 days. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearSchedule} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Clear Schedule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Time Block Editor */}
+      <TimeBlockEditor
+        open={isTimeBlockEditorOpen}
+        onOpenChange={setIsTimeBlockEditorOpen}
+        block={editingBlock}
+        onSave={(blockData) => {
+          if (editingBlock) {
+            onUpdateTimeBlock(editingBlock.id, blockData);
+          } else {
+            onAddTimeBlock(blockData);
+          }
+          setIsTimeBlockEditorOpen(false);
+          setEditingBlock(undefined);
+        }}
+        onDelete={editingBlock ? () => {
+          onDeleteTimeBlock(editingBlock.id);
+          setIsTimeBlockEditorOpen(false);
+          setEditingBlock(undefined);
+        } : undefined}
+      />
+
+      {/* Header Controls */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
+          <Badge variant="secondary">{scheduleEntries.length} entries</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScheduleType('weekday')}
+            className={scheduleType === 'weekday' ? 'bg-accent' : ''}
+          >
+            Weekday
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScheduleType('weekend')}
+            className={scheduleType === 'weekend' ? 'bg-accent' : ''}
+          >
+            Weekend
+          </Button>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleScheduleUpload}
+          accept=".pdf,.txt,.doc,.docx"
+          className="hidden"
+          id="schedule-upload"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Import Schedule
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setEditingBlock(undefined);
+            setIsTimeBlockEditorOpen(true);
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Time Block
+        </Button>
+        {scheduleEntries.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setClearScheduleDialogOpen(true)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear Schedule
+          </Button>
+        )}
+      </div>
+
+      {/* View Mode & Filters */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'timeline' | 'list')}>
+          <TabsList>
+            <TabsTrigger value="timeline">Timeline View</TabsTrigger>
+            <TabsTrigger value="list">List View</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={categoryFilter === null ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCategoryFilter(null)}
+          >
+            All ({scheduleEntries.length})
+          </Button>
+          {Object.entries(categoryCounts).map(([cat, count]) => (
+            <Button
+              key={cat}
+              variant={categoryFilter === cat ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCategoryFilter(cat)}
+            >
+              {cat === 'work' && '💼'}
+              {cat === 'class' && '📚'}
+              {cat === 'homework' && '📝'}
+              {cat === 'personal' && '✨'}
+              {cat === 'other' && '📌'}
+              {' '}{cat} ({count})
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Daily Flow Section */}
+      {viewMode === 'timeline' ? (
+        <div className="grid grid-cols-4 gap-4">
+          {/* Time Blocks (25%) - Visual Reference */}
+          <div className="col-span-1 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-muted-foreground">Time Blocks</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Visual reference
+            </p>
+            <div className="relative h-[600px] bg-card/50 border border-border rounded-lg p-2">
+              {mainBlocks.map(block => renderBlock(block, false))}
+              {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
+            </div>
           </div>
 
-          {/* Timeline grid */}
-          <div className="ml-14 grid grid-cols-2 gap-4 relative h-full">
-            {/* Main blocks (left) */}
-            <div className="relative border-r border-border pr-2">
-              <p className="text-xs text-muted-foreground mb-2 text-center sticky top-0 bg-card/90 backdrop-blur-sm py-1">
-                Main Activities
-              </p>
-              <div className="relative h-[600px]">
-                {mainBlocks.map(block => renderBlock(block, block.id === activeMainBlock?.id))}
-              </div>
+          {/* Today's Schedule (75%) - Detailed View */}
+          <div className="col-span-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-muted-foreground">Today's Schedule</h4>
+              <p className="text-xs text-muted-foreground">{filteredEntries.length} entries</p>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Scheduled activities and commitments
+            </p>
+            <div className="relative h-[600px] bg-card/50 border border-border rounded-lg p-4">
+              {/* Hour markers */}
+              <div className="absolute left-0 top-0 bottom-0 w-12 text-xs text-muted-foreground">
+                {Array.from({ length: 25 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute left-0"
+                    style={{ top: `${(i / 24) * 100}%` }}
+                  >
+                    {i.toString().padStart(2, '0')}:00
+                  </div>
+                ))}
+              </div>
 
-            {/* Dedicated blocks (right) - includes schedule entries from uploads */}
-            <div className="relative pl-2">
-              <p className="text-xs text-muted-foreground mb-2 text-center sticky top-0 bg-card/90 backdrop-blur-sm py-1">
-                Dedicated Time
-              </p>
-              <div className="relative h-[600px]">
-                {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
-                {groupOverlappingEntries(dedupeEntries(scheduleEntries)).map(group => 
+              <div className="ml-14 relative h-full">
+                {groupOverlappingEntries(dedupeEntries(filteredEntries)).map(group => 
                   group.map((entry, idx) => renderScheduleEntry(entry, idx, group.length))
                 )}
-              </div>
-            </div>
+                
+                {/* Current time indicator */}
+                <div
+                  className="absolute left-0 right-0 h-0.5 bg-accent shadow-lg z-20"
+                  style={{ top: `${currentTimePercentage}%` }}
+                >
+                  <div className="absolute right-0 -top-2 text-xs font-bold text-accent">
+                    NOW
+                  </div>
+                </div>
 
-            {/* Current time indicator */}
-            <div
-              className="absolute left-0 right-0 h-0.5 bg-accent shadow-lg z-10 transition-all duration-1000"
-              style={{ top: `${currentTimePercentage}%` }}
-            >
-              <div className="absolute right-0 -top-2 text-xs font-bold text-accent">
-                NOW
+                {filteredEntries.length === 0 && (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-sm text-muted-foreground">No schedule entries for today</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-
-          {visibleBlocks.length === 0 && scheduleEntries.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground" role="status">
-              <div className="text-center space-y-3">
-                <p className="mb-2">No time blocks yet</p>
-                <p className="text-sm">Click "Add Block" to create your first one</p>
-                {showQuickActions && onAskAI && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onAskAI('Help me create a daily schedule')}
-                    className="gap-2"
-                    aria-label="Ask AI assistant to help create a daily schedule"
-                  >
-                    <Sparkles className="h-4 w-4" aria-hidden="true" />
-                    Ask AI to help
-                  </Button>
-                )}
-              </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {dedupeEntries(filteredEntries).map((entry) => {
+            const startDate = new Date(entry.start_time);
+            const endDate = new Date(entry.end_time);
+            const color = getCategoryColor(entry.category);
+            
+            return (
+              <Card key={entry.id} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div 
+                      className="w-1 h-full rounded-full" 
+                      style={{ backgroundColor: color }}
+                    />
+                    <div className="space-y-1">
+                      <h4 className="font-semibold">{entry.title}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {formatTime(startDate)} - {formatTime(endDate)}
+                      </p>
+                      {entry.location && (
+                        <p className="text-sm text-muted-foreground">📍 {entry.location}</p>
+                      )}
+                      {entry.description && (
+                        <p className="text-sm text-muted-foreground">{entry.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant="secondary">{entry.category || 'other'}</Badge>
+                </div>
+              </Card>
+            );
+          })}
+          {filteredEntries.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-muted-foreground">No schedule entries found</p>
             </div>
           )}
         </div>
-      </section>
-
-      <TimeBlockEditor
-        open={editorOpen}
-        onOpenChange={setEditorOpen}
-        block={editingBlock}
-        onSave={handleSaveBlock}
-        onDelete={editingBlock ? handleDeleteBlock : undefined}
-      />
-    </>
+      )}
+    </section>
   );
 }

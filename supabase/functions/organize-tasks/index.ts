@@ -68,6 +68,26 @@ serve(async (req) => {
 
     console.log('Organizing tasks:', { taskCount: tasks.length, blockCount: timeBlocks.length });
 
+    // Fetch existing schedule entries for the next 7 days to avoid conflicts
+    const todayDate = new Date(today);
+    const nextWeek = new Date(todayDate);
+    nextWeek.setDate(todayDate.getDate() + 7);
+
+    const { data: scheduleEntries, error: scheduleError } = await supabase
+      .from('schedule_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('start_time', todayDate.toISOString())
+      .lte('start_time', nextWeek.toISOString())
+      .order('start_time');
+
+    if (scheduleError) {
+      console.error('Error fetching schedule entries:', scheduleError);
+    }
+
+    const busyBlocks = scheduleEntries || [];
+    console.log(`Found ${busyBlocks.length} existing schedule entries to avoid`);
+
     const systemPrompt = `You are an expert AI productivity coach specializing in life planning and task prioritization. You use a sophisticated Priority Score system based on a 3x3 matrix.
 
 ## The 3x3 Priority Matrix
@@ -133,10 +153,19 @@ ${JSON.stringify(timeBlocks, null, 2)}
 User preferences:
 ${JSON.stringify(preferences, null, 2)}
 
+IMPORTANT - Existing schedule commitments (DO NOT schedule tasks during these times):
+${JSON.stringify(busyBlocks.map(b => ({
+  title: b.title,
+  start: b.start_time,
+  end: b.end_time,
+  category: b.category,
+  location: b.location
+})), null, 2)}
+
 Analyze using the Priority Score system:
 1. Calculate implicit importance (CRITICAL/NECESSARY/OPTIONAL) and urgency (IMMEDIATE/SHORT-TERM/LONG-TERM) for each task
 2. Create a prioritized Focus List of 3-5 top tasks based on Priority Scores
-3. Schedule tasks into time blocks matching energy requirements
+3. Schedule tasks into time blocks matching energy requirements, AVOIDING all existing schedule commitments
 4. Provide insights on domain balance and any neglected life areas
 
 Be specific with task IDs and block IDs from the provided data. Include reasoning for why certain tasks scored higher.`;

@@ -162,6 +162,7 @@ export type Database = {
           end_time: string
           id: string
           is_recurring: boolean | null
+          linked_time_block_id: string | null
           location: string | null
           recurrence_pattern: Json | null
           source: string | null
@@ -177,6 +178,7 @@ export type Database = {
           end_time: string
           id?: string
           is_recurring?: boolean | null
+          linked_time_block_id?: string | null
           location?: string | null
           recurrence_pattern?: Json | null
           source?: string | null
@@ -192,6 +194,7 @@ export type Database = {
           end_time?: string
           id?: string
           is_recurring?: boolean | null
+          linked_time_block_id?: string | null
           location?: string | null
           recurrence_pattern?: Json | null
           source?: string | null
@@ -200,7 +203,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schedule_entries_linked_time_block_id_fkey"
+            columns: ["linked_time_block_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_time_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schedule_preferences: {
         Row: {
@@ -347,6 +358,7 @@ export type Database = {
           estimated_minutes: number | null
           id: string
           name: string
+          source_schedule_id: string | null
           status: string | null
           type: string | null
           updated_at: string | null
@@ -358,6 +370,7 @@ export type Database = {
           estimated_minutes?: number | null
           id?: string
           name: string
+          source_schedule_id?: string | null
           status?: string | null
           type?: string | null
           updated_at?: string | null
@@ -369,12 +382,21 @@ export type Database = {
           estimated_minutes?: number | null
           id?: string
           name?: string
+          source_schedule_id?: string | null
           status?: string | null
           type?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_source_schedule_id_fkey"
+            columns: ["source_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_data: {
         Row: {
@@ -507,6 +529,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_todays_schedule: {
+        Args: { p_user_id: string }
+        Returns: {
+          category: string
+          description: string
+          end_time: string
+          id: string
+          location: string
+          source: string
+          start_time: string
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

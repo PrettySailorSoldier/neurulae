@@ -10,6 +10,7 @@ import { PlaybooksTab } from '@/components/PlaybooksTab';
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
+import { ScheduleOverview } from '@/components/ScheduleOverview';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
@@ -128,6 +129,57 @@ const Index = () => {
       setHasSeenTutorial(true);
     }
   }, [hasSeenTutorial, setHasSeenTutorial]);
+
+  // Daily refresh logic - load today's schedule on mount or date change
+  useEffect(() => {
+    const checkDailyRefresh = async () => {
+      if (!user) return;
+
+      const lastVisitDate = localStorage.getItem('neurulae-last-visit-date');
+      const today = getTodayString();
+
+      if (lastVisitDate !== today) {
+        console.log('New day detected, refreshing schedule...');
+        
+        // Load today's schedule entries from database
+        const { data, error } = await supabase
+          .from('schedule_entries')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('start_time', new Date().setHours(0, 0, 0, 0))
+          .lte('start_time', new Date().setHours(23, 59, 59, 999))
+          .order('start_time');
+
+        if (!error && data) {
+          console.log(`Loaded ${data.length} schedule entries for today`);
+          
+          // Show morning brief if there are activities today
+          if (data.length > 0) {
+            const homeworkCount = data.filter(e => e.category === 'homework').length;
+            const classCount = data.filter(e => e.category === 'class').length;
+            const workCount = data.filter(e => e.category === 'work').length;
+            
+            let description = 'Your schedule for today: ';
+            const parts = [];
+            if (workCount > 0) parts.push(`${workCount} work shift${workCount > 1 ? 's' : ''}`);
+            if (classCount > 0) parts.push(`${classCount} class${classCount > 1 ? 'es' : ''}`);
+            if (homeworkCount > 0) parts.push(`${homeworkCount} homework assignment${homeworkCount > 1 ? 's' : ''}`);
+            description += parts.join(', ');
+            
+            toast({
+              title: "☀️ Good morning!",
+              description,
+              duration: 5000,
+            });
+          }
+        }
+
+        localStorage.setItem('neurulae-last-visit-date', today);
+      }
+    };
+
+    checkDailyRefresh();
+  }, [user, toast]);
 
   // Check for profile and show setup if needed
   useEffect(() => {
