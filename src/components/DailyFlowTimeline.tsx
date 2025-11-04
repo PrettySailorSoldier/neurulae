@@ -3,11 +3,8 @@ import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
 import { ScheduledTaskCard } from './ScheduledTaskCard';
-import { Plus, Sparkles, Upload, Loader2 } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { timeToPercentage, getCurrentTimePercentage, getCurrentTime, isTimeInRange, timeToMinutes, isWeekday } from '@/lib/timeUtils';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface DailyFlowTimelineProps {
   timeBlocks: TimeBlock[];
@@ -34,12 +31,10 @@ export function DailyFlowTimeline({
   onAskAI,
   showQuickActions = true,
 }: DailyFlowTimelineProps) {
-  const { user } = useAuth();
-  const { toast } = useToast();
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<TimeBlock | undefined>();
-  const [uploading, setUploading] = useState(false);
+  
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -74,80 +69,6 @@ export function DailyFlowTimeline({
     }
   };
 
-  const handleScheduleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    const allowedTypes = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp','image/heic','image/heif'];
-    const ext = file.name?.split('.').pop()?.toLowerCase() || '';
-    const allowedExts = ['pdf','png','jpg','jpeg','webp','heic','heif'];
-    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
-      toast({
-        title: 'Unsupported file',
-        description: 'Upload a PDF or image (PNG/JPG/WEBP/HEIC).',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const invokeOptions: any = { body: formData };
-      if (session?.access_token) {
-        invokeOptions.headers = { Authorization: `Bearer ${session.access_token}` };
-      }
-      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', invokeOptions);
-
-      if (parseError) throw parseError;
-
-      if (parseResult?.entries && parseResult.entries.length > 0) {
-        // Insert schedule entries to database
-        const scheduleEntries = parseResult.entries.map((entry: any) => ({
-          user_id: user.id,
-          title: entry.title,
-          description: entry.description,
-          start_time: entry.startTime,
-          end_time: entry.endTime,
-          category: entry.category || 'other',
-          location: entry.location,
-          source: 'pdf',
-        }));
-
-        const { error: insertError } = await supabase
-          .from('schedule_entries')
-          .insert(scheduleEntries);
-
-        if (insertError) throw insertError;
-
-        toast({
-          title: 'Schedule Imported!',
-          description: `Added ${scheduleEntries.length} entries (including distributed assignments)`,
-        });
-      } else {
-        toast({
-          title: parseResult?.error ? 'Parsing Issue' : 'No Schedule Found',
-          description: parseResult?.error ?? 'Could not extract schedule information from the file',
-          variant: 'destructive',
-        });
-      }
-    } catch (error: any) {
-      console.error('Error uploading schedule:', error);
-      const status = error?.status || error?.cause?.status;
-      let description = 'Failed to parse schedule.';
-      if (status === 429) description = 'Rate limit hit. Please wait and try again.';
-      else if (status === 402) description = 'AI usage limit reached. Please add credits.';
-      else if (error?.message) description = String(error.message);
-      toast({ title: 'Upload Failed', description, variant: 'destructive' });
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  };
 
   const isToday = isWeekday();
   const visibleBlocks = timeBlocks.filter(block => {
