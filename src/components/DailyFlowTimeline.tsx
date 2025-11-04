@@ -352,6 +352,17 @@ export function DailyFlowTimeline({
     return groups;
   };
 
+  // Remove exact duplicates (same title + start + end + location)
+  const dedupeEntries = (entries: ScheduleEntry[]) => {
+    const seen = new Set<string>();
+    return entries.filter((e) => {
+      const key = `${e.title}|${e.start_time}|${e.end_time}|${e.location || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   // Render schedule entries from database
   const renderScheduleEntry = (entry: ScheduleEntry, groupIndex: number, totalInGroup: number) => {
     const startDate = new Date(entry.start_time);
@@ -383,24 +394,24 @@ export function DailyFlowTimeline({
     return (
       <div
         key={entry.id}
-        className="absolute border-2 rounded-lg p-2 overflow-hidden"
+        className="absolute border rounded-md p-2 overflow-hidden pointer-events-none shadow-sm"
         style={{
           top: `${topPercentage}%`,
           height: `${height}%`,
-          left: `${leftPercent}%`,
-          width: `${widthPercent}%`,
+          left: `${groupIndex * 12}px`,
+          width: `calc(100% - ${groupIndex * 12}px)`,
           backgroundColor: `${color}30`,
           borderColor: color,
-          zIndex: 5,
+          zIndex: 5 + groupIndex,
         }}
       >
         <div className="space-y-0.5">
-          <h4 className="font-bold text-sm leading-tight break-words">{entry.title}</h4>
-          <p className="text-xs font-medium text-foreground">
+          <h4 className="font-semibold text-sm leading-tight truncate whitespace-nowrap">{entry.title}</h4>
+          <p className="text-[11px] text-muted-foreground">
             {formatTime(startDate)} - {formatTime(endDate)}
           </p>
           {entry.location && (
-            <p className="text-xs text-muted-foreground truncate">📍 {entry.location}</p>
+            <p className="text-[11px] text-muted-foreground truncate">📍 {entry.location}</p>
           )}
         </div>
       </div>
@@ -488,7 +499,7 @@ export function DailyFlowTimeline({
               </p>
               <div className="relative h-[600px]">
                 {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
-                {groupOverlappingEntries(scheduleEntries).map(group => 
+                {groupOverlappingEntries(dedupeEntries(scheduleEntries)).map(group => 
                   group.map((entry, idx) => renderScheduleEntry(entry, idx, group.length))
                 )}
               </div>
