@@ -132,8 +132,8 @@ export function DailyFlowTimeline({
         });
       } else {
         toast({
-          title: 'No Schedule Found',
-          description: 'Could not extract schedule information from the file',
+          title: parseResult?.error ? 'Parsing Issue' : 'No Schedule Found',
+          description: parseResult?.error ?? 'Could not extract schedule information from the file',
           variant: 'destructive',
         });
       }

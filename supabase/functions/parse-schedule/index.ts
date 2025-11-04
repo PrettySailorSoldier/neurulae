@@ -59,12 +59,13 @@ serve(async (req) => {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an intelligent schedule and assignment parser that extracts schedules AND automatically breaks up homework assignments into manageable daily chunks.
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content: `You are an intelligent schedule and assignment parser that extracts schedules AND automatically breaks up homework assignments into manageable daily chunks.
 
 CRITICAL ASSIGNMENT DISTRIBUTION LOGIC:
 When you see multiple assignments due on the same date (e.g., 10 assignments due Nov 9):
@@ -101,25 +102,25 @@ Guidelines:
 - Include course name in description for homework
 - Map Assignment/Quiz/Exam/Lab/Project/Paper/Discussion to category "homework"
 - If no schedule found, return {"entries": []}`
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Parse this schedule document and extract all events:'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${file.type || 'application/octet-stream'};base64,${base64Content}`
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Parse this schedule document and extract all events:'
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${file.type || 'application/octet-stream'};base64,${base64Content}`
+                  }
                 }
-              }
-            ]
-          }
-        ],
-        max_tokens: 2000,
-      }),
+              ]
+            }
+          ],
+          max_tokens: 2000,
+        }),
     });
 
     if (!response.ok) {
@@ -147,15 +148,26 @@ Guidelines:
       throw new Error('No content in AI response');
     }
 
-    // Parse JSON from response
+    // Parse JSON from response (robust to code fences and extra text)
     let parsedData;
     try {
-      // Extract JSON if wrapped in markdown code blocks
-      const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
-      parsedData = JSON.parse(jsonStr.trim());
+      let text = typeof content === 'string' ? content.trim() : String(content ?? '').trim();
+      // Remove Markdown code fences if present
+      if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      }
+      // If still not starting with '{', try to slice from first '{' to last '}'
+      if (!text.startsWith('{')) {
+        const first = text.indexOf('{');
+        const last = text.lastIndexOf('}');
+        if (first !== -1 && last !== -1) {
+          text = text.slice(first, last + 1);
+        }
+      }
+      parsedData = JSON.parse(text);
     } catch (e) {
-      console.error('Failed to parse AI response as JSON:', content);
+      console.error('Failed to parse AI response as JSON (raw length):', String(content).length);
+      console.error('Raw AI content head:', String(content).slice(0, 500));
       throw new Error('Failed to parse schedule from AI response');
     }
 
@@ -218,7 +230,7 @@ Guidelines:
         entries: []
       }),
       { 
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
