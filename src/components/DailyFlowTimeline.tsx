@@ -3,7 +3,7 @@ import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
 import { ScheduledTaskCard } from './ScheduledTaskCard';
-import { Plus, Sparkles, Upload, Loader2, Calendar, CalendarCheck, Trash2 } from 'lucide-react';
+import { Plus, Sparkles, Loader2, Calendar, CalendarCheck, Trash2 } from 'lucide-react';
 import { timeToPercentage, getCurrentTimePercentage, getCurrentTime, isTimeInRange, timeToMinutes, isWeekday } from '@/lib/timeUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,7 +45,6 @@ export function DailyFlowTimeline({
 }: DailyFlowTimelineProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
   
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
@@ -168,76 +167,6 @@ export function DailyFlowTimeline({
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to process screenshot. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-      if (event.target) {
-        event.target.value = '';
-      }
-    }
-  };
-
-  const handleScheduleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || !event.target.files[0] || !user) return;
-    
-    setIsUploading(true);
-    const file = event.target.files[0];
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const { data, error } = await supabase.functions.invoke('parse-schedule', {
-        body: formData,
-      });
-
-      if (error) throw error;
-
-      const { entries } = data;
-      console.log('Parsed schedule data:', entries);
-
-      // Check for duplicates before inserting
-      if (entries && entries.length > 0) {
-        const startDate = new Date(entries[0].startTime);
-        const endDate = new Date(entries[entries.length - 1].endTime);
-
-        const { data: existingEntries, error: checkError } = await supabase
-          .from('schedule_entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('start_time', startDate.toISOString())
-          .lte('start_time', endDate.toISOString());
-
-        if (checkError) throw checkError;
-
-        // Check for duplicates
-        const duplicates = entries.filter((newEntry: any) =>
-          existingEntries?.some((existing: any) =>
-            existing.title === newEntry.title &&
-            existing.start_time === newEntry.startTime &&
-            existing.end_time === newEntry.endTime
-          )
-        );
-
-        if (duplicates.length > 0 && existingEntries && existingEntries.length > 0) {
-          // Show duplicate dialog
-          setPendingUploadData({ entries, existingEntries, startDate, endDate });
-          setDuplicateDialogOpen(true);
-          setIsUploading(false);
-          if (event.target) event.target.value = '';
-          return;
-        }
-      }
-
-      // No duplicates, proceed with upload
-      await proceedWithUpload(entries);
-      
-    } catch (error) {
-      console.error('Error uploading schedule:', error);
-      toast({
-        title: "Upload Failed",
-        description: "There was an error processing your schedule file. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -597,14 +526,6 @@ export function DailyFlowTimeline({
       <div className="flex items-center gap-2 flex-wrap">
         <input
           type="file"
-          ref={fileInputRef}
-          onChange={handleScheduleUpload}
-          accept=".pdf,.txt,.doc,.docx"
-          className="hidden"
-          id="schedule-upload"
-        />
-        <input
-          type="file"
           ref={screenshotInputRef}
           onChange={handleScreenshotUpload}
           accept="image/*"
@@ -625,25 +546,7 @@ export function DailyFlowTimeline({
           ) : (
             <>
               <Sparkles className="mr-2 h-4 w-4" />
-              Upload Screenshot
-            </>
-          )}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-        >
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-            <>
-              <Upload className="mr-2 h-4 w-4" />
-              Import Schedule
+              Import Assignments
             </>
           )}
         </Button>
