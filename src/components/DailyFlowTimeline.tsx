@@ -321,8 +321,39 @@ export function DailyFlowTimeline({
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
   };
 
+  // Group overlapping entries
+  const groupOverlappingEntries = (entries: ScheduleEntry[]) => {
+    const groups: ScheduleEntry[][] = [];
+    
+    entries.forEach(entry => {
+      const entryStart = new Date(entry.start_time).getTime();
+      const entryEnd = new Date(entry.end_time).getTime();
+      
+      let addedToGroup = false;
+      for (const group of groups) {
+        const hasOverlap = group.some(e => {
+          const eStart = new Date(e.start_time).getTime();
+          const eEnd = new Date(e.end_time).getTime();
+          return (entryStart < eEnd && entryEnd > eStart);
+        });
+        
+        if (hasOverlap) {
+          group.push(entry);
+          addedToGroup = true;
+          break;
+        }
+      }
+      
+      if (!addedToGroup) {
+        groups.push([entry]);
+      }
+    });
+    
+    return groups;
+  };
+
   // Render schedule entries from database
-  const renderScheduleEntry = (entry: ScheduleEntry, index: number) => {
+  const renderScheduleEntry = (entry: ScheduleEntry, groupIndex: number, totalInGroup: number) => {
     const startDate = new Date(entry.start_time);
     const endDate = new Date(entry.end_time);
     
@@ -344,6 +375,10 @@ export function DailyFlowTimeline({
     };
 
     const color = categoryColors[entry.category] || categoryColors.other;
+    
+    // Calculate width and position for side-by-side display
+    const widthPercent = 100 / totalInGroup;
+    const leftPercent = widthPercent * groupIndex;
 
     return (
       <div
@@ -352,11 +387,11 @@ export function DailyFlowTimeline({
         style={{
           top: `${topPercentage}%`,
           height: `${height}%`,
-          left: `${index * 2}%`,
-          right: `${index * 2}%`,
-          backgroundColor: `${color}20`,
+          left: `${leftPercent}%`,
+          width: `${widthPercent}%`,
+          backgroundColor: `${color}30`,
           borderColor: color,
-          zIndex: 5 + index,
+          zIndex: 5,
         }}
       >
         <div className="space-y-0.5">
@@ -364,11 +399,8 @@ export function DailyFlowTimeline({
           <p className="text-xs font-medium text-foreground">
             {formatTime(startDate)} - {formatTime(endDate)}
           </p>
-          <p className="text-xs text-muted-foreground">
-            ({Math.round(duration / 60)}h {duration % 60}m)
-          </p>
           {entry.location && (
-            <p className="text-xs text-muted-foreground">📍 {entry.location}</p>
+            <p className="text-xs text-muted-foreground truncate">📍 {entry.location}</p>
           )}
         </div>
       </div>
@@ -456,7 +488,9 @@ export function DailyFlowTimeline({
               </p>
               <div className="relative h-[600px]">
                 {dedicatedBlocks.map(block => renderBlock(block, block.id === activeDedicatedBlock?.id))}
-                {scheduleEntries.map((entry, index) => renderScheduleEntry(entry, index))}
+                {groupOverlappingEntries(scheduleEntries).map(group => 
+                  group.map((entry, idx) => renderScheduleEntry(entry, idx, group.length))
+                )}
               </div>
             </div>
 
