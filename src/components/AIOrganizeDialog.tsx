@@ -42,10 +42,20 @@ export function AIOrganizeDialog({
     setResult(null);
 
     try {
+      // Get the current session to ensure we have auth token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('You must be logged in to organize tasks');
+      }
+
       const today = new Date().toISOString().split('T')[0];
       const incompleteTasks = tasks.filter(t => !t.completed);
 
       const { data, error: invokeError } = await supabase.functions.invoke('organize-tasks', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           tasks: incompleteTasks.map(t => ({
             id: t.id,
