@@ -160,28 +160,48 @@ Guidelines:
         parsedData = content;
       } else {
         let text = typeof content === 'string' ? content.trim() : '';
-        // Remove Markdown code fences if present
-        if (text.startsWith('```')) {
-          text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-        }
+
+        const stripCodeFences = (s: string) => {
+          if (s.startsWith('```')) {
+            return s.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+          }
+          return s;
+        };
+
         const tryParse = (s: string) => { try { return JSON.parse(s); } catch { return null; } };
-        // First attempt: parse as-is
-        let obj: any = text ? tryParse(text) : null;
-        // Fallback: slice from first '{' to last '}' if present and parse again
-        if (!obj && text) {
+
+        // 1) Raw
+        let candidate = text ? tryParse(text) : null;
+
+        // 2) Strip code fences
+        if (!candidate && text) {
+          const stripped = stripCodeFences(text);
+          candidate = tryParse(stripped) || tryParse(stripped.replace(/,\s*([}\]])/g, '$1')); // fix trailing commas
+        }
+
+        // 3) Extract innermost JSON object and retry (with trailing comma fix)
+        if (!candidate && text) {
           const first = text.indexOf('{');
           const last = text.lastIndexOf('}');
           if (first !== -1 && last !== -1 && last > first) {
-            obj = tryParse(text.slice(first, last + 1));
+            const inner = text.slice(first, last + 1);
+            candidate = tryParse(inner) || tryParse(inner.replace(/,\s*([}\]])/g, '$1'));
           }
         }
-        if (!obj) throw new Error('json_parse_failed');
-        parsedData = obj;
+
+        if (!candidate) throw new Error('json_parse_failed');
+        parsedData = candidate;
       }
     } catch (e) {
       console.error('Failed to parse AI response as JSON (raw length):', String(content).length);
       console.error('Raw AI content head:', String(content).slice(0, 500));
-      throw new Error('Failed to parse schedule from AI response');
+      return new Response(
+        JSON.stringify({ 
+          error: 'The AI returned malformed JSON. Please try again.',
+          entries: []
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Normalize categories, ensure datetimes, and dedupe entries
