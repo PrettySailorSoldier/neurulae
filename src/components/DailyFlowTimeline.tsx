@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
 import { ScheduledTaskCard } from './ScheduledTaskCard';
-import { Plus, Sparkles, Loader2, Calendar, CalendarCheck, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { timeToPercentage, getCurrentTimePercentage, getCurrentTime, isTimeInRange, timeToMinutes, isWeekday } from '@/lib/timeUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 
 interface ScheduleEntry {
   id: string;
@@ -45,7 +45,6 @@ export function DailyFlowTimeline({
 }: DailyFlowTimelineProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const screenshotInputRef = useRef<HTMLInputElement>(null);
   
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
@@ -58,10 +57,7 @@ export function DailyFlowTimeline({
   const [activeDedicatedBlock, setActiveDedicatedBlock] = useState<TimeBlock | null>(null);
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('timeline');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
-  const [pendingUploadData, setPendingUploadData] = useState<any>(null);
   const [clearScheduleDialogOpen, setClearScheduleDialogOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -213,11 +209,11 @@ export function DailyFlowTimeline({
         const scheduleEntries = entries.map((entry: any) => ({
           user_id: user.id,
           title: entry.title || 'Untitled',
-          description: entry.course || entry.description || entry.category || null,
+          description: entry.description || null,
           start_time: entry.startTime,
           end_time: entry.endTime,
           category: entry.category || 'homework',
-          location: entry.location || null,
+          location: entry.course || null, // Store course in location field
           source: 'imported'
         }));
 
@@ -228,14 +224,25 @@ export function DailyFlowTimeline({
         if (insertError) throw insertError;
 
         // Create tasks for each assignment so AI can see them
-        const tasksToCreate = entries.map((entry: any) => ({
-          user_id: user.id,
-          name: entry.title || 'Untitled',
-          type: entry.category || 'homework',
-          status: 'pending',
-          due_date: new Date(entry.endTime).toISOString().split('T')[0], // Extract date part
-          estimated_minutes: entry.estimatedMinutes || 60,
-        }));
+        // Determine if task is daily (due today/tomorrow) or ongoing
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(23, 59, 59, 999);
+        
+        const tasksToCreate = entries.map((entry: any) => {
+          const dueDate = new Date(entry.endTime);
+          const isDaily = dueDate <= tomorrow;
+          
+          return {
+            user_id: user.id,
+            name: entry.title || 'Untitled',
+            type: entry.category || 'homework',
+            status: 'pending',
+            due_date: dueDate.toISOString().split('T')[0], // Extract date part
+            estimated_minutes: entry.estimatedMinutes || 60,
+          };
+        });
 
         const { data: insertedTasks, error: tasksError } = await supabase
           .from('tasks')
@@ -246,13 +253,19 @@ export function DailyFlowTimeline({
           console.error('Error creating tasks:', tasksError);
         } else if (insertedTasks && onAddTask) {
           // Add each task to localStorage via the callback
-          insertedTasks.forEach((task: any) => {
+          insertedTasks.forEach((task: any, index: number) => {
+            const entry = entries[index];
+            const dueDate = new Date(entry.endTime);
+            const isDaily = dueDate <= tomorrow;
+            
             onAddTask({
               title: task.name,
               completed: false,
               recurring: 'none',
               estimatedMinutes: task.estimated_minutes,
               dueDate: task.due_date,
+              course: entry.course,
+              type: isDaily ? 'daily' : 'ongoing',
             });
           });
         }
@@ -569,33 +582,6 @@ export function DailyFlowTimeline({
 
       {/* Action Buttons */}
       <div className="flex items-center gap-2 flex-wrap">
-        <input
-          type="file"
-          ref={screenshotInputRef}
-          onChange={handleScreenshotUpload}
-          accept="image/*"
-          multiple
-          className="hidden"
-          id="screenshot-upload"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => screenshotInputRef.current?.click()}
-          disabled={isUploading}
-        >
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Import Assignments
-            </>
-          )}
-        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -732,18 +718,18 @@ export function DailyFlowTimeline({
                       className="w-1 h-full rounded-full" 
                       style={{ backgroundColor: color }}
                     />
-                    <div className="space-y-1">
-                      <h4 className="font-semibold">{entry.title}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {formatTime(startDate)} - {formatTime(endDate)}
-                      </p>
-                      {entry.location && (
-                        <p className="text-sm text-muted-foreground">📍 {entry.location}</p>
-                      )}
-                      {entry.description && (
-                        <p className="text-sm text-muted-foreground">{entry.description}</p>
-                      )}
-                    </div>
+                  <div className="space-y-1">
+                    <h4 className="font-semibold">{entry.title}</h4>
+                    {entry.location && (
+                      <p className="text-sm font-medium text-primary">📚 {entry.location}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {formatTime(startDate)} - {formatTime(endDate)}
+                    </p>
+                    {entry.description && (
+                      <p className="text-sm text-muted-foreground">{entry.description}</p>
+                    )}
+                  </div>
                   </div>
                   <Badge variant="secondary">{entry.category || 'other'}</Badge>
                 </div>

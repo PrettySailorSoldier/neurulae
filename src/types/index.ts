@@ -19,6 +19,8 @@ export interface Task {
   subtasks?: SubTask[];
   notes?: string;
   eisenhowerQuadrant?: 'urgent-important' | 'not-urgent-important' | 'urgent-not-important' | 'not-urgent-not-important';
+  course?: string;
+  type?: 'daily' | 'ongoing';
 }
 
 export interface Project {

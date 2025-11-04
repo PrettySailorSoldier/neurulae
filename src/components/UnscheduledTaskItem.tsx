@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Task, SubTask } from '@/types';
 
 interface UnscheduledTaskItemProps {
@@ -91,6 +92,8 @@ export function UnscheduledTaskItem({
         
         <span className={`flex-1 text-sm ${task.completed ? 'line-through text-muted-foreground' : 'text-card-foreground'}`}>
           {task.title}
+          {task.course && <span className="text-xs text-primary ml-2">({task.course})</span>}
+          {task.type && <Badge variant="outline" className="ml-2 text-xs">{task.type === 'daily' ? '📅 Today' : '🎯 Ongoing'}</Badge>}
         </span>
 
         {task.focusTimeMinutes && (

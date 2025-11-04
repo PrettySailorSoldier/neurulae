@@ -82,11 +82,14 @@ Return format:
     {
       "title": "Assignment name",
       "dueDate": "Nov 8",
-      "course": "Course name if visible",
-      "category": "homework"
+      "course": "Course name (REQUIRED - extract from visible class/subject name)",
+      "category": "homework",
+      "description": "Optional additional details"
     }
   ]
-}`
+}
+
+REQUIRED: You MUST extract the course name from visible class/subject labels. Look for section names, headers, or class identifiers.`
           },
           {
             role: 'user',
