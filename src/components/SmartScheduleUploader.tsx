@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Calendar, Sparkles, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 
 type FileStatus = {
   name: string;
@@ -16,7 +16,6 @@ export function SmartScheduleUploader() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>([]);
@@ -153,49 +152,6 @@ export function SmartScheduleUploader() {
     }
   };
 
-  const handleGeneratePlan = async () => {
-    if (!user) return;
-
-    setGenerating(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke('generate-smart-plan', {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-      });
-
-      if (error) throw error;
-
-      if (data?.error) {
-        toast({
-          title: 'Planning Error',
-          description: data.error,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Life Plan Generated! ✨',
-        description: data?.message || 'Your AI-optimized schedule is ready',
-      });
-    } catch (error: any) {
-      console.error('Error generating plan:', error);
-      const status = error?.status || error?.cause?.status;
-      let description = 'Failed to generate plan';
-      if (status === 429) description = 'Rate limit exceeded. Please wait.';
-      else if (status === 402) description = 'AI credits exhausted. Please add credits.';
-      else if (error?.message) description = error.message;
-      
-      toast({ 
-        title: 'Generation Failed', 
-        description, 
-        variant: 'destructive' 
-      });
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
       <CardHeader>
@@ -267,31 +223,6 @@ export function SmartScheduleUploader() {
             <div className="flex-1">
               <p className="font-medium">Add All Your Tasks</p>
               <p className="text-sm text-muted-foreground">Homework, cleaning, errands, appointments - add everything below</p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">3</div>
-            <div className="flex-1">
-              <p className="font-medium">Let AI Plan Your Life</p>
-              <p className="text-sm text-muted-foreground">AI considers all your commitments and creates an optimal schedule</p>
-              <Button
-                className="mt-2 w-full"
-                onClick={handleGeneratePlan}
-                disabled={generating}
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Plan...
-                  </>
-                ) : (
-                  <>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Generate My Schedule
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         </div>

@@ -228,43 +228,15 @@ export function DailyFlowTimeline({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Daily Flow Timeline</h3>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => document.getElementById('timeline-schedule-upload')?.click()}
-              size="sm"
-              variant="outline"
-              disabled={uploading}
-              aria-label="Upload schedule"
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" aria-hidden="true" />
-                  Parsing...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-1" aria-hidden="true" />
-                  Upload Schedule
-                </>
-              )}
-            </Button>
-            <input
-              id="timeline-schedule-upload"
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif"
-              className="hidden"
-              onChange={handleScheduleUpload}
-            />
-            <Button 
-              onClick={handleAddBlock} 
-              size="sm" 
-              className="bg-primary hover:bg-primary/90"
-              aria-label="Add new time block"
-            >
-              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
-              Add Block
-            </Button>
-          </div>
+          <Button 
+            onClick={handleAddBlock} 
+            size="sm" 
+            className="bg-primary hover:bg-primary/90"
+            aria-label="Add new time block"
+          >
+            <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+            Add Block
+          </Button>
         </div>
 
         <div className="relative bg-card/50 border border-border rounded-lg p-4 min-h-[600px]">

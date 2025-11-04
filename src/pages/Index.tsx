@@ -15,7 +15,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
 import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Sparkles, Compass, Calendar, CalendarCheck } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
-import { AICommandBar } from '@/components/AICommandBar';
+import { AIAssistant } from '@/components/AIAssistant';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
 import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
@@ -110,9 +110,7 @@ const Index = () => {
   
   // AI Assistant
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
-  const [isStuckMode, setIsStuckMode] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
-  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [initialAIMessage, setInitialAIMessage] = useState<string | undefined>();
   const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
   
@@ -877,7 +875,7 @@ const Index = () => {
       return;
     }
     incrementStuckSession();
-    setIsStuckMode(true);
+    setInitialAIMessage("I need help figuring out what to focus on today");
     setIsAIAssistantOpen(true);
     toast({
       title: "Let's figure this out together",
@@ -885,19 +883,17 @@ const Index = () => {
     });
   };
 
-  const handleStuckModeComplete = () => {
-    setIsStuckMode(false);
-  };
-
   const handleAskAI = (message: string) => {
     setInitialAIMessage(message);
+    setIsAIAssistantOpen(true);
   };
 
-  const handleClearInitialMessage = () => {
-    setInitialAIMessage(undefined);
+  const handleGenerateSchedule = () => {
+    setInitialAIMessage("I've uploaded my work/class schedule and added my tasks. Please generate an optimized schedule for me.");
+    setIsAIAssistantOpen(true);
   };
 
-  // Keyboard shortcuts
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle shortcuts when not in an input field
@@ -906,12 +902,11 @@ const Index = () => {
       // Cmd/Ctrl + K for AI Assistant
       if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !isInputField) {
         e.preventDefault();
-        setAiDrawerOpen(prev => !prev);
-        setInitialAIMessage(undefined); // Clear any initial message when toggling manually
+        setIsAIAssistantOpen(prev => !prev);
       }
       
-      // ? for keyboard shortcuts
-      if (e.key === '?' && !e.shiftKey && !isInputField) {
+      // Cmd/Ctrl + / for keyboard shortcuts
+      if ((e.metaKey || e.ctrlKey) && e.key === '/' && !isInputField) {
         e.preventDefault();
         setKeyboardShortcutsOpen(true);
       }
@@ -1309,7 +1304,9 @@ const Index = () => {
       />
       
       {showAI && (
-        <AICommandBar
+        <AIAssistant
+          open={isAIAssistantOpen}
+          onOpenChange={setIsAIAssistantOpen}
           onUpdateTask={handleUpdateTaskById}
           onUpdateTimeBlock={handleUpdateTimeBlock}
           onAddTimeBlock={handleAddTimeBlock}
@@ -1319,16 +1316,11 @@ const Index = () => {
           playbooks={playbooks}
           onAddPlaybook={handleAddPlaybook}
           onUpdatePlaybook={handleUpdatePlaybook}
-          stuckMode={isStuckMode}
-          onStuckModeComplete={handleStuckModeComplete}
           initialMessage={initialAIMessage}
-          onInitialMessageHandled={handleClearInitialMessage}
-          externalOpen={isAIAssistantOpen}
-          onExternalOpenChange={setIsAIAssistantOpen}
         />
       )}
 
-      <KeyboardShortcutsDialog 
+      <KeyboardShortcutsDialog
         open={keyboardShortcutsOpen}
         onOpenChange={setKeyboardShortcutsOpen}
       />
