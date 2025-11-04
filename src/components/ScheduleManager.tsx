@@ -85,13 +85,17 @@ export function ScheduleManager() {
 
     setUploading(true);
     try {
-      // Upload PDF to parse
+      // Upload file to parse
+      const { data: { session } } = await supabase.auth.getSession();
+
       const formData = new FormData();
       formData.append('file', file);
 
-      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', {
-        body: formData,
-      });
+      const invokeOptions: any = { body: formData };
+      if (session?.access_token) {
+        invokeOptions.headers = { Authorization: `Bearer ${session.access_token}` };
+      }
+      const { data: parseResult, error: parseError } = await supabase.functions.invoke('parse-schedule', invokeOptions);
 
       if (parseError) throw parseError;
 
@@ -121,8 +125,8 @@ export function ScheduleManager() {
         loadEntries();
       } else {
         toast({
-          title: 'No Schedule Found',
-          description: 'Could not extract schedule information from the file',
+          title: parseResult?.error ? 'Parsing Issue' : 'No Schedule Found',
+          description: parseResult?.error ?? 'Could not extract schedule information from the file',
           variant: 'destructive',
         });
       }

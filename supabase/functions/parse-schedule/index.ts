@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { parse as parseJSON5 } from 'https://esm.sh/json5@2.2.3';
+import JSON5 from 'https://esm.sh/json5@2.2.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -174,7 +174,7 @@ Guidelines:
 
         const tryParseAny = (s: string) => {
           try { return JSON.parse(s); } catch {}
-          try { return parseJSON5(s); } catch {}
+          try { return JSON5.parse(s); } catch {}
           return null;
         };
 
