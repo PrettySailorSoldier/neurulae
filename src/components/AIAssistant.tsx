@@ -567,7 +567,7 @@ export function AIAssistant({
         "flex flex-col text-left",
         isMobile 
           ? "w-full max-w-full h-[100dvh] rounded-none" 
-          : "max-w-4xl h-[85vh]"
+          : "max-w-6xl h-[70vh]"
       )} aria-describedby="ai-assistant-description">
         <DialogHeader className="pr-10">
           <DialogTitle className="flex items-center justify-between gap-3">
