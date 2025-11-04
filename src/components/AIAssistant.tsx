@@ -498,6 +498,102 @@ export function AIAssistant({
     }
   };
 
+  const handleFileUpload = async (file: File) => {
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please sign in to upload schedules.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Call parse-schedule edge function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-schedule`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Failed to parse schedule');
+      }
+
+      const entries = result.entries || [];
+      
+      if (entries.length === 0) {
+        toast({
+          title: 'No Schedule Found',
+          description: 'Could not find any schedule entries in the file.',
+        });
+        return;
+      }
+
+      // Insert parsed entries into database
+      const { error: insertError } = await supabase
+        .from('schedule_entries')
+        .insert(
+          entries.map((entry: any) => ({
+            user_id: user.id,
+            title: entry.title,
+            description: entry.description,
+            start_time: entry.startTime,
+            end_time: entry.endTime,
+            category: entry.category,
+            location: entry.location,
+          }))
+        );
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: '✅ Schedule Uploaded',
+        description: `Added ${entries.length} event${entries.length > 1 ? 's' : ''} to your schedule.`,
+        className: 'animate-scale-in border-primary/50',
+      });
+
+      // Add a message to the chat about the upload
+      const uploadMessage: Message = {
+        role: 'assistant',
+        content: `I've successfully added ${entries.length} event${entries.length > 1 ? 's' : ''} from your schedule! ${entries.slice(0, 3).map((e: any) => `\n• ${e.title} (${new Date(e.startTime).toLocaleDateString()})`).join('')}${entries.length > 3 ? `\n...and ${entries.length - 3} more` : ''}`,
+        timestamp: new Date().toISOString(),
+      };
+      
+      setMessages(prev => [...prev, uploadMessage]);
+
+      // Save to conversation
+      if (conversationId) {
+        await supabase.from('chat_messages').insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: uploadMessage.content,
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading schedule:', error);
+      toast({
+        title: 'Upload Failed',
+        description: error instanceof Error ? error.message : 'Failed to upload schedule',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleClearConversation = async () => {
     if (!conversationId) return;
     
@@ -661,14 +757,13 @@ export function AIAssistant({
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept=".ics,.csv,.txt,.pdf,image/*"
+            accept=".pdf,image/*"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {
-                toast({
-                  title: 'File Upload',
-                  description: `Selected: ${file.name}. Upload functionality coming soon!`,
-                });
+                handleFileUpload(file);
+                // Reset input so same file can be selected again
+                e.target.value = '';
               }
             }}
           />
