@@ -1158,14 +1158,10 @@ const Index = () => {
                   timeBlocks={timeBlocks}
                   scheduledTasks={scheduledTasks}
                   tasks={tasks}
-                  onAddBlock={handleAddTimeBlock}
-                  onUpdateBlock={handleUpdateTimeBlock}
-                  onDeleteBlock={handleDeleteTimeBlock}
-                  onToggleComplete={handleToggleComplete}
-                  onUpdateTask={handleUpdateTask}
-                  onAskAI={showQuickActions ? handleAskAI : undefined}
+                  onAddTimeBlock={handleAddTimeBlock}
+                  onUpdateTimeBlock={handleUpdateTimeBlock}
+                  onDeleteTimeBlock={handleDeleteTimeBlock}
                   onAddTask={handleAddTask}
-                  showQuickActions={showQuickActions}
                 />
               </div>
 

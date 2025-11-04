@@ -181,7 +181,6 @@ export function DailyFlowTimeline({
               title: `📚 ${hw.course} - ${hw.assignment}`,
               completed: false,
               recurring: 'none',
-              priority: 'medium',
               estimatedMinutes: hw.estimatedMinutes || 60,
               dueDate: hw.dueDate,
             });
