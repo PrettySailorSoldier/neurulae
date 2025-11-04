@@ -209,13 +209,14 @@ export function DailyFlowTimeline({
           if (deleteError) throw deleteError;
         }
 
+        // Create schedule entries for the timeline
         const scheduleEntries = entries.map((entry: any) => ({
           user_id: user.id,
           title: entry.title || 'Untitled',
-          description: entry.description || entry.category || null,
+          description: entry.course || entry.description || entry.category || null,
           start_time: entry.startTime,
           end_time: entry.endTime,
-          category: entry.category || 'other',
+          category: entry.category || 'homework',
           location: entry.location || null,
           source: 'imported'
         }));
@@ -226,11 +227,41 @@ export function DailyFlowTimeline({
 
         if (insertError) throw insertError;
 
+        // Create tasks for each assignment so AI can see them
+        const tasksToCreate = entries.map((entry: any) => ({
+          user_id: user.id,
+          name: entry.title || 'Untitled',
+          type: entry.category || 'homework',
+          status: 'pending',
+          due_date: new Date(entry.endTime).toISOString().split('T')[0], // Extract date part
+          estimated_minutes: entry.estimatedMinutes || 60,
+        }));
+
+        const { data: insertedTasks, error: tasksError } = await supabase
+          .from('tasks')
+          .insert(tasksToCreate)
+          .select();
+
+        if (tasksError) {
+          console.error('Error creating tasks:', tasksError);
+        } else if (insertedTasks && onAddTask) {
+          // Add each task to localStorage via the callback
+          insertedTasks.forEach((task: any) => {
+            onAddTask({
+              title: task.name,
+              completed: false,
+              recurring: 'none',
+              estimatedMinutes: task.estimated_minutes,
+              dueDate: task.due_date,
+            });
+          });
+        }
+
         await loadScheduleEntries();
         
         toast({
-          title: "✅ Schedule Imported",
-          description: `Added ${scheduleEntries.length} entries.`,
+          title: "✅ Assignments Imported",
+          description: `Added ${scheduleEntries.length} assignments to your timeline and to-do list. The AI assistant can now help you plan around them!`,
         });
       }
 
