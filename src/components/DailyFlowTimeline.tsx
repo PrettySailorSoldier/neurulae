@@ -101,28 +101,38 @@ export function DailyFlowTimeline({
   };
 
   const handleScreenshotUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || !event.target.files[0] || !user) return;
+    if (!event.target.files || event.target.files.length === 0 || !user) return;
     
     setIsUploading(true);
-    const file = event.target.files[0];
+    const files = Array.from(event.target.files);
     
     try {
-      const formData = new FormData();
-      formData.append('image', file);
+      console.log(`Processing ${files.length} screenshot(s)...`);
+      
+      // Process all screenshots in parallel
+      const uploadPromises = files.map(async (file) => {
+        const formData = new FormData();
+        formData.append('image', file);
 
-      const { data, error } = await supabase.functions.invoke('parse-assignment-screenshot', {
-        body: formData,
+        const { data, error } = await supabase.functions.invoke('parse-assignment-screenshot', {
+          body: formData,
+        });
+
+        if (error) throw error;
+        return data.entries || [];
       });
 
-      if (error) throw error;
+      const results = await Promise.all(uploadPromises);
+      
+      // Combine all entries from all screenshots
+      const allEntries = results.flat();
+      
+      console.log(`Extracted ${allEntries.length} total assignments from ${files.length} screenshot(s)`);
 
-      const { entries, count } = data;
-      console.log('Extracted assignments from screenshot:', entries);
-
-      if (!entries || entries.length === 0) {
+      if (allEntries.length === 0) {
         toast({
           title: "No Assignments Found",
-          description: "Could not extract any assignments from this screenshot. Please try a clearer image.",
+          description: "Could not extract any assignments from the uploaded screenshots. Please try clearer images.",
           variant: "destructive",
         });
         setIsUploading(false);
@@ -130,10 +140,15 @@ export function DailyFlowTimeline({
         return;
       }
 
-      // Check for duplicates
-      const startDate = new Date(entries[0].startTime);
-      const endDate = new Date(entries[entries.length - 1].endTime);
+      // Sort entries by date to find range
+      const sortedEntries = [...allEntries].sort((a, b) => 
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
+      
+      const startDate = new Date(sortedEntries[0].startTime);
+      const endDate = new Date(sortedEntries[sortedEntries.length - 1].endTime);
 
+      // Check for duplicates
       const { data: existingEntries, error: checkError } = await supabase
         .from('schedule_entries')
         .select('*')
@@ -143,8 +158,7 @@ export function DailyFlowTimeline({
 
       if (checkError) throw checkError;
 
-      // Check for duplicates
-      const duplicates = entries.filter((newEntry: any) =>
+      const duplicates = allEntries.filter((newEntry: any) =>
         existingEntries?.some((existing: any) =>
           existing.title === newEntry.title &&
           existing.start_time === newEntry.startTime
@@ -152,7 +166,7 @@ export function DailyFlowTimeline({
       );
 
       if (duplicates.length > 0 && existingEntries && existingEntries.length > 0) {
-        setPendingUploadData({ entries, existingEntries, startDate, endDate });
+        setPendingUploadData({ entries: allEntries, existingEntries, startDate, endDate });
         setDuplicateDialogOpen(true);
         setIsUploading(false);
         if (event.target) event.target.value = '';
@@ -160,13 +174,13 @@ export function DailyFlowTimeline({
       }
 
       // No duplicates, proceed with upload
-      await proceedWithUpload(entries);
+      await proceedWithUpload(allEntries);
       
     } catch (error) {
-      console.error('Error uploading screenshot:', error);
+      console.error('Error uploading screenshots:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process screenshot. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to process screenshots. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -529,6 +543,7 @@ export function DailyFlowTimeline({
           ref={screenshotInputRef}
           onChange={handleScreenshotUpload}
           accept="image/*"
+          multiple
           className="hidden"
           id="screenshot-upload"
         />
