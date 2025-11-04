@@ -46,6 +46,7 @@ export function DailyFlowTimeline({
   const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
   
   const [currentTimePercentage, setCurrentTimePercentage] = useState(getCurrentTimePercentage());
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
@@ -97,6 +98,83 @@ export function DailyFlowTimeline({
       setScheduleEntries(data || []);
     } catch (error) {
       console.error('Error loading schedule entries:', error);
+    }
+  };
+
+  const handleScreenshotUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0] || !user) return;
+    
+    setIsUploading(true);
+    const file = event.target.files[0];
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const { data, error } = await supabase.functions.invoke('parse-assignment-screenshot', {
+        body: formData,
+      });
+
+      if (error) throw error;
+
+      const { entries, count } = data;
+      console.log('Extracted assignments from screenshot:', entries);
+
+      if (!entries || entries.length === 0) {
+        toast({
+          title: "No Assignments Found",
+          description: "Could not extract any assignments from this screenshot. Please try a clearer image.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        if (event.target) event.target.value = '';
+        return;
+      }
+
+      // Check for duplicates
+      const startDate = new Date(entries[0].startTime);
+      const endDate = new Date(entries[entries.length - 1].endTime);
+
+      const { data: existingEntries, error: checkError } = await supabase
+        .from('schedule_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('start_time', startDate.toISOString())
+        .lte('end_time', endDate.toISOString());
+
+      if (checkError) throw checkError;
+
+      // Check for duplicates
+      const duplicates = entries.filter((newEntry: any) =>
+        existingEntries?.some((existing: any) =>
+          existing.title === newEntry.title &&
+          existing.start_time === newEntry.startTime
+        )
+      );
+
+      if (duplicates.length > 0 && existingEntries && existingEntries.length > 0) {
+        setPendingUploadData({ entries, existingEntries, startDate, endDate });
+        setDuplicateDialogOpen(true);
+        setIsUploading(false);
+        if (event.target) event.target.value = '';
+        return;
+      }
+
+      // No duplicates, proceed with upload
+      await proceedWithUpload(entries);
+      
+    } catch (error) {
+      console.error('Error uploading screenshot:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process screenshot. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (event.target) {
+        event.target.value = '';
+      }
     }
   };
 
@@ -525,6 +603,32 @@ export function DailyFlowTimeline({
           className="hidden"
           id="schedule-upload"
         />
+        <input
+          type="file"
+          ref={screenshotInputRef}
+          onChange={handleScreenshotUpload}
+          accept="image/*"
+          className="hidden"
+          id="screenshot-upload"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => screenshotInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Upload Screenshot
+            </>
+          )}
+        </Button>
         <Button
           variant="outline"
           size="sm"
