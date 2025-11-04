@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Brain, Send, Loader2, Trash2 } from 'lucide-react';
+import { Brain, Send, Loader2, Trash2, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +90,7 @@ export function AIAssistant({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { isMobile } = useDeviceInfo();
 
   // Load or create conversation on mount
@@ -568,8 +569,8 @@ export function AIAssistant({
           ? "w-full max-w-full h-[100dvh] rounded-none" 
           : "max-w-4xl h-[85vh]"
       )} aria-describedby="ai-assistant-description">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-2">
+        <DialogHeader className="pr-10">
+          <DialogTitle className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5" aria-hidden="true" />
               AI Productivity Coach
@@ -605,7 +606,7 @@ export function AIAssistant({
                 }`}
               >
                 <Card
-                  className={`max-w-[85%] md:max-w-[75%] p-4 text-left ${
+                  className={`max-w-[95%] p-3 text-left ${
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground ring-1 ring-primary/30'
                       : 'bg-muted'
@@ -656,6 +657,30 @@ export function AIAssistant({
             )}
             rows={2}
           />
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".ics,.csv,.txt,.pdf,image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                toast({
+                  title: 'File Upload',
+                  description: `Selected: ${file.name}. Upload functionality coming soon!`,
+                });
+              }
+            }}
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            size="icon"
+            className={cn("shrink-0", isMobile && "min-w-[48px] min-h-[48px]")}
+            title="Upload schedule"
+          >
+            <Upload className="h-4 w-4" />
+          </Button>
           <Button
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
