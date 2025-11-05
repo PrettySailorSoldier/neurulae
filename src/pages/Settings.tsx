@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { FeedbackHistory } from "@/components/FeedbackHistory";
+import { PromoCodeInput } from "@/components/PromoCodeInput";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -282,6 +283,9 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Promo Code */}
+        <PromoCodeInput />
 
         {/* Profile & Preferences */}
         <Card className="mb-6">

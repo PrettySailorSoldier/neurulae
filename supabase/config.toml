@@ -16,7 +16,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.parse-schedule]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-assignment-screenshot]
 verify_jwt = true
@@ -25,4 +25,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-smart-plan]
+verify_jwt = true
+
+[functions.redeem-promo]
 verify_jwt = true

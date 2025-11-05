@@ -118,6 +118,71 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          current_uses: number
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          plan_type: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          plan_type?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          plan_type?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      promo_redemptions: {
+        Row: {
+          id: string
+          promo_code_id: string
+          redeemed_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          promo_code_id: string
+          redeemed_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          promo_code_id?: string
+          redeemed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_redemptions_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_time_blocks: {
         Row: {
           category: string | null
@@ -542,6 +607,7 @@ export type Database = {
           title: string
         }[]
       }
+      has_active_promo: { Args: { p_user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

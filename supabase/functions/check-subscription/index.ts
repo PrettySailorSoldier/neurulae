@@ -62,6 +62,31 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found customer", { customerId });
 
+    // First check if user has active promo code
+    const { data: hasPromo } = await supabaseClient
+      .rpc('has_active_promo', { p_user_id: user.id });
+
+    if (hasPromo) {
+      logStep("Active promo code found");
+      
+      await supabaseClient
+        .from('subscription_status')
+        .upsert({
+          user_id: user.id,
+          plan_type: 'premium',
+          status: 'active',
+        });
+
+      return new Response(JSON.stringify({
+        subscribed: true,
+        plan: 'premium',
+        productId: 'promo',
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Check for active subscriptions
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
