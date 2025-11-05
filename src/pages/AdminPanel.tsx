@@ -15,6 +15,7 @@ import {
   Shield, 
   Plus, 
   Trash2, 
+  Edit,
   Calendar, 
   Users, 
   TrendingUp,
@@ -76,8 +77,11 @@ export default function AdminPanel() {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoadingCodes, setIsLoadingCodes] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCodeRedemptions, setSelectedCodeRedemptions] = useState<PromoRedemption[]>([]);
   const [redemptionsDialogOpen, setRedemptionsDialogOpen] = useState(false);
+  const [selectedCode, setSelectedCode] = useState<PromoCode | null>(null);
 
   // Form state
   const [newCode, setNewCode] = useState("");
@@ -255,6 +259,98 @@ export default function AdminPanel() {
     }
   };
 
+  const handleDeleteCode = async () => {
+    if (!selectedCode) return;
+
+    try {
+      const { error } = await supabase
+        .from("promo_codes")
+        .delete()
+        .eq("id", selectedCode.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Code Deleted",
+        description: `Promo code "${selectedCode.code}" has been deleted`,
+      });
+
+      setDeleteDialogOpen(false);
+      setSelectedCode(null);
+      loadPromoCodes();
+    } catch (error) {
+      console.error("Error deleting promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete promo code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditCode = async () => {
+    if (!selectedCode) return;
+
+    setIsCreating(true);
+    try {
+      const expiresAt = expiresInDays
+        ? new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
+      const { error } = await supabase
+        .from("promo_codes")
+        .update({
+          plan_type: planType,
+          max_uses: maxUses ? parseInt(maxUses) : null,
+          expires_at: expiresAt,
+        })
+        .eq("id", selectedCode.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Promo code "${selectedCode.code}" updated successfully`,
+      });
+
+      setEditDialogOpen(false);
+      setSelectedCode(null);
+      setMaxUses("");
+      setExpiresInDays("");
+      loadPromoCodes();
+    } catch (error: any) {
+      console.error("Error updating promo code:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update promo code",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const openEditDialog = (code: PromoCode) => {
+    setSelectedCode(code);
+    setPlanType(code.plan_type as "premium" | "lifetime");
+    setMaxUses(code.max_uses?.toString() || "");
+    
+    // Calculate days until expiration if exists
+    if (code.expires_at) {
+      const daysUntil = Math.ceil((new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      setExpiresInDays(daysUntil > 0 ? daysUntil.toString() : "");
+    } else {
+      setExpiresInDays("");
+    }
+    
+    setEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (code: PromoCode) => {
+    setSelectedCode(code);
+    setDeleteDialogOpen(true);
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -409,17 +505,20 @@ export default function AdminPanel() {
                             checked={code.active}
                             onCheckedChange={() => handleToggleActive(code.id, code.active)}
                           />
-                          <Select onValueChange={(days) => handleUpdateExpiration(code.id, parseInt(days))}>
-                            <SelectTrigger className="w-[140px] h-8">
-                              <SelectValue placeholder="Set expiry" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="7">+7 days</SelectItem>
-                              <SelectItem value="30">+30 days</SelectItem>
-                              <SelectItem value="90">+90 days</SelectItem>
-                              <SelectItem value="365">+1 year</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(code)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDeleteDialog(code)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -489,6 +588,91 @@ export default function AdminPanel() {
             </Button>
             <Button onClick={handleCreateCode} disabled={isCreating}>
               {isCreating ? "Creating..." : "Create Code"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Code Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Promo Code</DialogTitle>
+            <DialogDescription>
+              Update the settings for "{selectedCode?.code}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-code">Code</Label>
+              <Input
+                id="edit-code"
+                value={selectedCode?.code || ""}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">Code cannot be changed after creation</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-plan">Plan Type</Label>
+              <Select value={planType} onValueChange={(v: any) => setPlanType(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="lifetime">Lifetime</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-max-uses">Max Uses (optional)</Label>
+              <Input
+                id="edit-max-uses"
+                type="number"
+                placeholder="Leave empty for unlimited"
+                value={maxUses}
+                onChange={(e) => setMaxUses(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-expires">Expires In (days from now, optional)</Label>
+              <Input
+                id="edit-expires"
+                type="number"
+                placeholder="Leave empty for never expires"
+                value={expiresInDays}
+                onChange={(e) => setExpiresInDays(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditCode} disabled={isCreating}>
+              {isCreating ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Promo Code</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{selectedCode?.code}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteCode}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Code
             </Button>
           </DialogFooter>
         </DialogContent>
