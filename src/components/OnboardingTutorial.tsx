@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, CheckCircle2, Clock, Star, Calendar, ListTodo, BookOpen, Sparkles, FolderKanban } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Clock, Star, Calendar, ListTodo, BookOpen, Sparkles, Brain, Upload, Grid3x3, Settings } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 interface OnboardingTutorialProps {
@@ -13,18 +13,54 @@ const tutorialSteps = [
   {
     title: 'Welcome to Neurulae! 🎉',
     icon: Sparkles,
-    description: 'Your personal productivity workspace designed to help you focus, plan, and achieve your goals.',
+    description: 'Your AI-powered life organizer designed for people with executive function challenges',
     spotlightSelector: null,
     content: [
-      'Neurulae combines powerful time management tools with flexible organization',
-      'Follow this quick tutorial to learn how to get the most out of your workspace',
-      'You can always access this guide from the help icon in the top corner'
+      'Not just another to-do list — we break things down and help you actually get them done',
+      'Follow this quick tutorial to learn your powerful new workspace',
+      'You can always access this guide from the help icon (?)'
+    ]
+  },
+  {
+    title: 'AI Assistant 🤖',
+    icon: Brain,
+    description: 'Your personal AI coach that organizes your entire life',
+    spotlightSelector: '[data-tutorial="ai-assistant"]',
+    content: [
+      'Ask questions, get suggestions, or let it help prioritize tasks',
+      'Upload your class/work schedule and the AI will automatically organize it',
+      'The AI considers your availability and creates realistic schedules',
+      'Just click the Brain icon anytime you need help!'
+    ]
+  },
+  {
+    title: 'Schedule Upload 📸',
+    icon: Upload,
+    description: 'Snap a photo and let AI extract your commitments',
+    spotlightSelector: '[data-tutorial="ai-assistant"]',
+    content: [
+      'Upload a photo of your class schedule, work roster, or calendar',
+      'The AI automatically extracts all your commitments',
+      'No more manual entry — just snap and upload!',
+      'Try it by clicking the AI assistant and asking to upload a schedule'
+    ]
+  },
+  {
+    title: 'My Availability ⏱️',
+    icon: Calendar,
+    description: 'Set your recurring work hours and commitments',
+    spotlightSelector: '[data-tutorial="my-availability"]',
+    content: [
+      'Define your weekly work hours, class times, and regular commitments',
+      'The AI uses this to find realistic times to schedule your tasks',
+      'Add recurring time slots so you never overbook yourself',
+      'Find it in the navigation menu or ask the AI to set it up!'
     ]
   },
   {
     title: 'Focus Timer ⏱️',
     icon: Clock,
-    description: 'Start your productivity journey with focused work sessions',
+    description: 'Start focused work sessions to stay on track',
     spotlightSelector: '[data-tutorial="focus-timer"]',
     content: [
       'Use preset timers (25, 15, or 5 minutes) for quick sessions',
@@ -54,7 +90,6 @@ const tutorialSteps = [
       'Create Main Activity blocks for work, meetings, meals, and routines',
       'Add Dedicated Time blocks for focused project work',
       'See the current time indicator moving through your day',
-      'Click any block to edit, add tasks, or adjust timing',
       'Schedule blocks for weekdays, weekends, or every day'
     ]
   },
@@ -64,10 +99,46 @@ const tutorialSteps = [
     description: 'Organize everything you need to do',
     spotlightSelector: '[data-tutorial="tasks"]',
     content: [
-      'Add tasks in the Unscheduled Tasks section',
-      'Assign tasks to time blocks by editing the block',
+      'Add tasks with estimated times and task types (school, work, home)',
+      'Assign tasks to time blocks or let the AI schedule them',
       'Create Projects to group related tasks together',
-      'Tasks automatically appear in your schedule when assigned'
+      'Tasks automatically appear in your AI-generated schedule'
+    ]
+  },
+  {
+    title: 'My Plan (AI Schedule) ✨',
+    icon: Sparkles,
+    description: 'AI creates a realistic schedule for all your tasks',
+    spotlightSelector: '[data-tutorial="my-plan"]',
+    content: [
+      'The AI considers your availability, deadlines, and task estimates',
+      'Get a complete plan for the next 2 weeks — no stress!',
+      'Click "Generate Plan" anytime you need a fresh schedule',
+      'Find it in the top navigation menu'
+    ]
+  },
+  {
+    title: 'Calendar Scheduler 📆',
+    icon: Calendar,
+    description: 'Visual calendar to organize tasks by specific dates',
+    spotlightSelector: '[data-tutorial="calendar-scheduler"]',
+    content: [
+      'See all your tasks and commitments on a calendar view',
+      'Drag and drop tasks onto specific calendar days',
+      'Assign tasks to time blocks for structured planning',
+      'Great for seeing your week at a glance!'
+    ]
+  },
+  {
+    title: 'Eisenhower Matrix 🎯',
+    icon: Grid3x3,
+    description: 'Prioritize using the urgent/important framework',
+    spotlightSelector: '[data-tutorial="eisenhower-matrix"]',
+    content: [
+      'Drag tasks into 4 quadrants: Do First, Schedule, Delegate, Eliminate',
+      'Perfect for when you feel overwhelmed and need quick clarity',
+      "Helps you focus on what's actually important vs. just urgent",
+      'Open it from the toolbar anytime!'
     ]
   },
   {
@@ -83,27 +154,28 @@ const tutorialSteps = [
     ]
   },
   {
-    title: 'Widgets & More ✨',
-    icon: Sparkles,
-    description: 'Customize your workspace with powerful tools',
-    spotlightSelector: '[data-tutorial="widgets"]',
+    title: 'Advanced Tools 🔧',
+    icon: Settings,
+    description: 'Customize your workspace with powerful features',
+    spotlightSelector: null,
     content: [
-      'Click the widget icon on the right to open the Widget Panel',
-      'Add reminders, energy trackers, mood gardens, and more',
-      'Customize themes to match your style',
-      'Create custom tabs for different areas of your life'
+      'Timer Hub: Access advanced timers (Pomodoro, Interval, Flowtime, etc.)',
+      'Themes: Customize your workspace with beautiful color schemes',
+      'Keyboard Shortcuts: Press ? to see all quick commands',
+      'Widgets: Add mood gardens, energy trackers, and more visual tools'
     ]
   },
   {
     title: "You're All Set! 🚀",
     icon: CheckCircle2,
-    description: 'Ready to boost your productivity',
+    description: 'Ready to conquer your day with less stress',
     spotlightSelector: null,
     content: [
-      'Start by adding a few priorities for today',
-      'Create your first time block to structure your day',
-      'Explore the tabs to discover all features',
-      'Remember: You can reopen this tutorial anytime from the help icon'
+      'Getting Started: Upload your schedule OR add your availability',
+      'Add a few tasks with estimated times and types',
+      'Ask the AI to generate a realistic plan for your week',
+      'Use focus timers to stay on track',
+      "Remember: The AI assistant is always here to help. Just ask!"
     ]
   }
 ];

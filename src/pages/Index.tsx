@@ -1009,10 +1009,11 @@ const Index = () => {
                 size="icon"
                 onClick={() => setEisenhowerOpen(true)}
                 title="Priority Matrix"
+                data-tutorial="eisenhower-matrix"
               >
                 <Grid3x3 className="h-5 w-5" />
               </Button>
-              <Link to="/my-schedule">
+              <Link to="/my-schedule" data-tutorial="my-availability">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1021,7 +1022,7 @@ const Index = () => {
                   <Calendar className="h-5 w-5" />
                 </Button>
               </Link>
-              <Link to="/my-plan">
+              <Link to="/my-plan" data-tutorial="my-plan">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1035,17 +1036,19 @@ const Index = () => {
                 size="sm"
                 onClick={() => { setShowAI(true); setIsAIAssistantOpen(true); }}
                 className="gap-2"
+                data-tutorial="ai-assistant"
               >
                 <Brain className="h-4 w-4" />
                 AI Assistant
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTutorialOpen(true)}
-                title="Help & Tutorial"
-              >
-                <HelpCircle className="h-5 w-5" />
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setTutorialOpen(true)}
+            title="Help & Tutorial"
+            data-tutorial="timer-hub"
+          >
+            <HelpCircle className="h-5 w-5" />
               </Button>
               <SyncStatusIndicator />
               {user && !isPremium && (
@@ -1084,7 +1087,7 @@ const Index = () => {
 
         {/* Top Widgets Row */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
-          <div className="md:col-span-6">
+          <div className="md:col-span-6" data-tutorial="focus-timer">
             <FocusTimer />
           </div>
           <div className="md:col-span-6">
@@ -1124,7 +1127,7 @@ const Index = () => {
             {/* Main Workflow - Visual Timeline & Unified To-Do List */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               {/* Daily Flow Timeline - Visual Representation (Left 3/5) */}
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-3" data-tutorial="timeline">
                 <DailyFlowTimeline
                   timeBlocks={timeBlocks}
                   scheduledTasks={scheduledTasks}
@@ -1137,7 +1140,7 @@ const Index = () => {
               </div>
 
               {/* Unified To-Do List - All Tasks (Right 2/5) */}
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2" data-tutorial="tasks">
                 <TaskList
                   tasks={tasks}
                   timeBlocks={timeBlocks}

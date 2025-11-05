@@ -106,7 +106,7 @@ export function ProfileSetupDialog({ open, onOpenChange }: ProfileSetupDialogPro
             Quick Setup - {step} of 3
           </DialogTitle>
           <DialogDescription>
-            Help your AI assistant understand you better (takes 60 seconds)
+            This helps the AI give you better suggestions and understand your schedule. It only takes a minute!
           </DialogDescription>
         </DialogHeader>
 
@@ -114,9 +114,12 @@ export function ProfileSetupDialog({ open, onOpenChange }: ProfileSetupDialogPro
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold mb-3 block">
+                <Label className="text-base font-semibold mb-1 block">
                   How would you like your AI to work with you?
                 </Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  This affects how the AI talks to you and gives suggestions. You can change this later!
+                </p>
                 <RadioGroup value={aiStyle} onValueChange={(v) => setAiStyle(v as typeof aiStyle)}>
                   <div className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-accent" onClick={() => setAiStyle('direct')}>
                     <RadioGroupItem value="direct" id="direct" />
@@ -149,7 +152,10 @@ export function ProfileSetupDialog({ open, onOpenChange }: ProfileSetupDialogPro
               </div>
 
               <div>
-                <Label className="text-base font-semibold mb-3 block">Living situation</Label>
+                <Label className="text-base font-semibold mb-1 block">Living situation</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Helps the AI understand your environment (e.g., roommates = different scheduling advice).
+                </p>
                 <RadioGroup value={livingSituation} onValueChange={(v) => setLivingSituation(v as typeof livingSituation)}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="alone" id="alone" />
@@ -167,8 +173,10 @@ export function ProfileSetupDialog({ open, onOpenChange }: ProfileSetupDialogPro
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold mb-3 block">When do you work?</Label>
-                <p className="text-sm text-muted-foreground mb-3">Select your work days</p>
+                <Label className="text-base font-semibold mb-1 block">When do you work?</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select your typical work days so the AI knows when you're busy. We'll use this to schedule tasks around your job.
+                </p>
                 <div className="grid grid-cols-4 gap-2 mb-4">
                   {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                     <Button
@@ -209,7 +217,10 @@ export function ProfileSetupDialog({ open, onOpenChange }: ProfileSetupDialogPro
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold mb-3 block">Your daily rhythm</Label>
+                <Label className="text-base font-semibold mb-1 block">Your daily rhythm</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Your wake and sleep times help the AI schedule tasks when you're actually awake and alert!
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>I usually wake up at</Label>

@@ -17,6 +17,7 @@ export function CalendarWidget({ onOpenScheduler }: CalendarWidgetProps) {
           onClick={onOpenScheduler}
           variant="ghost"
           className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 hover:bg-card/70"
+          data-tutorial="calendar-scheduler"
         >
           <Calendar className="h-8 w-8 text-primary" />
           <div className="text-center">
