@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { usePremium } from "@/contexts/PremiumContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -279,6 +279,11 @@ export default function Settings() {
                   {isPremium && <Crown className="h-4 w-4 mr-1" />}
                   {getPlanDisplay()}
                 </Badge>
+                {isAdmin && (
+                  <Button variant="secondary" size="sm" asChild>
+                    <Link to="/admin">Admin Panel</Link>
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>

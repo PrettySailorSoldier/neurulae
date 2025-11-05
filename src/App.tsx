@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import Success from "./pages/Success";
 import MyAvailability from "./pages/MyAvailability";
 import MyPlan from "./pages/MyPlan";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/success" element={<Success />} />
               <Route path="/my-schedule" element={<RequireAuth><MyAvailability /></RequireAuth>} />
               <Route path="/my-plan" element={<RequireAuth><MyPlan /></RequireAuth>} />
+              <Route path="/admin" element={<RequireAuth><AdminPanel /></RequireAuth>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

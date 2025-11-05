@@ -1051,6 +1051,11 @@ const Index = () => {
             <HelpCircle className="h-5 w-5" />
               </Button>
               <SyncStatusIndicator />
+              {user && isAdmin && (
+                <Button variant="secondary" size="sm" asChild>
+                  <Link to="/admin">Admin Panel</Link>
+                </Button>
+              )}
               {user && !isPremium && (
                 <Button variant="default" size="sm" asChild>
                   <Link to="/pricing">
