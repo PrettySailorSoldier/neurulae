@@ -49,8 +49,12 @@ export function AIOrganizeDialog({
         throw new Error('You must be logged in to organize tasks');
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      // Get the real current date and time from the user's system
+      const today = new Date().toISOString();
       const incompleteTasks = tasks.filter(t => !t.completed);
+
+      // Create system context with the real date
+      const systemContext = "You are a scheduling assistant. Today's date is " + today + ". All tasks must be planned relative to this date. You must use this date as 'today'.";
 
       const { data, error: invokeError } = await supabase.functions.invoke('organize-tasks', {
         headers: {
@@ -78,6 +82,7 @@ export function AIOrganizeDialog({
             preferMornings: true,
           },
           today,
+          systemContext,
         },
       });
 
