@@ -265,9 +265,19 @@ export function AIAssistant({
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
 
+      // Create hidden system context with current date (not shown to user)
+      const systemContext = `System Context: Today's date and time is ${temporalContext.localDate} at ${formattedTime} (${temporalContext.timezone}). You MUST use this exact date and time for all schedule-related analysis, organization, and planning. Do not use any other date or time from your training data.`;
+
+      // Prepare messages for AI: prepend hidden system message
+      const messagesForAI = [
+        { role: 'system' as const, content: systemContext },
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+        { role: userMessage.role, content: userMessage.content }
+      ];
+
       const { data: functionData, error: functionError } = await supabase.functions.invoke('ai-assistant', {
         body: {
-          messages: messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
+          messages: messagesForAI,
           context: {
             tasks,
             timeBlocks,
