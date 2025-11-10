@@ -551,6 +551,30 @@ Want me to schedule these for you?"`;
       timezone: context?.temporal?.timezone,
     });
 
+    // Deterministic date/time responses - bypass LLM for these queries
+    const lastUserMsg = messages.slice().reverse().find(m => m.role === 'user')?.content.toLowerCase() || '';
+    const asksDate = /(what\s+(is\s+)?today\??|what\s+day\s+is\s+(it|today)\??|what\s+is\s+the\s+date\??|what'?s\s+today'?s\s+date\??)/i.test(lastUserMsg);
+    const asksTime = /(what\s+time\s+is\s+it\??|what'?s\s+the\s+time\??|current\s+time\??|time\s+now\??)/i.test(lastUserMsg);
+    
+    if (asksDate || asksTime) {
+      const ld = context?.temporal?.localDate ?? new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const lt = context?.temporal?.localTime ?? new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const tz = context?.temporal?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
+      const message = asksDate
+        ? `Today is ${ld}. It is ${lt} in your timezone (${tz}).`
+        : `It's ${lt} (${tz}).`;
+      
+      console.log('Deterministic date/time response triggered:', { asksDate, asksTime, message });
+      
+      return new Response(JSON.stringify({
+        message,
+        actions: []
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -606,6 +630,23 @@ Want me to schedule these for you?"`;
         if (foundTime.toUpperCase() !== correctTime.toUpperCase()) {
           assistantMessage = assistantMessage.replace(new RegExp(foundTime, 'g'), correctTime);
           console.log(`Replaced incorrect time "${foundTime}" with correct time "${correctTime}"`);
+        }
+      });
+    }
+
+    // Post-processing: Replace any incorrect date patterns with the correct date
+    const correctDate = context?.temporal?.localDate;
+    if (correctDate) {
+      // Find "Today is <weekday>, <Month> <D>, <YYYY>" patterns
+      const datePattern = /Today is [A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/g;
+      const datesInMessage = assistantMessage.match(datePattern) || [];
+      
+      // Replace any date that doesn't match the correct date
+      datesInMessage.forEach((foundDate: string) => {
+        const expectedPattern = `Today is ${correctDate}`;
+        if (foundDate !== expectedPattern) {
+          assistantMessage = assistantMessage.replace(foundDate, expectedPattern);
+          console.log(`Replaced incorrect date "${foundDate}" with correct date "${expectedPattern}"`);
         }
       });
     }
