@@ -735,8 +735,10 @@ export function AIAssistant({
                       </ReactMarkdown>
                     </div>
                   )}
-                  <p className="text-xs opacity-70 mt-2 text-left">
-                    {new Date(message.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  <p className="text-xs opacity-60 mt-2 text-left font-medium">
+                    {isToday(new Date(message.timestamp))
+                      ? format(new Date(message.timestamp), 'h:mm a')
+                      : format(new Date(message.timestamp), 'MMM d, h:mm a')}
                   </p>
                 </Card>
               </div>
