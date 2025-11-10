@@ -363,142 +363,144 @@ export function AIAssistant({
     }
   };
 
-  const handleAIActions = (actions: any) => {
-    if (actions.updateTask) {
-      onUpdateTask(actions.updateTask.taskId, actions.updateTask.updates);
-      toast({
-        title: '✅ Task Updated',
-        description: 'Task has been updated based on AI suggestion.',
-        className: 'animate-fade-in',
-      });
-    }
-    if (actions.updateTimeBlock) {
-      onUpdateTimeBlock(actions.updateTimeBlock.blockId, actions.updateTimeBlock.updates);
-      toast({
-        title: '⏰ Time Block Updated',
-        description: 'Time block has been updated.',
-        className: 'animate-fade-in',
-      });
-    }
-    if (actions.createTasks && onAddTask) {
-      const tasksToCreate = Array.isArray(actions.createTasks) ? actions.createTasks : [actions.createTasks];
-      tasksToCreate.forEach((task: any) => {
-        onAddTask({
-          title: task.title,
-          eisenhowerQuadrant: task.eisenhowerQuadrant || 'not-urgent-important',
-          focusTimeMinutes: task.estimatedMinutes || null,
-          completed: false,
-          notes: task.notes || '',
-          subtasks: [],
-        });
-      });
-      toast({
-        title: `✅ ${tasksToCreate.length === 1 ? 'Task' : 'Tasks'} Created`,
-        description: `Added ${tasksToCreate.length} task${tasksToCreate.length > 1 ? 's' : ''} to your list.`,
-        className: 'animate-scale-in border-primary/50',
-      });
-    }
-    if (actions.createPlaybook) {
-      onAddPlaybook({
-        title: actions.createPlaybook.title,
-        description: actions.createPlaybook.description || '',
-        category: actions.createPlaybook.category || 'productivity',
-        steps: actions.createPlaybook.steps,
-        isTemplate: false,
-        linkedTaskIds: [],
-        resetOnRecurrence: false,
-      });
-      toast({
-        title: '📖 Playbook Created',
-        description: `"${actions.createPlaybook.title}" is ready to use.`,
-        className: 'animate-scale-in border-primary/50',
-      });
-    }
-    if (actions.updatePlaybook) {
-      onUpdatePlaybook(actions.updatePlaybook.id, {
-        steps: actions.updatePlaybook.steps,
-        title: actions.updatePlaybook.title,
-        description: actions.updatePlaybook.description,
-      });
-      toast({
-        title: '📖 Playbook Updated',
-        description: 'Playbook has been modified.',
-        className: 'animate-fade-in',
-      });
-    }
-    if (actions.createProject && onAddTask && onAddPlaybook) {
-      // Create a main project task
-      onAddTask({
-        title: actions.createProject.title,
-        eisenhowerQuadrant: 'not-urgent-important',
-        focusTimeMinutes: null,
-        completed: false,
-        notes: actions.createProject.description || '',
-        subtasks: [],
-      });
-      
-      // Create associated playbook if provided
-      if (actions.createProject.playbook) {
-        onAddPlaybook({
-          title: actions.createProject.playbook.title,
-          description: actions.createProject.playbook.description || '',
-          category: actions.createProject.playbook.category || 'productivity',
-          steps: actions.createProject.playbook.steps,
-          isTemplate: false,
-          linkedTaskIds: [],
-          resetOnRecurrence: false,
-        });
+  const handleAIActions = (actions: any[]) => {
+    if (!Array.isArray(actions)) return;
+
+    actions.forEach((actionItem: any) => {
+      const { action, data } = actionItem;
+
+      switch (action) {
+        case 'update_task':
+          onUpdateTask(data.taskId, data.updates);
+          toast({
+            title: '✅ Task Updated',
+            description: 'Task has been updated based on AI suggestion.',
+            className: 'animate-fade-in',
+          });
+          break;
+
+        case 'update_time_block':
+          onUpdateTimeBlock(data.blockId, data.updates);
+          toast({
+            title: '⏰ Time Block Updated',
+            description: 'Time block has been updated.',
+            className: 'animate-fade-in',
+          });
+          break;
+
+        case 'create_task':
+          if (onAddTask) {
+            onAddTask({
+              title: data.title,
+              eisenhowerQuadrant: data.eisenhowerQuadrant || 'not-urgent-important',
+              focusTimeMinutes: data.estimatedMinutes || null,
+              completed: false,
+              notes: data.notes || data.description || '',
+              subtasks: [],
+            });
+            toast({
+              title: '✅ Task Created',
+              description: `Added "${data.title}" to your list.`,
+              className: 'animate-scale-in border-primary/50',
+            });
+          }
+          break;
+
+        case 'create_playbook':
+          onAddPlaybook({
+            title: data.title,
+            description: data.description || '',
+            category: data.category || 'productivity',
+            steps: Array.isArray(data.steps) 
+              ? data.steps.map((step: any) => typeof step === 'string' 
+                ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null } 
+                : step)
+              : [],
+            isTemplate: false,
+            linkedTaskIds: [],
+            resetOnRecurrence: false,
+          });
+          toast({
+            title: '📖 Playbook Created',
+            description: `"${data.title}" is ready to use.`,
+            className: 'animate-scale-in border-primary/50',
+          });
+          break;
+
+        case 'update_playbook':
+          const existingPlaybook = playbooks.find(p => p.id === data.playbookId || p.title === data.title);
+          if (existingPlaybook) {
+            onUpdatePlaybook(existingPlaybook.id, {
+              steps: data.steps ? Array.isArray(data.steps) 
+                ? data.steps.map((step: any) => typeof step === 'string' 
+                  ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null } 
+                  : step)
+                : existingPlaybook.steps : existingPlaybook.steps,
+              title: data.title || existingPlaybook.title,
+              description: data.description || existingPlaybook.description,
+            });
+            toast({
+              title: '📖 Playbook Updated',
+              description: `"${existingPlaybook.title}" has been modified.`,
+              className: 'animate-fade-in',
+            });
+          }
+          break;
+
+        case 'create_project':
+          if (onAddTask && onAddPlaybook) {
+            // Create a main project task
+            onAddTask({
+              title: data.title,
+              eisenhowerQuadrant: 'not-urgent-important',
+              focusTimeMinutes: null,
+              completed: false,
+              notes: data.description || '',
+              subtasks: [],
+            });
+            
+            // Create associated playbook if provided
+            if (data.playbook) {
+              onAddPlaybook({
+                title: data.playbook.title,
+                description: data.playbook.description || '',
+                category: data.playbook.category || 'productivity',
+                steps: Array.isArray(data.playbook.steps)
+                  ? data.playbook.steps.map((step: any) => typeof step === 'string' 
+                    ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null } 
+                    : step)
+                  : [],
+                isTemplate: false,
+                linkedTaskIds: [],
+                resetOnRecurrence: false,
+              });
+            }
+            
+            toast({
+              title: '🎯 Project Created',
+              description: `"${data.title}" project and resources are ready.`,
+              className: 'animate-scale-in border-primary/50',
+            });
+          }
+          break;
+
+        case 'create_time_block':
+        case 'suggest_time_block':
+          onAddTimeBlock({
+            title: data.title,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            type: 'dedicated',
+            scheduleType: 'everyday',
+          });
+          toast({
+            title: '⏰ Time Block Added',
+            description: `Added "${data.title}" to your calendar.`,
+            className: 'animate-scale-in border-primary/50',
+          });
+          break;
       }
-      
-      toast({
-        title: '🎯 Project Created',
-        description: `"${actions.createProject.title}" project and resources are ready.`,
-        className: 'animate-scale-in border-primary/50',
-      });
-    }
-    // Handle both single and multiple time blocks
-    if (actions.suggestTimeBlock) {
-      const blocks = Array.isArray(actions.suggestTimeBlock) 
-        ? actions.suggestTimeBlock 
-        : [actions.suggestTimeBlock];
-      
-      blocks.forEach(block => {
-        onAddTimeBlock({
-          title: block.title,
-          startTime: block.startTime,
-          endTime: block.endTime,
-          type: 'dedicated',
-          scheduleType: 'everyday',
-        });
-      });
-      
-      toast({
-        title: `⏰ Time Block${blocks.length > 1 ? 's' : ''} Added`,
-        description: `Added ${blocks.length} time block${blocks.length > 1 ? 's' : ''} to your calendar.`,
-        className: 'animate-scale-in border-primary/50',
-      });
-    }
-    if (actions.createTimeBlock) {
-      const blocks = Array.isArray(actions.createTimeBlock) 
-        ? actions.createTimeBlock 
-        : [actions.createTimeBlock];
-      
-      blocks.forEach(block => {
-        onAddTimeBlock({
-          title: block.title,
-          startTime: block.startTime,
-          endTime: block.endTime,
-          type: 'dedicated',
-          scheduleType: 'everyday',
-        });
-      });
-      
-      toast({
-        title: '📅 Schedule Updated',
-        description: `Added ${blocks.length} time block${blocks.length > 1 ? 's' : ''} to your calendar.`,
-        className: 'animate-scale-in border-primary/50',
-      });
-    }
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

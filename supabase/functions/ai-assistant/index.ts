@@ -436,14 +436,55 @@ When you want to take an action (create task, schedule time, etc.), include JSON
 - taskIds: string[]
 
 **create_playbook**: Create a new playbook template
-- title (required)
-- description: string
-- steps: string[]
-- category: string
+- title (required): string - clear, actionable title
+- description: string - brief overview of the playbook's purpose
+- category: "productivity" | "cleaning" | "cooking" | "learning" | "self-care" | "creative" | "work" | "health" | "social" | "other"
+- steps: string[] - array of step titles (e.g., ["Review materials", "Create outline", "Write first draft"])
 
-**update_playbook**: Update an existing playbook
-- playbookId (required)
-- title, description, steps (fields to update)
+Example:
+\`\`\`json
+{
+  "action": "create_playbook",
+  "data": {
+    "title": "Weekly Meal Prep",
+    "description": "Organized approach to preparing meals for the week",
+    "category": "cooking",
+    "steps": [
+      "Plan meals for the week",
+      "Create shopping list",
+      "Go grocery shopping",
+      "Prep vegetables and proteins",
+      "Cook and portion meals",
+      "Store in containers"
+    ]
+  }
+}
+\`\`\`
+
+**update_playbook**: Update an existing playbook (add/modify steps)
+- playbookId: string (if known) OR title: string (to find by title)
+- steps: string[] - NEW array of steps (will replace existing)
+- title: string (optional) - new title
+- description: string (optional) - new description
+
+Example:
+\`\`\`json
+{
+  "action": "update_playbook",
+  "data": {
+    "title": "Weekly Meal Prep",
+    "steps": [
+      "Plan meals for the week",
+      "Create shopping list",
+      "Go grocery shopping",
+      "Prep vegetables and proteins",
+      "Cook and portion meals",
+      "Store in containers",
+      "Label with dates"
+    ]
+  }
+}
+\`\`\`
 
 **create_project**: Create a new project
 - title (required)

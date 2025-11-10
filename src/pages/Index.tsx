@@ -11,6 +11,7 @@ import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
 import { ScheduleOverview } from '@/components/ScheduleOverview';
+import { ChatPanel } from '@/components/ChatPanel';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
@@ -109,6 +110,7 @@ const Index = () => {
   
   // AI Assistant
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [initialAIMessage, setInitialAIMessage] = useState<string | undefined>();
   const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
@@ -1034,7 +1036,7 @@ const Index = () => {
               <Button
                 variant="default"
                 size="sm"
-                onClick={() => { setShowAI(true); setIsAIAssistantOpen(true); }}
+                onClick={() => setIsChatPanelOpen(true)}
                 className="gap-2"
                 data-tutorial="ai-assistant"
               >
@@ -1358,6 +1360,11 @@ const Index = () => {
           setProfileSetupOpen(open);
           if (!open) setHasProfile(true);
         }}
+      />
+      
+      <ChatPanel 
+        isOpen={isChatPanelOpen}
+        onClose={() => setIsChatPanelOpen(false)}
       />
       
       {isMobile && <MobileBottomNav />}
