@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Minus, GripVertical, Send, Loader2 } from 'lucide-react';
+import { X, Minus, GripVertical, Send, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,7 +46,7 @@ export function ChatPanel({
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { messages, isLoading, sendMessage } = useAIChat({
+  const { messages, isLoading, sendMessage, clearMessages } = useAIChat({
     tasks,
     timeBlocks,
     playbooks,
@@ -134,6 +134,19 @@ export function ChatPanel({
           <h3 className="font-semibold text-lg">AI Assistant</h3>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              if (confirm('Clear chat history?')) {
+                clearMessages();
+              }
+            }}
+            title="Clear chat history"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

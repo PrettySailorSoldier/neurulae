@@ -64,10 +64,45 @@ export function useAIChat({
   onAddPlaybook,
   onUpdatePlaybook,
 }: UseAIChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem('neurulae-chat-history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('neurulae-chat-conversation-id');
+    } catch {
+      return null;
+    }
+  });
   const { toast } = useToast();
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('neurulae-chat-history', JSON.stringify(messages));
+    } catch (error) {
+      console.error('Failed to save chat history:', error);
+    }
+  }, [messages]);
+
+  // Save conversation ID to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      if (conversationId) {
+        localStorage.setItem('neurulae-chat-conversation-id', conversationId);
+      } else {
+        localStorage.removeItem('neurulae-chat-conversation-id');
+      }
+    } catch (error) {
+      console.error('Failed to save conversation ID:', error);
+    }
+  }, [conversationId]);
 
   const handleAIActions = (actions: any[]) => {
     if (!Array.isArray(actions)) return;
@@ -383,6 +418,8 @@ export function useAIChat({
   const clearMessages = () => {
     setMessages([]);
     setConversationId(null);
+    localStorage.removeItem('neurulae-chat-history');
+    localStorage.removeItem('neurulae-chat-conversation-id');
   };
 
   return {
