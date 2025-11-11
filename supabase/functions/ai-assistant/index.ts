@@ -58,6 +58,7 @@ serve(async (req) => {
         role: z.enum(['user', 'assistant', 'system']),
         content: z.string().max(5000)
       })).max(100),
+      images: z.array(z.string()).max(10).optional(),
       context: z.object({
         tasks: z.array(z.any()).max(1000).optional(),
         timeBlocks: z.array(z.any()).max(500).optional(),
@@ -88,7 +89,7 @@ serve(async (req) => {
       );
     }
 
-    const { messages, context, mode, userProfile } = validation.data;
+    const { messages, images, context, mode, userProfile } = validation.data;
 
     // Build enhanced system prompt with context
     const isStuckMode = mode === 'stuck_interview';
@@ -116,6 +117,8 @@ serve(async (req) => {
     const workSchedule = (userProfile?.workSchedule as any[]) || [];
     
     const stuckModePrompt = `You are a compassionate productivity coach guiding someone who feels overwhelmed and doesn't know where to start. Your mission is to help them identify what needs attention through a gentle, structured interview process.
+
+**IMAGE ANALYSIS**: When users share images (screenshots, photos of notes, schedules, whiteboards, etc.), analyze them carefully and reference specific details in your response. Images can contain schedules, task lists, homework assignments, or anything else relevant to productivity.
 
 ### USER PROFILE CONTEXT
 **AI Coaching Style**: ${coachingStyle}
@@ -290,6 +293,8 @@ ${coachingStyle === 'analytical' ? '- Focus on the logic and structure\n- Break 
 You're not here to be a therapist - you're a **productivity coach** helping someone get unstuck. Keep it practical, keep it kind, and help them take the first small step TODAY.`;
 
     const directModePrompt = `You are Neurulae's AI productivity assistant. You help users manage their tasks, time blocks, and schedule with intelligent, context-aware suggestions.
+
+**IMAGE ANALYSIS**: When users share images (screenshots of schedules, photos of whiteboards, assignment sheets, handwritten notes, etc.), carefully analyze them and extract relevant information. Create tasks, time blocks, or provide insights based on what you see in the images.
 
 ### USER PROFILE CONTEXT
 **AI Coaching Style**: ${coachingStyle}
@@ -616,6 +621,40 @@ Want me to schedule these for you?"`;
       });
     }
 
+    // Transform the last user message to include images if provided
+    const transformedMessages = messages.map((msg, idx) => {
+      // If this is the last user message and we have images, transform it to multimodal format
+      if (msg.role === 'user' && idx === messages.length - 1 && images && images.length > 0) {
+        const contentParts: any[] = [];
+        
+        // Add text content if present
+        if (msg.content && msg.content.trim()) {
+          contentParts.push({
+            type: 'text',
+            text: msg.content
+          });
+        }
+        
+        // Add all images
+        images.forEach(imageData => {
+          contentParts.push({
+            type: 'image_url',
+            image_url: {
+              url: imageData
+            }
+          });
+        });
+        
+        return {
+          role: msg.role,
+          content: contentParts
+        };
+      }
+      
+      // Return regular messages as-is
+      return msg;
+    });
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -626,7 +665,7 @@ Want me to schedule these for you?"`;
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          ...messages
+          ...transformedMessages
         ],
       }),
     });

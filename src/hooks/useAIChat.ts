@@ -8,6 +8,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  images?: string[];
 }
 
 interface UseAIChatProps {
@@ -242,8 +243,8 @@ export function useAIChat({
     });
   };
 
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || isLoading) return;
+  const sendMessage = async (content: string, images?: string[]) => {
+    if ((!content.trim() && !images?.length) || isLoading) return;
 
     setIsLoading(true);
 
@@ -251,6 +252,7 @@ export function useAIChat({
       role: 'user',
       content: content.trim(),
       timestamp: new Date().toISOString(),
+      images: images,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -335,6 +337,7 @@ export function useAIChat({
       const { data: functionData, error: functionError } = await supabase.functions.invoke('ai-assistant', {
         body: {
           messages: messagesForAI,
+          images: images,
           context: {
             tasks,
             timeBlocks,

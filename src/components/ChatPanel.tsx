@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Minus, Move, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History } from 'lucide-react';
+import { X, Minus, Move, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History, Image as ImageIcon, X as XIcon } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -58,6 +58,8 @@ export function ChatPanel({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<Array<{ file: File; preview: string }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { messages, isLoading, sendMessage, clearMessages, loadConversation, conversationId } = useAIChat({
@@ -122,10 +124,37 @@ export function ChatPanel({
     };
   }, [isDragging, dragOffset, isMinimized]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setSelectedImages(prev => [...prev, {
+            file,
+            preview: e.target?.result as string
+          }]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-    await sendMessage(input);
+    if ((!input.trim() && selectedImages.length === 0) || isLoading) return;
+    
+    const imageData = selectedImages.map(img => img.preview);
+    await sendMessage(input, imageData);
+    
     setInput('');
+    setSelectedImages([]);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -385,7 +414,23 @@ export function ChatPanel({
                     {message.role === 'assistant' ? (
                       <ReactMarkdown>{message.content}</ReactMarkdown>
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                      <div className="space-y-2">
+                        {message.images && message.images.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {message.images.map((img, imgIdx) => (
+                              <img
+                                key={imgIdx}
+                                src={img}
+                                alt="Uploaded"
+                                className="max-w-[200px] max-h-[200px] rounded-lg object-cover border-2 border-border"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {message.content && (
+                          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -405,10 +450,47 @@ export function ChatPanel({
           </ScrollArea>
 
           {/* Input Area */}
-          <div className="p-4 border-t">
+          <div className="p-4 border-t space-y-2">
+            {selectedImages.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedImages.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={img.preview}
+                      alt="Preview"
+                      className="w-20 h-20 object-cover rounded-lg border-2 border-border"
+                    />
+                    <button
+                      onClick={() => removeImage(idx)}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XIcon className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="self-end shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                title="Upload images"
+              >
+                <ImageIcon className="h-4 w-4" />
+              </Button>
               <Textarea
-                placeholder="Type your message..."
+                placeholder="Type your message or upload an image..."
                 className="resize-none min-h-[44px]"
                 rows={2}
                 value={input}
@@ -417,9 +499,9 @@ export function ChatPanel({
                 disabled={isLoading}
               />
               <Button 
-                className="self-end" 
+                className="self-end shrink-0" 
                 onClick={handleSend}
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || (!input.trim() && selectedImages.length === 0)}
               >
                 <Send className="h-4 w-4" />
               </Button>
