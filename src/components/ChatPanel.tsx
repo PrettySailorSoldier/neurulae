@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Minus, GripVertical, Send, Loader2, Trash2 } from 'lucide-react';
+import { X, Minus, GripVertical, Send, Loader2, Trash2, Pin, PinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -37,6 +37,10 @@ export function ChatPanel({
   onUpdatePlaybook,
 }: ChatPanelProps) {
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isPinned, setIsPinned] = useState(() => {
+    const saved = localStorage.getItem('chatPanelPinned');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [position, setPosition] = useState(() => {
     const saved = localStorage.getItem('chatPanelPosition');
     return saved ? JSON.parse(saved) : { x: window.innerWidth - 420, y: window.innerHeight - 620 };
@@ -63,13 +67,17 @@ export function ChatPanel({
   }, [position]);
 
   useEffect(() => {
+    localStorage.setItem('chatPanelPinned', JSON.stringify(isPinned));
+  }, [isPinned]);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.drag-handle')) {
+    if (!isPinned && (e.target as HTMLElement).closest('.drag-handle')) {
       setIsDragging(true);
       setDragOffset({
         x: e.clientX - position.x,
@@ -120,20 +128,35 @@ export function ChatPanel({
   return (
     <Card 
       className={cn(
-        "fixed w-[400px] flex flex-col shadow-elevated z-50 transition-all duration-300",
-        isMinimized ? "h-[60px]" : "h-[600px]",
+        "fixed flex flex-col shadow-elevated z-50 transition-all duration-300",
+        isPinned 
+          ? "bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl rounded-b-none" 
+          : "w-[400px]",
+        isMinimized ? "h-[60px]" : isPinned ? "h-[70vh]" : "h-[600px]",
         isDragging && "cursor-move"
       )}
-      style={{ left: `${position.x}px`, top: `${position.y}px` }}
+      style={isPinned ? {} : { left: `${position.x}px`, top: `${position.y}px` }}
       onMouseDown={handleMouseDown}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b drag-handle cursor-move bg-muted/30">
+      <div className={cn(
+        "flex items-center justify-between p-4 border-b bg-muted/30",
+        !isPinned && "drag-handle cursor-move"
+      )}>
         <div className="flex items-center gap-2">
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+          {!isPinned && <GripVertical className="h-4 w-4 text-muted-foreground" />}
           <h3 className="font-semibold text-lg">AI Assistant</h3>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setIsPinned(!isPinned)}
+            title={isPinned ? "Unpin (floating mode)" : "Pin to bottom"}
+          >
+            {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+          </Button>
           <Button
             variant="ghost"
             size="icon"
