@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,27 +13,11 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization') || '';
-    if (!authHeader.startsWith('Bearer ')) {
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Missing bearer token', plan: [] }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const token = authHeader.split(' ')[1];
-    // Decode the already-verified JWT to get the user id
-    let userId: string | null = null;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1] || ''));
-      userId = payload?.sub || payload?.user_id || null;
-    } catch (e) {
-      console.error('Failed to decode JWT payload', e);
-    }
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized', plan: [] }),
+        JSON.stringify({ error: 'Missing authorization header', plan: [] }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -43,10 +28,36 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Keep a compatible shape for downstream code
-    const user = { id: userId } as const;
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', plan: [] }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Generating smart schedule for user:', user.id);
+
+    // Validate request body
+    const requestSchema = z.object({
+      preferences: z.object({}).passthrough().optional(),
+      dateRange: z.object({
+        start: z.string().optional(),
+        end: z.string().optional(),
+      }).optional(),
+    }).passthrough();
+
+    const body = await req.json().catch(() => ({}));
+    const validation = requestSchema.safeParse(body);
+
+    if (!validation.success) {
+      console.error('Validation error:', validation.error.errors);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request format', plan: [] }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Fetch all busy schedule entries (work, class, appointments, existing scheduled tasks)
     const { data: busyBlocks, error: busyError } = await supabase
