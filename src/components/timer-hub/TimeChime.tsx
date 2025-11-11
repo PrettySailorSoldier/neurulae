@@ -3,7 +3,9 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, Square } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Play, Square, Volume2 } from 'lucide-react';
 
 export function TimeChime() {
   const { toast } = useToast();
@@ -11,6 +13,9 @@ export function TimeChime() {
   const [isRunning, setIsRunning] = useLocalStorage('neurulae-chime-running', false);
   const [chimeCount, setChimeCount] = useLocalStorage('neurulae-chime-count', 0);
   const [nextChimeIn, setNextChimeIn] = useLocalStorage('neurulae-chime-countdown', 0);
+  const [volume, setVolume] = useLocalStorage('neurulae-chime-volume', 30);
+  const [tone, setTone] = useLocalStorage<OscillatorType>('neurulae-chime-tone', 'sine');
+  const [frequency, setFrequency] = useLocalStorage('neurulae-chime-frequency', 800);
 
   useEffect(() => {
     if (!isRunning || nextChimeIn <= 0) return;
@@ -35,7 +40,7 @@ export function TimeChime() {
   }, [isRunning, chimeInterval, nextChimeIn]);
 
   const playChime = () => {
-    // Create a simple beep sound
+    // Create a customizable beep sound
     const audioContext = new AudioContext();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -43,10 +48,11 @@ export function TimeChime() {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency;
+    oscillator.type = tone;
     
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    const volumeValue = volume / 100;
+    gainNode.gain.setValueAtTime(volumeValue, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
 
     oscillator.start(audioContext.currentTime);
@@ -70,24 +76,96 @@ export function TimeChime() {
   return (
     <div className="space-y-6">
       {/* Settings */}
-      <div className="max-w-xs mx-auto">
-        <label className="block text-sm font-medium mb-2">Chime Interval</label>
-        <Select
-          value={chimeInterval.toString()}
-          onValueChange={(v) => setChimeInterval(parseInt(v))}
+      <div className="max-w-md mx-auto space-y-6">
+        <div>
+          <label className="block text-sm font-medium mb-2">Chime Interval</label>
+          <Select
+            value={chimeInterval.toString()}
+            onValueChange={(v) => setChimeInterval(parseInt(v))}
+            disabled={isRunning}
+          >
+            <SelectTrigger className="bg-input border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">Every 5 minutes</SelectItem>
+              <SelectItem value="10">Every 10 minutes</SelectItem>
+              <SelectItem value="15">Every 15 minutes</SelectItem>
+              <SelectItem value="30">Every 30 minutes</SelectItem>
+              <SelectItem value="60">Every 60 minutes</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="block text-sm font-medium mb-2">Chime Tone</Label>
+          <Select
+            value={tone}
+            onValueChange={(v) => setTone(v as OscillatorType)}
+            disabled={isRunning}
+          >
+            <SelectTrigger className="bg-input border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sine">Sine (Smooth)</SelectItem>
+              <SelectItem value="square">Square (Sharp)</SelectItem>
+              <SelectItem value="triangle">Triangle (Soft)</SelectItem>
+              <SelectItem value="sawtooth">Sawtooth (Buzzy)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="block text-sm font-medium mb-2">
+            Frequency: {frequency}Hz
+          </Label>
+          <Slider
+            value={[frequency]}
+            onValueChange={(v) => setFrequency(v[0])}
+            min={200}
+            max={2000}
+            step={50}
+            disabled={isRunning}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>Low</span>
+            <span>High</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Volume2 className="h-4 w-4" />
+            <Label className="text-sm font-medium">
+              Volume: {volume}%
+            </Label>
+          </div>
+          <Slider
+            value={[volume]}
+            onValueChange={(v) => setVolume(v[0])}
+            min={0}
+            max={100}
+            step={5}
+            disabled={isRunning}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>Mute</span>
+            <span>Max</span>
+          </div>
+        </div>
+
+        <Button
+          onClick={playChime}
+          variant="outline"
+          size="sm"
+          className="w-full"
           disabled={isRunning}
         >
-          <SelectTrigger className="bg-input border-border">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="5">Every 5 minutes</SelectItem>
-            <SelectItem value="10">Every 10 minutes</SelectItem>
-            <SelectItem value="15">Every 15 minutes</SelectItem>
-            <SelectItem value="30">Every 30 minutes</SelectItem>
-            <SelectItem value="60">Every 60 minutes</SelectItem>
-          </SelectContent>
-        </Select>
+          Test Chime Sound
+        </Button>
       </div>
 
       {/* Display */}
