@@ -1363,8 +1363,17 @@ const Index = () => {
       />
       
       <ChatPanel 
-        isOpen={isChatPanelOpen}
+        isOpen={isChatPanelOpen} 
         onClose={() => setIsChatPanelOpen(false)}
+        tasks={tasks}
+        timeBlocks={timeBlocks}
+        playbooks={playbooks}
+        onUpdateTask={handleUpdateTaskById}
+        onUpdateTimeBlock={handleUpdateTimeBlock}
+        onAddTimeBlock={handleAddTimeBlock}
+        onAddTask={handleAddTask}
+        onAddPlaybook={handleAddPlaybook}
+        onUpdatePlaybook={handleUpdatePlaybook}
       />
       
       {isMobile && <MobileBottomNav />}
