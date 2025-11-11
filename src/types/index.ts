@@ -138,6 +138,7 @@ export interface Playbook {
   linkedTaskIds: string[];
   resetOnRecurrence: boolean;
   createdAt: string;
+  order?: number;
 }
 
 export interface ReminderWidget {

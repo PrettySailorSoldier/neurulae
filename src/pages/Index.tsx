@@ -442,6 +442,7 @@ const Index = () => {
       ...playbookData,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
+      order: playbooks.length,
     };
     setPlaybooks([...playbooks, newPlaybook]);
   };
@@ -452,6 +453,10 @@ const Index = () => {
 
   const handleDeletePlaybook = (id: string) => {
     setPlaybooks(playbooks.filter(p => p.id !== id));
+  };
+
+  const handleReorderPlaybooks = (reorderedPlaybooks: Playbook[]) => {
+    setPlaybooks(reorderedPlaybooks);
   };
 
   const handleAddWidget = () => {
@@ -1174,6 +1179,7 @@ const Index = () => {
               onAddPlaybook={handleAddPlaybook}
               onUpdatePlaybook={handleUpdatePlaybook}
               onDeletePlaybook={handleDeletePlaybook}
+              onReorderPlaybooks={handleReorderPlaybooks}
             />
           </TabsContent>
 

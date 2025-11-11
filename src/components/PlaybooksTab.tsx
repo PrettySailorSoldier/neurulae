@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Playbook } from '@/types';
 import { PlaybookEditor } from './PlaybookEditor';
 import { PlaybookViewer } from './PlaybookViewer';
-import { Plus, BookOpen, Play, Sparkles } from 'lucide-react';
+import { Plus, BookOpen, Play, Sparkles, GripVertical } from 'lucide-react';
 import { playbookTemplates } from '@/data/playbookTemplates';
 
 interface PlaybooksTabProps {
@@ -14,21 +14,26 @@ interface PlaybooksTabProps {
   onAddPlaybook: (playbook: Omit<Playbook, 'id' | 'createdAt'>) => void;
   onUpdatePlaybook: (id: string, playbook: Omit<Playbook, 'id' | 'createdAt'>) => void;
   onDeletePlaybook: (id: string) => void;
+  onReorderPlaybooks: (reorderedPlaybooks: Playbook[]) => void;
   onStartTimer?: (stepTitle: string, minutes: number) => void;
 }
 
 const CATEGORIES = ['All', 'Cleaning', 'Cooking', 'Learning', 'Self-Care', 'Creative', 'Work', 'Health', 'Social', 'Other'];
 
-export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDeletePlaybook, onStartTimer }: PlaybooksTabProps) {
+export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDeletePlaybook, onReorderPlaybooks, onStartTimer }: PlaybooksTabProps) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [editorOpen, setEditorOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [editingPlaybook, setEditingPlaybook] = useState<Playbook | undefined>();
   const [viewingPlaybook, setViewingPlaybook] = useState<Playbook | undefined>();
+  const [draggedPlaybookId, setDraggedPlaybookId] = useState<string | null>(null);
+
+  // Sort playbooks by order (user playbooks only)
+  const sortedPlaybooks = [...playbooks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   // Combine user playbooks with templates
   const allPlaybooks = [
-    ...playbooks,
+    ...sortedPlaybooks,
     ...playbookTemplates.map(template => ({
       ...template,
       id: `template-${template.title}`,
@@ -96,6 +101,50 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
     return 'text-muted-foreground';
   };
 
+  const handleDragStart = (e: React.DragEvent, playbookId: string) => {
+    if (playbookTemplates.some(t => `template-${t.title}` === playbookId)) {
+      e.preventDefault(); // Don't allow dragging templates
+      return;
+    }
+    setDraggedPlaybookId(playbookId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetPlaybookId: string) => {
+    e.preventDefault();
+    if (!draggedPlaybookId || draggedPlaybookId === targetPlaybookId) return;
+    if (playbookTemplates.some(t => `template-${t.title}` === targetPlaybookId)) return;
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetPlaybookId: string) => {
+    e.preventDefault();
+    if (!draggedPlaybookId || draggedPlaybookId === targetPlaybookId) return;
+    if (playbookTemplates.some(t => `template-${t.title}` === targetPlaybookId)) return;
+
+    const draggedIndex = sortedPlaybooks.findIndex(p => p.id === draggedPlaybookId);
+    const targetIndex = sortedPlaybooks.findIndex(p => p.id === targetPlaybookId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newPlaybooks = [...sortedPlaybooks];
+    const [draggedPlaybook] = newPlaybooks.splice(draggedIndex, 1);
+    newPlaybooks.splice(targetIndex, 0, draggedPlaybook);
+
+    // Update order property
+    const reorderedPlaybooks = newPlaybooks.map((playbook, index) => ({
+      ...playbook,
+      order: index,
+    }));
+
+    onReorderPlaybooks(reorderedPlaybooks);
+    setDraggedPlaybookId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedPlaybookId(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -144,13 +193,30 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
             const completedSteps = playbook.steps.filter(s => s.completed).length;
             const totalSteps = playbook.steps.length;
             const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+            const isTemplate = playbook.isTemplate || playbook.id.startsWith('template-');
+            const isDraggable = !isTemplate;
 
             return (
-              <Card key={playbook.id} className="card-elevated hover:shadow-lg transition-shadow cursor-pointer">
+              <Card 
+                key={playbook.id} 
+                className={`card-elevated hover:shadow-lg transition-shadow ${
+                  isDraggable ? 'cursor-move' : 'cursor-pointer'
+                } ${draggedPlaybookId === playbook.id ? 'opacity-50' : ''}`}
+                draggable={isDraggable}
+                onDragStart={(e) => handleDragStart(e, playbook.id)}
+                onDragOver={(e) => handleDragOver(e, playbook.id)}
+                onDrop={(e) => handleDrop(e, playbook.id)}
+                onDragEnd={handleDragEnd}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg line-clamp-2">{playbook.title}</CardTitle>
-                    {playbook.isTemplate && (
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {isDraggable && (
+                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <CardTitle className="text-lg line-clamp-2 flex-1">{playbook.title}</CardTitle>
+                    </div>
+                    {isTemplate && (
                       <Badge variant="secondary" className="shrink-0">
                         <Sparkles className="h-3 w-3 mr-1" />
                         Template

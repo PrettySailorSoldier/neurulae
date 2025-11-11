@@ -28,6 +28,7 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
   const [category, setCategory] = useState(playbook?.category || 'Other');
   const [steps, setSteps] = useState<PlaybookStep[]>(playbook?.steps || []);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
   
   // AI generation fields
   const [aiGoal, setAiGoal] = useState('');
@@ -52,6 +53,43 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
 
   const handleDeleteStep = (id: string) => {
     setSteps(steps.filter(step => step.id !== id).map((step, index) => ({ ...step, order: index })));
+  };
+
+  const handleDragStart = (e: React.DragEvent, stepId: string) => {
+    setDraggedStepId(stepId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStepId: string) => {
+    e.preventDefault();
+    if (!draggedStepId || draggedStepId === targetStepId) return;
+
+    const draggedIndex = steps.findIndex(s => s.id === draggedStepId);
+    const targetIndex = steps.findIndex(s => s.id === targetStepId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newSteps = [...steps];
+    const [draggedStep] = newSteps.splice(draggedIndex, 1);
+    newSteps.splice(targetIndex, 0, draggedStep);
+
+    // Update order property
+    const reorderedSteps = newSteps.map((step, index) => ({
+      ...step,
+      order: index,
+    }));
+
+    setSteps(reorderedSteps);
+    setDraggedStepId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedStepId(null);
   };
 
   const handleGenerateWithAI = async () => {
@@ -271,9 +309,19 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
               ) : (
                 <div className="space-y-3">
                   {steps.map((step, index) => (
-                    <div key={step.id} className="border border-border rounded-lg p-3 space-y-2 bg-card/50">
+                    <div 
+                      key={step.id} 
+                      className={`border border-border rounded-lg p-3 space-y-2 bg-card/50 cursor-move ${
+                        draggedStepId === step.id ? 'opacity-50' : ''
+                      }`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, step.id)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, step.id)}
+                      onDragEnd={handleDragEnd}
+                    >
                       <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
                         <span className="text-sm font-semibold">Step {index + 1}</span>
                         <Button
                           onClick={() => handleDeleteStep(step.id)}
