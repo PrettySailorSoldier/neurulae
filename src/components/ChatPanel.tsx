@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Minus, GripVertical, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History } from 'lucide-react';
+import { X, Minus, Move, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -238,11 +238,15 @@ export function ChatPanel({
     >
       {/* Header */}
       <div className={cn(
-        "flex items-center justify-between p-4 border-b bg-muted/30",
-        !isPinned && "drag-handle cursor-move"
+        "flex items-center justify-between p-4 border-b bg-gradient-to-r from-muted/50 to-muted/30",
+        !isPinned && "drag-handle cursor-move hover:from-muted/70 hover:to-muted/50 transition-all"
       )}>
-        <div className="flex items-center gap-2">
-          {!isPinned && <GripVertical className="h-4 w-4 text-muted-foreground" />}
+        <div className="flex items-center gap-3">
+          {!isPinned && (
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors">
+              <Move className="h-4 w-4 text-primary" />
+            </div>
+          )}
           <h3 className="font-semibold text-lg">AI Assistant</h3>
         </div>
         <div className="flex items-center gap-2">
