@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Minus, GripVertical, Send, Loader2, Trash2, Pin, PinOff, Maximize2 } from 'lucide-react';
+import { X, Minus, GripVertical, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,6 +9,10 @@ import { cn } from '@/lib/utils';
 import { useAIChat } from '@/hooks/useAIChat';
 import { Task, TimeBlock, Playbook } from '@/types';
 import ReactMarkdown from 'react-markdown';
+import { ConversationHistory } from '@/components/ConversationHistory';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -52,9 +57,10 @@ export function ChatPanel({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [input, setInput] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { messages, isLoading, sendMessage, clearMessages } = useAIChat({
+  const { messages, isLoading, sendMessage, clearMessages, loadConversation, conversationId } = useAIChat({
     tasks,
     timeBlocks,
     playbooks,
@@ -148,6 +154,75 @@ export function ChatPanel({
     });
   };
 
+  const exportAsMarkdown = () => {
+    const markdown = messages.map(msg => {
+      const role = msg.role === 'assistant' ? '**AI**' : '**You**';
+      return `${role}:\n${msg.content}\n`;
+    }).join('\n---\n\n');
+
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-${new Date().toISOString().split('T')[0]}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Chat exported as Markdown');
+  };
+
+  const exportAsPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const maxWidth = pageWidth - 2 * margin;
+    let y = margin;
+
+    doc.setFontSize(16);
+    doc.text('Chat Transcript', margin, y);
+    y += 10;
+    doc.setFontSize(10);
+    doc.text(new Date().toLocaleString(), margin, y);
+    y += 15;
+
+    doc.setFontSize(11);
+
+    messages.forEach((msg, idx) => {
+      const role = msg.role === 'assistant' ? 'AI' : 'You';
+      const lines = doc.splitTextToSize(`${role}: ${msg.content}`, maxWidth);
+      
+      if (y + (lines.length * 7) > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+
+      doc.setFont(undefined, 'bold');
+      doc.text(`${role}:`, margin, y);
+      y += 7;
+      doc.setFont(undefined, 'normal');
+
+      lines.forEach((line: string) => {
+        if (y > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(line, margin + 5, y);
+        y += 7;
+      });
+
+      y += 5;
+    });
+
+    doc.save(`chat-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Chat exported as PDF');
+  };
+
+  const handleSelectConversation = async (convId: string) => {
+    await loadConversation(convId);
+    setShowHistory(false);
+    toast.success('Conversation loaded');
+  };
+
   return (
     <Card 
       className={cn(
@@ -171,6 +246,47 @@ export function ChatPanel({
           <h3 className="font-semibold text-lg">AI Assistant</h3>
         </div>
         <div className="flex items-center gap-2">
+          <Dialog open={showHistory} onOpenChange={setShowHistory}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="Conversation history"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Conversation History</DialogTitle>
+              </DialogHeader>
+              <ConversationHistory 
+                onSelectConversation={handleSelectConversation}
+                currentConversationId={conversationId}
+              />
+            </DialogContent>
+          </Dialog>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="Export chat"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportAsMarkdown}>
+                Export as Markdown
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportAsPDF}>
+                Export as PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="ghost"
             size="icon"

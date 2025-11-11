@@ -415,6 +415,39 @@ export function useAIChat({
     }
   };
 
+  const loadConversation = async (convId: string) => {
+    try {
+      setIsLoading(true);
+      const { data: msgs, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const loadedMessages: Message[] = (msgs || []).map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+        timestamp: new Date(msg.created_at).toISOString()
+      }));
+
+      setMessages(loadedMessages);
+      setConversationId(convId);
+      localStorage.setItem('neurulae-chat-history', JSON.stringify(loadedMessages));
+      localStorage.setItem('neurulae-chat-conversation-id', convId);
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load conversation',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const clearMessages = () => {
     setMessages([]);
     setConversationId(null);
@@ -427,5 +460,7 @@ export function useAIChat({
     isLoading,
     sendMessage,
     clearMessages,
+    loadConversation,
+    conversationId,
   };
 }
