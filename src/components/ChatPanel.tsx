@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Minus, GripVertical, Send, Loader2, Trash2, Pin, PinOff } from 'lucide-react';
+import { X, Minus, GripVertical, Send, Loader2, Trash2, Pin, PinOff, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -41,6 +41,10 @@ export function ChatPanel({
     const saved = localStorage.getItem('chatPanelPinned');
     return saved ? JSON.parse(saved) : false;
   });
+  const [panelSize, setPanelSize] = useState<'compact' | 'tall' | 'full'>(() => {
+    const saved = localStorage.getItem('chatPanelSize');
+    return (saved as 'compact' | 'tall' | 'full') || 'tall';
+  });
   const [position, setPosition] = useState(() => {
     const saved = localStorage.getItem('chatPanelPosition');
     return saved ? JSON.parse(saved) : { x: window.innerWidth - 420, y: window.innerHeight - 620 };
@@ -48,7 +52,7 @@ export function ChatPanel({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [input, setInput] = useState('');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const { messages, isLoading, sendMessage, clearMessages } = useAIChat({
     tasks,
@@ -71,9 +75,11 @@ export function ChatPanel({
   }, [isPinned]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    localStorage.setItem('chatPanelSize', panelSize);
+  }, [panelSize]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -125,6 +131,23 @@ export function ChatPanel({
 
   if (!isOpen) return null;
 
+  const getPinnedHeight = () => {
+    if (!isPinned) return '';
+    switch (panelSize) {
+      case 'compact': return 'h-[50vh]';
+      case 'tall': return 'h-[70vh]';
+      case 'full': return 'h-[90vh]';
+    }
+  };
+
+  const cyclePanelSize = () => {
+    setPanelSize(prev => {
+      if (prev === 'compact') return 'tall';
+      if (prev === 'tall') return 'full';
+      return 'compact';
+    });
+  };
+
   return (
     <Card 
       className={cn(
@@ -132,7 +155,7 @@ export function ChatPanel({
         isPinned 
           ? "bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl rounded-b-none" 
           : "w-[400px]",
-        isMinimized ? "h-[60px]" : isPinned ? "h-[70vh]" : "h-[600px]",
+        isMinimized ? "h-[60px]" : isPinned ? getPinnedHeight() : "h-[600px]",
         isDragging && "cursor-move"
       )}
       style={isPinned ? {} : { left: `${position.x}px`, top: `${position.y}px` }}
@@ -157,6 +180,17 @@ export function ChatPanel({
           >
             {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
           </Button>
+          {isPinned && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={cyclePanelSize}
+              title={`Size: ${panelSize} (click to cycle)`}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -194,7 +228,7 @@ export function ChatPanel({
       {!isMinimized && (
         <>
           {/* Messages Area */}
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 min-h-0 p-4">
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="flex items-start gap-3">
@@ -223,15 +257,15 @@ export function ChatPanel({
                     {message.role === 'assistant' ? 'AI' : 'You'}
                   </div>
                   <div className={cn(
-                    "flex-1 rounded-lg p-3 prose prose-sm max-w-none",
+                    "flex-1 rounded-lg p-3 max-w-none",
                     message.role === 'assistant' 
-                      ? "bg-muted" 
+                      ? "bg-muted prose prose-sm break-words" 
                       : "bg-accent"
                   )}>
                     {message.role === 'assistant' ? (
                       <ReactMarkdown>{message.content}</ReactMarkdown>
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                     )}
                   </div>
                 </div>
@@ -246,6 +280,7 @@ export function ChatPanel({
                   </div>
                 </div>
               )}
+              <div ref={bottomRef} />
             </div>
           </ScrollArea>
 
