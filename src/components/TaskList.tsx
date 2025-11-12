@@ -141,12 +141,15 @@ export function TaskList({
     setBulkMode(false);
   };
 
-  const handleAIOrganize = () => {
+  const handleAIOrganize = async () => {
     if (!canUseAIFeatures()) {
       showUpgradeModal('AI Task Organization');
       return;
     }
+    
+    // Immediately start organizing - fetch data and call AI
     setAiDialogOpen(true);
+    // The dialog will handle the automatic fetching and processing
   };
 
   const handleApplyAIResult = (result: any) => {

@@ -46,8 +46,7 @@ serve(async (req) => {
     // Validate input
     const requestSchema = z.object({
       tasks: z.array(z.any()).max(1000),
-      timeBlocks: z.array(z.any()).max(500),
-      preferences: z.object({}).passthrough().optional(),
+      availability: z.array(z.any()).max(500),
       today: z.string()
     });
 
@@ -64,9 +63,9 @@ serve(async (req) => {
       );
     }
 
-    const { tasks, timeBlocks, preferences, today } = validation.data;
+    const { tasks, availability, today } = validation.data;
 
-    console.log('Organizing tasks:', { taskCount: tasks.length, blockCount: timeBlocks.length });
+    console.log('Organizing tasks:', { taskCount: tasks.length, availabilityCount: availability.length });
 
     // Fetch existing schedule entries for the next 7 days to avoid conflicts
     const todayDate = new Date(today);
@@ -88,87 +87,56 @@ serve(async (req) => {
     const busyBlocks = scheduleEntries || [];
     console.log(`Found ${busyBlocks.length} existing schedule entries to avoid`);
 
-    const systemPrompt = `You are an expert AI productivity coach specializing in life planning and task prioritization. You use a sophisticated Priority Score system based on a 3x3 matrix.
+    const systemPrompt = `You are an expert AI scheduling assistant with deep reasoning capabilities. Today's date is ${today}. Use this date as your reference point for all planning.
 
-## The 3x3 Priority Matrix
+## Your Task:
+Create a realistic, step-by-step study/work plan for the user. You MUST:
+1. Break down large tasks into manageable chunks
+2. Schedule them into the user's available free time (gaps in their fixed schedule)
+3. Consider task urgency (due dates) and estimated time requirements
+4. Provide clear reasoning for your scheduling decisions
 
-**IMPORTANCE:**
-- 🎯 CRITICAL: Major life goals, severe consequences if incomplete (certifications, rent, critical health)
-- 🔧 NECESSARY: Daily life maintenance, prevents future problems (groceries, routine work, check-ups)
-- ✨ OPTIONAL: Quality-of-life improvements, low impact if postponed (organizing, hobbies, entertainment)
+## Constraints:
+- Respect the user's fixed schedule blocks (work/class times from availability table)
+- Do NOT schedule during their committed times
+- Use realistic time estimates
+- Prioritize tasks with approaching deadlines
+- Balance workload across available time slots`;
 
-**URGENCY:**
-- 🔥 IMMEDIATE: Due within 24 hours
-- ⏳ SHORT-TERM: Due within 7 days
-- 🗓️ LONG-TERM: Due in 7+ days or no deadline
+    const userPrompt = `Context: You are an expert scheduling assistant. You MUST use deep reasoning. Today's date is ${today}.
 
-## Priority Score Formula
+Task: Create a realistic, step-by-step study plan for the user. You must break down large tasks and schedule them into the user's available free time.
 
-**Priority Score = (Importance Weight) + (Urgency Weight) - (Procrastination Penalty)**
+## User's Fixed Schedule (from availability table):
+${JSON.stringify(availability.map(a => ({
+  day: a.day_of_week,
+  start: a.start_time,
+  end: a.end_time
+})), null, 2)}
 
-1. **Importance Weight:**
-   - CRITICAL tasks (especially in neglected life domains): Very High
-   - NECESSARY tasks: Moderate
-   - OPTIONAL tasks: Low
+## User's Task List (from tasks table):
+${JSON.stringify(tasks.map(t => ({
+  id: t.id,
+  name: t.name,
+  due_date: t.due_date,
+  estimated_minutes: t.estimated_minutes,
+  type: t.type
+})), null, 2)}
 
-2. **Urgency Weight:**
-   - Exponentially increases as deadline approaches
-   - Tomorrow's deadline >> next week's deadline
-
-3. **Procrastination Penalty:**
-   - Small value for tasks lingering incomplete for extended periods
-   - Ensures old tasks eventually surface
-
-## Scheduling Principles
-
-1. **Energy Matching:**
-   - High Energy: Critical projects requiring deep focus
-   - Medium Energy: Necessary tasks and routine work
-   - Low Energy: Optional tasks, light admin, self-care
-
-2. **Domain Balance:**
-   - Track task completion across: Work, Health, Family, Self-Care, Household, Social, Personal Growth
-   - Flag imbalances (e.g., 90% Work for 2 weeks → nudge toward Self-Care)
-
-3. **Realistic Scheduling:**
-   - Match task energy requirements to available time blocks
-   - Include buffer time between tasks
-   - Respect work-life boundaries
-
-4. **Motivational Focus:**
-   - Prioritize 3-5 truly impactful tasks per day (the "Focus List")
-   - Break overwhelming tasks into manageable steps
-   - Celebrate progress on long-procrastinated items
-
-Always provide clear reasoning for prioritization decisions to help users understand the logic.`;
-
-    const userPrompt = `Current date: ${today}
-
-Tasks to organize:
-${JSON.stringify(tasks, null, 2)}
-
-Available time blocks:
-${JSON.stringify(timeBlocks, null, 2)}
-
-User preferences:
-${JSON.stringify(preferences, null, 2)}
-
-IMPORTANT - Existing schedule commitments (DO NOT schedule tasks during these times):
+## Existing Schedule Commitments (DO NOT schedule during these times):
 ${JSON.stringify(busyBlocks.map(b => ({
   title: b.title,
   start: b.start_time,
   end: b.end_time,
-  category: b.category,
-  location: b.location
+  category: b.category
 })), null, 2)}
 
-Analyze using the Priority Score system:
-1. Calculate implicit importance (CRITICAL/NECESSARY/OPTIONAL) and urgency (IMMEDIATE/SHORT-TERM/LONG-TERM) for each task
-2. Create a prioritized Focus List of 3-5 top tasks based on Priority Scores
-3. Schedule tasks into time blocks matching energy requirements, AVOIDING all existing schedule commitments
-4. Provide insights on domain balance and any neglected life areas
-
-Be specific with task IDs and block IDs from the provided data. Include reasoning for why certain tasks scored higher.`;
+Instructions:
+1. Prioritize tasks based on due dates and importance
+2. Find free time slots by identifying gaps in the fixed schedule
+3. Schedule high-priority tasks in the available slots
+4. Break large tasks into smaller work sessions if needed
+5. Provide clear reasoning for each scheduling decision`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -177,7 +145,7 @@ Be specific with task IDs and block IDs from the provided data. Include reasonin
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }

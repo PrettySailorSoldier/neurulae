@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sparkles, Loader2, MoveVertical, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,13 @@ export function AIOrganizeDialog({
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Automatically trigger organization when dialog opens
+  useEffect(() => {
+    if (open && !result && !loading) {
+      handleOrganize();
+    }
+  }, [open]);
+
   const handleOrganize = async () => {
     setLoading(true);
     setError(null);
@@ -49,40 +56,48 @@ export function AIOrganizeDialog({
         throw new Error('You must be logged in to organize tasks');
       }
 
-      // Get the real current date and time from the user's system
+      // Get the real current date
       const today = new Date().toISOString();
-      const incompleteTasks = tasks.filter(t => !t.completed);
 
-      // Create system context with the real date
-      const systemContext = "You are a scheduling assistant. Today's date is " + today + ". All tasks must be planned relative to this date. You must use this date as 'today'.";
+      // Fetch all pending tasks directly from database
+      const { data: dbTasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id, name, due_date, estimated_minutes, type')
+        .eq('user_id', session.user.id)
+        .eq('status', 'pending');
 
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError);
+        throw new Error('Failed to fetch tasks from database');
+      }
+
+      // Fetch all availability blocks directly from database
+      const { data: availabilityBlocks, error: availError } = await supabase
+        .from('availability')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('day_of_week')
+        .order('start_time');
+
+      if (availError) {
+        console.error('Error fetching availability:', availError);
+        throw new Error('Failed to fetch availability from database');
+      }
+
+      console.log('Fetched data:', { 
+        taskCount: dbTasks?.length || 0, 
+        availabilityCount: availabilityBlocks?.length || 0 
+      });
+
+      // Send everything to the edge function
       const { data, error: invokeError } = await supabase.functions.invoke('organize-tasks', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: {
-          tasks: incompleteTasks.map(t => ({
-            id: t.id,
-            title: t.title,
-            notes: t.notes,
-            dueDate: t.dueDate,
-            focusTimeMinutes: t.focusTimeMinutes,
-          })),
-          timeBlocks: timeBlocks.map(b => ({
-            id: b.id,
-            title: b.title,
-            startTime: b.startTime,
-            endTime: b.endTime,
-            type: b.type,
-            scheduleType: b.scheduleType,
-          })),
-          preferences: {
-            workHours: '8 hours',
-            maxDeepWork: 90,
-            preferMornings: true,
-          },
+          tasks: dbTasks || [],
+          availability: availabilityBlocks || [],
           today,
-          systemContext,
         },
       });
 
@@ -90,6 +105,10 @@ export function AIOrganizeDialog({
       if (data.error) throw new Error(data.error);
 
       setResult(data);
+      toast({
+        title: "✨ AI Analysis Complete",
+        description: `Analyzed ${dbTasks?.length || 0} tasks and ${availabilityBlocks?.length || 0} availability blocks`,
+      });
     } catch (err: any) {
       console.error('Organization error:', err);
       setError(err.message || 'Failed to organize tasks');
@@ -130,17 +149,6 @@ export function AIOrganizeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {!result && !loading && !error && (
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              I'll analyze {tasks.filter(t => !t.completed).length} unscheduled tasks and {timeBlocks.length} time blocks to create your optimal daily plan.
-            </p>
-            <Button onClick={handleOrganize} className="w-full" disabled={tasks.filter(t => !t.completed).length === 0}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Organize My Day
-            </Button>
-          </div>
-        )}
 
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
