@@ -164,6 +164,29 @@ export function ChatPanel({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setSelectedImages(prev => [...prev, {
+              file,
+              preview: e.target?.result as string
+            }]);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+  };
+
   if (!isOpen) return null;
 
   const getPinnedHeight = () => {
@@ -490,12 +513,13 @@ export function ChatPanel({
                 <ImageIcon className="h-4 w-4" />
               </Button>
               <Textarea
-                placeholder="Type your message or upload an image..."
+                placeholder="Type your message, upload an image, or paste an image..."
                 className="resize-none min-h-[44px]"
                 rows={2}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
+                onPaste={handlePaste}
                 disabled={isLoading}
               />
               <Button 
