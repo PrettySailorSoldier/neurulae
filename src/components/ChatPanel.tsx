@@ -400,8 +400,9 @@ export function ChatPanel({
       {!isMinimized && (
         <>
           {/* Messages Area */}
-          <ScrollArea className="flex-1 min-h-0 p-4">
-            <div className="space-y-4">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ScrollArea className="h-full p-4">
+              <div className="space-y-4 pr-4">
               {messages.length === 0 && (
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
@@ -468,9 +469,10 @@ export function ChatPanel({
                   </div>
                 </div>
               )}
-              <div ref={bottomRef} />
-            </div>
-          </ScrollArea>
+                <div ref={bottomRef} />
+              </div>
+            </ScrollArea>
+          </div>
 
           {/* Input Area */}
           <div className="p-4 border-t space-y-2">
