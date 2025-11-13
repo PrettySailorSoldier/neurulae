@@ -43,11 +43,30 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Validate input
+    // Validate input with proper schemas
+    const taskSchema = z.object({
+      id: z.string().uuid(),
+      name: z.string().min(1).max(500),
+      due_date: z.string().optional(),
+      estimated_minutes: z.number().int().positive().max(1440).optional(),
+      type: z.string().max(50).optional(),
+      status: z.string().optional(),
+      user_id: z.string().uuid().optional()
+    });
+
+    const availabilitySchema = z.object({
+      day_of_week: z.number().int().min(0).max(6),
+      start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+      end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+      id: z.string().uuid().optional(),
+      user_id: z.string().uuid().optional(),
+      created_at: z.string().optional()
+    });
+
     const requestSchema = z.object({
-      tasks: z.array(z.any()).max(1000),
-      availability: z.array(z.any()).max(500),
-      today: z.string()
+      tasks: z.array(taskSchema).max(1000),
+      availability: z.array(availabilitySchema).max(500),
+      today: z.string().datetime()
     });
 
     const body = await req.json();

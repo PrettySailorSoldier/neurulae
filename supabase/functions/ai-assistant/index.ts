@@ -52,7 +52,47 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Validate input
+    // Validate input with structured schemas
+    const taskSchema = z.object({
+      id: z.string().uuid(),
+      name: z.string().min(1).max(500),
+      due_date: z.string().optional(),
+      estimated_minutes: z.number().int().positive().max(1440).optional(),
+      type: z.string().max(50).optional(),
+      status: z.string().optional()
+    });
+
+    const timeBlockSchema = z.object({
+      id: z.string().uuid(),
+      title: z.string().min(1).max(200),
+      day_of_week: z.number().int().min(0).max(6),
+      start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+      end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+      category: z.string().max(50).optional()
+    });
+
+    const scheduleEntrySchema = z.object({
+      id: z.string().uuid(),
+      title: z.string().min(1).max(200),
+      start_time: z.string().datetime(),
+      end_time: z.string().datetime(),
+      category: z.string().max(50).optional(),
+      description: z.string().max(1000).optional()
+    });
+
+    const playbookSchema = z.object({
+      id: z.string().uuid(),
+      title: z.string().min(1).max(200),
+      description: z.string().max(1000).optional(),
+      steps: z.array(z.any()).optional()
+    });
+
+    const projectSchema = z.object({
+      id: z.string().uuid(),
+      name: z.string().min(1).max(200),
+      description: z.string().max(1000).optional()
+    });
+
     const requestSchema = z.object({
       messages: z.array(z.object({
         role: z.enum(['user', 'assistant', 'system']),
@@ -60,17 +100,26 @@ serve(async (req) => {
       })).max(100),
       images: z.array(z.string()).max(10).optional(),
       context: z.object({
-        tasks: z.array(z.any()).max(1000).optional(),
-        timeBlocks: z.array(z.any()).max(500).optional(),
-        playbooks: z.array(z.any()).max(100).optional(),
-        projects: z.array(z.any()).max(100).optional(),
-        scheduleEntries: z.array(z.any()).max(500).optional(),
+        tasks: z.array(taskSchema).max(1000).optional(),
+        timeBlocks: z.array(timeBlockSchema).max(500).optional(),
+        playbooks: z.array(playbookSchema).max(100).optional(),
+        projects: z.array(projectSchema).max(100).optional(),
+        scheduleEntries: z.array(scheduleEntrySchema).max(500).optional(),
         currentDate: z.string().optional(),
         currentTime: z.string().optional(),
-        temporal: z.any().optional(),
-        todaySchedule: z.array(z.any()).optional(),
-        upcomingSchedule: z.array(z.any()).optional(),
-        availableTimeWindows: z.array(z.any()).optional()
+        temporal: z.object({
+          hour24: z.number().int().min(0).max(23).optional(),
+          dayOfWeek: z.number().int().min(0).max(6).optional(),
+          date: z.string().optional(),
+          localTime: z.string().optional()
+        }).passthrough().optional(),
+        todaySchedule: z.array(scheduleEntrySchema).optional(),
+        upcomingSchedule: z.array(scheduleEntrySchema).optional(),
+        availableTimeWindows: z.array(z.object({
+          start: z.string(),
+          end: z.string(),
+          duration: z.string().optional()
+        })).optional()
       }).optional(),
       mode: z.enum(['direct', 'stuck_interview']).optional(),
       userProfile: z.object({}).passthrough().optional()
