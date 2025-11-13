@@ -585,7 +585,8 @@ After that, I'd suggest tackling 'Update project timeline' while you're in work 
 
 Want me to schedule these for you?"`;
 
-    const systemPrompt = isStuckMode ? stuckModePrompt : directModePrompt;
+    const advisoryOverride = `CRITICAL OVERRIDE: Respond in plain, bulleted English only. NEVER output JSON, code fences, or {curly braces}. Do not include any "action" objects or structured data. You are an advisor, not an automator. Always reason using Google Gemini 2.5 Pro. Provide natural-language "Suggested Block" recommendations with times.`;
+    const systemPrompt = `${advisoryOverride}\n\n${isStuckMode ? stuckModePrompt : directModePrompt}`;
 
     console.log('AI Assistant request:', {
       userId: user.id,
@@ -662,7 +663,7 @@ Want me to schedule these for you?"`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           ...transformedMessages
@@ -731,17 +732,12 @@ Want me to schedule these for you?"`;
       });
     }
 
-    // Extract JSON actions from the response
-    const jsonBlocks = assistantMessage.match(/```json\n([\s\S]*?)\n```/g) || [];
-    const actions = jsonBlocks.map((block: string) => {
-      const jsonStr = block.replace(/```json\n/, '').replace(/\n```/, '');
-      try {
-        return JSON.parse(jsonStr);
-      } catch (e) {
-        console.error('Failed to parse JSON action:', e);
-        return null;
-      }
-    }).filter(Boolean);
+    // Advisory mode: strip any code fences and JSON-like action blocks; no actions returned
+    assistantMessage = assistantMessage
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/\{[^{}]*"action"[^{}]*\}/g, '')
+      .trim();
+    const actions: any[] = [];
 
     return new Response(JSON.stringify({
       message: assistantMessage,
