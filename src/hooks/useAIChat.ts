@@ -379,9 +379,32 @@ export function useAIChat({
         throw new Error(errorMsg);
       }
 
+      // Parse message content for embedded JSON commands
+      let cleanedMessage = functionData.message;
+      const embeddedActions: any[] = [];
+
+      // Extract JSON objects from the message
+      const jsonRegex = /\{[^{}]*"action"[^{}]*\}/g;
+      const jsonMatches = functionData.message.match(jsonRegex);
+      
+      if (jsonMatches) {
+        for (const jsonStr of jsonMatches) {
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.action) {
+              embeddedActions.push(parsed);
+              // Remove the JSON from the displayed message
+              cleanedMessage = cleanedMessage.replace(jsonStr, '').trim();
+            }
+          } catch (e) {
+            console.warn('Failed to parse embedded JSON:', e);
+          }
+        }
+      }
+
       const assistantMessage: Message = {
         role: 'assistant',
-        content: functionData.message,
+        content: cleanedMessage,
         timestamp: new Date().toISOString(),
       };
 
@@ -402,8 +425,10 @@ export function useAIChat({
           .eq('id', convId);
       }
 
-      if (functionData.actions) {
-        handleAIActions(functionData.actions);
+      // Execute actions from both the actions array and embedded JSON
+      const allActions = [...(functionData.actions || []), ...embeddedActions];
+      if (allActions.length > 0) {
+        handleAIActions(allActions);
       }
     } catch (error) {
       console.error('Error in AI chat:', error);
