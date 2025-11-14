@@ -60,7 +60,8 @@ export function ChatPanel({
   const [showHistory, setShowHistory] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Array<{ file: File; preview: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, isLoading, sendMessage, clearMessages, loadConversation, conversationId } = useAIChat({
     tasks,
@@ -86,9 +87,31 @@ export function ChatPanel({
     localStorage.setItem('chatPanelSize', panelSize);
   }, [panelSize]);
 
+  // Auto-scroll to bottom when messages change or on mount
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const scrollToBottom = () => {
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }
+    };
+    
+    // Small delay to ensure content is rendered
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [messages, isOpen]);
+
+  // Scroll to bottom on initial mount
+  useEffect(() => {
+    if (isOpen && scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [isOpen]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isPinned && (e.target as HTMLElement).closest('.drag-handle')) {
@@ -401,7 +424,7 @@ export function ChatPanel({
         <>
           {/* Messages Area */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            <ScrollArea className="h-full p-4">
+            <ScrollArea ref={scrollAreaRef} className="h-full p-4">
               <div className="space-y-4 pr-4">
               {messages.length === 0 && (
                 <div className="flex items-start gap-3">
@@ -469,7 +492,7 @@ export function ChatPanel({
                   </div>
                 </div>
               )}
-                <div ref={bottomRef} />
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
           </div>
