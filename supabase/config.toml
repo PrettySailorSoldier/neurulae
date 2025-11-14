@@ -29,3 +29,6 @@ verify_jwt = true
 
 [functions.redeem-promo]
 verify_jwt = true
+
+[functions.manage-time-blocks]
+verify_jwt = true
