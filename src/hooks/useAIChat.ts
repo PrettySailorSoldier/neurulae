@@ -226,18 +226,56 @@ export function useAIChat({
 
         case 'create_time_block':
         case 'suggest_time_block':
-          onAddTimeBlock({
-            title: data.title,
-            startTime: data.startTime,
-            endTime: data.endTime,
-            type: 'dedicated',
-            scheduleType: 'everyday',
-          });
-          toast({
-            title: '⏰ Time Block Added',
-            description: `Added "${data.title}" to your calendar.`,
-            className: 'animate-scale-in border-primary/50',
-          });
+          // Call edge function to create time block
+          (async () => {
+            try {
+              const { data: result, error } = await supabase.functions.invoke('manage-time-blocks', {
+                body: {
+                  action: 'create_time_block',
+                  title: data.title,
+                  startTime: data.startTime,
+                  endTime: data.endTime,
+                  category: data.category || 'other',
+                  taskIds: data.taskIds,
+                  dayOfWeek: data.dayOfWeek,
+                },
+              });
+
+              if (error) {
+                console.error('Error creating time block:', error);
+                toast({
+                  title: '❌ Failed to Create Time Block',
+                  description: error.message || 'An error occurred while creating the time block.',
+                  variant: 'destructive',
+                });
+                return;
+              }
+
+              if (result?.success) {
+                // Also update local state for immediate UI feedback
+                onAddTimeBlock({
+                  title: data.title,
+                  startTime: data.startTime,
+                  endTime: data.endTime,
+                  type: 'dedicated',
+                  scheduleType: 'everyday',
+                });
+                
+                toast({
+                  title: '⏰ Time Block Added',
+                  description: `Added "${data.title}" to your calendar.`,
+                  className: 'animate-scale-in border-primary/50',
+                });
+              }
+            } catch (err) {
+              console.error('Exception creating time block:', err);
+              toast({
+                title: '❌ Error',
+                description: 'Failed to create time block. Please try again.',
+                variant: 'destructive',
+              });
+            }
+          })();
           break;
       }
     });
