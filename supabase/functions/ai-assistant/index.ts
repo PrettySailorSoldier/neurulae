@@ -125,8 +125,80 @@ serve(async (req) => {
       userProfile: z.object({}).passthrough().optional()
     });
 
-    const body = await req.json();
-    const validation = requestSchema.safeParse(body);
+    const raw = await req.json();
+
+    // Normalize incoming payload to match schema expectations and prevent validation failures
+    const normalized = (() => {
+      try {
+        const rawMessages = Array.isArray(raw?.messages) ? raw.messages : [];
+        const messages = rawMessages.map((m: any) => ({
+          role: m?.role ?? 'user',
+          content: typeof m?.content === 'string' ? m.content.slice(0, 5000) : ''
+        }));
+
+        const ctx = raw?.context ?? {};
+
+        const tasks = Array.isArray(ctx?.tasks)
+          ? ctx.tasks.map((t: any) => ({
+              id: String(t.id),
+              name: String(t.name ?? t.title ?? '').slice(0, 500),
+              due_date: t.due_date ?? t.dueDate ?? undefined,
+              estimated_minutes:
+                typeof t.estimated_minutes === 'number'
+                  ? t.estimated_minutes
+                  : typeof t.estimatedMinutes === 'number'
+                  ? t.estimatedMinutes
+                  : typeof t.focusTimeMinutes === 'number'
+                  ? t.focusTimeMinutes
+                  : undefined,
+              type: t.type ?? t.taskType ?? undefined,
+              status:
+                typeof t.completed === 'boolean'
+                  ? t.completed
+                    ? 'completed'
+                    : 'pending'
+                  : t.status,
+            }))
+          : undefined;
+
+        const timeBlocks = Array.isArray(ctx?.timeBlocks)
+          ? ctx.timeBlocks
+              .map((b: any) => {
+                const day = b.day_of_week ?? b.dayOfWeek;
+                const start = b.start_time ?? b.startTime;
+                const end = b.end_time ?? b.endTime;
+                if (day === undefined || !start || !end) return null; // skip blocks we can't normalize
+                return {
+                  id: String(b.id ?? crypto.randomUUID()),
+                  title: String(b.title ?? b.name ?? 'Block').slice(0, 200),
+                  day_of_week: Number(day),
+                  start_time: String(start),
+                  end_time: String(end),
+                  category: b.category ?? b.type ?? undefined,
+                };
+              })
+              .filter(Boolean)
+          : undefined;
+
+        const normalizedContext = {
+          ...ctx,
+          tasks,
+          timeBlocks,
+        };
+
+        return {
+          messages,
+          images: Array.isArray(raw?.images) ? raw.images : undefined,
+          context: normalizedContext,
+          mode: raw?.mode,
+          userProfile: raw?.userProfile,
+        };
+      } catch (_) {
+        return raw;
+      }
+    })();
+
+    const validation = requestSchema.safeParse(normalized);
     
     if (!validation.success) {
       console.error('Validation error:', validation.error.errors);
