@@ -455,7 +455,7 @@ export function ChatPanel({
                   <div className={cn(
                     "flex-1 rounded-lg p-3 max-w-none",
                     message.role === 'assistant' 
-                      ? "bg-muted prose prose-sm break-words" 
+                      ? "bg-muted prose prose-sm break-words overflow-wrap-anywhere prose-p:max-w-none prose-ul:max-w-none prose-ol:max-w-none prose-li:max-w-none" 
                       : "bg-accent"
                   )}>
                     {message.role === 'assistant' ? (
