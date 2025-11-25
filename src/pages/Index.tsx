@@ -13,7 +13,7 @@ import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { AIAssistant } from '@/components/AIAssistant';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
@@ -85,6 +85,9 @@ const Index = () => {
   const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neurulae-custom-tabs', []);
   const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
   const [newTabName, setNewTabName] = useState('');
+  const [editTabsDialogOpen, setEditTabsDialogOpen] = useState(false);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingTabName, setEditingTabName] = useState('');
   
   // Onboarding Tutorial
   const [tutorialOpen, setTutorialOpen] = useState(false);
@@ -919,6 +922,28 @@ const Index = () => {
     toast({ title: "Tab removed" });
   };
 
+  const handleRenameCustomTab = (tabId: string, newName: string) => {
+    if (!newName.trim()) return;
+    setCustomTabs(customTabs.map(tab => 
+      tab.id === tabId ? { ...tab, name: newName.trim() } : tab
+    ));
+    toast({ title: "Tab renamed" });
+  };
+
+  const handleMoveTabUp = (index: number) => {
+    if (index === 0) return;
+    const newTabs = [...customTabs];
+    [newTabs[index - 1], newTabs[index]] = [newTabs[index], newTabs[index - 1]];
+    setCustomTabs(newTabs);
+  };
+
+  const handleMoveTabDown = (index: number) => {
+    if (index === customTabs.length - 1) return;
+    const newTabs = [...customTabs];
+    [newTabs[index], newTabs[index + 1]] = [newTabs[index + 1], newTabs[index]];
+    setCustomTabs(newTabs);
+  };
+
   const handleAskAI = (message: string) => {
     setInitialAIMessage(message);
     setIsAIAssistantOpen(true);
@@ -987,23 +1012,29 @@ const Index = () => {
               <TabsTrigger value="playbooks">Playbooks</TabsTrigger>
               <TabsTrigger value="care">Care</TabsTrigger>
               {customTabs.map(tab => (
-                <TabsTrigger key={tab.id} value={tab.id} className="group relative">
+                <TabsTrigger key={tab.id} value={tab.id}>
                   {tab.name}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCustomTab(tab.id);
-                    }}
-                    className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
                 </TabsTrigger>
               ))}
             </TabsList>
-            <Button size="sm" variant="outline" onClick={() => setNewTabDialogOpen(true)}>
+            <Button
+              onClick={() => setNewTabDialogOpen(true)}
+              size="icon"
+              variant="outline"
+              className="shrink-0"
+            >
               <Plus className="h-4 w-4" />
             </Button>
+            {customTabs.length > 0 && (
+              <Button
+                onClick={() => setEditTabsDialogOpen(true)}
+                size="icon"
+                variant="outline"
+                className="shrink-0"
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -1129,6 +1160,96 @@ const Index = () => {
               Cancel
             </Button>
             <Button onClick={handleAddCustomTab}>Create Tab</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Tabs Dialog */}
+      <Dialog open={editTabsDialogOpen} onOpenChange={setEditTabsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manage Custom Tabs</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {customTabs.map((tab, index) => (
+              <div key={tab.id} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
+                {editingTabId === tab.id ? (
+                  <Input
+                    value={editingTabName}
+                    onChange={(e) => setEditingTabName(e.target.value)}
+                    onBlur={() => {
+                      if (editingTabName.trim()) {
+                        handleRenameCustomTab(tab.id, editingTabName);
+                      }
+                      setEditingTabId(null);
+                      setEditingTabName('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (editingTabName.trim()) {
+                          handleRenameCustomTab(tab.id, editingTabName);
+                        }
+                        setEditingTabId(null);
+                        setEditingTabName('');
+                      } else if (e.key === 'Escape') {
+                        setEditingTabId(null);
+                        setEditingTabName('');
+                      }
+                    }}
+                    autoFocus
+                    className="flex-1"
+                  />
+                ) : (
+                  <>
+                    <span className="flex-1 font-medium">{tab.name}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingTabId(tab.id);
+                        setEditingTabName(tab.name);
+                      }}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+                <div className="flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleMoveTabUp(index)}
+                    disabled={index === 0}
+                    className="h-8 w-8"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleMoveTabDown(index)}
+                    disabled={index === customTabs.length - 1}
+                    className="h-8 w-8"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleDeleteCustomTab(tab.id)}
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setEditTabsDialogOpen(false)}>
+              Done
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
