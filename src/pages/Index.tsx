@@ -1,21 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ThemeSwitcher } from '@/components/ThemeSwitcher';
-import { FocusTimer } from '@/components/FocusTimer';
-import { TodaysPriorities } from '@/components/TodaysPriorities';
-import { CalendarWidget } from '@/components/CalendarWidget';
 import { ProjectsTab } from '@/components/ProjectsTab';
 import { PlaybooksTab } from '@/components/PlaybooksTab';
-import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { WidgetPanel } from '@/components/WidgetPanel';
 import { CalendarScheduler } from '@/components/CalendarScheduler';
-import { ScheduleOverview } from '@/components/ScheduleOverview';
 import { ChatPanel } from '@/components/ChatPanel';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { StatsOverview } from '@/components/dashboard/StatsOverview';
+import { TaskSection } from '@/components/dashboard/TaskSection';
+import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
-import { Brain, Plus, X, Cloud, Crown, HelpCircle, Grid3x3, Calendar, CalendarCheck } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { AIAssistant } from '@/components/AIAssistant';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
@@ -25,22 +23,16 @@ import { FutureSelfMessengerEditor } from '@/components/FutureSelfMessengerEdito
 import { MoodGardenWidgetEditor } from '@/components/MoodGardenWidgetEditor';
 import { ParallelUniverseWidgetEditor } from '@/components/ParallelUniverseWidgetEditor';
 import { SoundSignatureWidgetEditor } from '@/components/SoundSignatureWidgetEditor';
-import { CustomThemeBuilder } from '@/components/CustomThemeBuilder';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { TaskList } from '@/components/TaskList';
-import { ScheduledTaskCard } from '@/components/ScheduledTaskCard';
 import { Input } from '@/components/ui/input';
+import { CustomThemeBuilder } from '@/components/CustomThemeBuilder';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePremium } from '@/contexts/PremiumContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
-import { Card, CardContent } from '@/components/ui/card';
 import { ProfileSetupDialog } from '@/components/ProfileSetupDialog';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -964,148 +956,27 @@ const Index = () => {
 
   return (
     <div className={cn("min-h-screen", isMobile && "pb-16")}>
-      {/* Sync Banner for non-authenticated users */}
-      {!user && showSyncBanner && (
-        <Alert className="rounded-none border-x-0 border-t-0">
-          <Cloud className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>
-              Sign in to sync your data across devices and never lose your work
-            </span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/auth">Sign In</Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSyncBanner(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Brain className="h-8 w-8 text-primary" />
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">Neurulae</h1>
-                {isPremium && !isAdmin && (
-                  <Badge variant="default" className="gap-1">
-                    <Crown className="h-3 w-3" />
-                    {plan === 'lifetime' ? 'Lifetime' : 'Premium'}
-                  </Badge>
-                )}
-                {isAdmin && (
-                  <Badge variant="default" className="gap-1">
-                    <Crown className="h-3 w-3" />
-                    Admin
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEisenhowerOpen(true)}
-                title="Priority Matrix"
-                data-tutorial="eisenhower-matrix"
-              >
-                <Grid3x3 className="h-5 w-5" />
-              </Button>
-              <Link to="/my-schedule" data-tutorial="my-availability">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="My Schedule"
-                >
-                  <Calendar className="h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/my-plan" data-tutorial="my-plan">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="My Plan"
-                >
-                  <CalendarCheck className="h-5 w-5" />
-                </Button>
-              </Link>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setIsChatPanelOpen(true)}
-                className="gap-2"
-                data-tutorial="ai-assistant"
-              >
-                <Brain className="h-4 w-4" />
-                AI Assistant
-              </Button>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => setTutorialOpen(true)}
-            title="Help & Tutorial"
-            data-tutorial="timer-hub"
-          >
-            <HelpCircle className="h-5 w-5" />
-              </Button>
-              <SyncStatusIndicator />
-              {user && isAdmin && (
-                <Button variant="secondary" size="sm" asChild>
-                  <Link to="/admin">Admin Panel</Link>
-                </Button>
-              )}
-              {user && !isPremium && (
-                <Button variant="default" size="sm" asChild>
-                  <Link to="/pricing">
-                    <Crown className="h-4 w-4 mr-1" />
-                    Upgrade
-                  </Link>
-                </Button>
-              )}
-              {user && isPremium && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/settings">Settings</Link>
-                </Button>
-              )}
-              {!user && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/auth">Sign In</Link>
-                </Button>
-              )}
-              <ThemeSwitcher
-                currentTheme={theme} 
-                onThemeChange={setTheme}
-                onCustomThemeClick={handleOpenCustomThemeBuilder}
-                onEditCustomTheme={handleEditCustomTheme}
-                onDeleteCustomTheme={handleDeleteCustomTheme}
-                onUseAsTemplate={handleUseThemeAsTemplate}
-              />
-            </div>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader
+        user={user}
+        isPremium={isPremium}
+        isAdmin={isAdmin}
+        plan={plan}
+        theme={theme}
+        showSyncBanner={showSyncBanner}
+        onSetSyncBanner={setShowSyncBanner}
+        onSetEisenhowerOpen={setEisenhowerOpen}
+        onSetChatPanelOpen={setIsChatPanelOpen}
+        onSetTutorialOpen={setTutorialOpen}
+        onThemeChange={setTheme}
+        onCustomThemeClick={handleOpenCustomThemeBuilder}
+        onEditCustomTheme={handleEditCustomTheme}
+        onDeleteCustomTheme={handleDeleteCustomTheme}
+        onUseAsTemplate={handleUseThemeAsTemplate}
+      />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6" role="main">
-
-        {/* Top Widgets Row */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
-          <div className="md:col-span-6" data-tutorial="focus-timer">
-            <FocusTimer />
-          </div>
-          <div className="md:col-span-6">
-            <CalendarWidget onOpenScheduler={() => setSchedulerOpen(true)} />
-          </div>
-        </div>
+        <StatsOverview onOpenScheduler={() => setSchedulerOpen(true)} />
 
         {/* Tabbed Content */}
         <Tabs defaultValue="dashboard" className="space-y-6">
@@ -1138,34 +1009,27 @@ const Index = () => {
           <TabsContent value="dashboard" className="space-y-6">
             {/* Main Workflow - Visual Timeline & Unified To-Do List */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              {/* Daily Flow Timeline - Visual Representation (Left 3/5) */}
-              <div className="lg:col-span-3" data-tutorial="timeline">
-                <DailyFlowTimeline
-                  timeBlocks={timeBlocks}
-                  scheduledTasks={scheduledTasks}
-                  tasks={tasks}
-                  onAddTimeBlock={handleAddTimeBlock}
-                  onUpdateTimeBlock={handleUpdateTimeBlock}
-                  onDeleteTimeBlock={handleDeleteTimeBlock}
-                  onAddTask={handleAddTask}
-                />
-              </div>
-
-              {/* Unified To-Do List - All Tasks (Right 2/5) */}
-              <div className="lg:col-span-2" data-tutorial="tasks">
-                <TaskList
-                  tasks={tasks}
-                  timeBlocks={timeBlocks}
-                  onAddTask={handleAddTask}
-                  onToggleComplete={handleToggleComplete}
-                  onUpdateTask={handleUpdateTask}
-                  onDeleteTask={handleDeleteTask}
-                  onPrioritize={handlePrioritizeTasks}
-                  onScheduleTasks={handleScheduleTasks}
-                  onAskAI={showQuickActions ? handleAskAI : undefined}
-                  showQuickActions={showQuickActions}
-                />
-              </div>
+              <ScheduleSection
+                timeBlocks={timeBlocks}
+                scheduledTasks={scheduledTasks}
+                tasks={tasks}
+                onAddTimeBlock={handleAddTimeBlock}
+                onUpdateTimeBlock={handleUpdateTimeBlock}
+                onDeleteTimeBlock={handleDeleteTimeBlock}
+                onAddTask={handleAddTask}
+              />
+              <TaskSection
+                tasks={tasks}
+                timeBlocks={timeBlocks}
+                onAddTask={handleAddTask}
+                onToggleComplete={handleToggleComplete}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onPrioritize={handlePrioritizeTasks}
+                onScheduleTasks={handleScheduleTasks}
+                onAskAI={handleAskAI}
+                showQuickActions={showQuickActions}
+              />
             </div>
           </TabsContent>
 
