@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { X, Minus, Move, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History, Image as ImageIcon, X as XIcon } from 'lucide-react';
+import { useState, useRef, useEffect, memo } from 'react';
+import { X, Minus, Move, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History, Image as ImageIcon, X as XIcon, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
+// --- Types ---
 interface ChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,6 +29,136 @@ interface ChatPanelProps {
   onUpdatePlaybook: (id: string, updates: Partial<Playbook>) => void;
 }
 
+// --- ISOLATED INPUT COMPONENT (Fixes the Glitch) ---
+// We wrap this in 'memo' so it only re-renders when isLoading changes, 
+// not when the chat history updates.
+const ChatInputArea = memo(({ onSend, isLoading }: { onSend: (text: string, images: string[]) => void, isLoading: boolean }) => {
+  const [input, setInput] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<Array<{ file: File; preview: string; type: 'image' | 'pdf' }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    processFiles(files);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const processFiles = (files: File[]) => {
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const isImage = file.type.startsWith('image/');
+        setSelectedFiles(prev => [...prev, {
+          file,
+          preview: e.target?.result as string,
+          type: isImage ? 'image' : 'pdf'
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === 'file') {
+        const file = items[i].getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      processFiles(files);
+    }
+  };
+
+  const handleSendClick = () => {
+    if ((!input.trim() && selectedFiles.length === 0) || isLoading) return;
+    // Extract just the base64 strings to send
+    const fileData = selectedFiles.map(f => f.preview);
+    onSend(input, fileData);
+    setInput('');
+    setSelectedFiles([]);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendClick();
+    }
+  };
+
+  return (
+    <div className="p-4 border-t space-y-2 bg-background">
+      {selectedFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedFiles.map((item, idx) => (
+            <div key={idx} className="relative group">
+              {item.type === 'image' ? (
+                <img src={item.preview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border-2 border-border" />
+              ) : (
+                <div className="w-20 h-20 flex flex-col items-center justify-center bg-muted rounded-lg border-2 border-border p-1">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                  <span className="text-[10px] truncate w-full text-center">{item.file.name}</span>
+                </div>
+              )}
+              <button
+                onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
+                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <XIcon className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf" 
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="self-end shrink-0"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading}
+          title="Upload images or PDFs"
+        >
+          <ImageIcon className="h-4 w-4" />
+        </Button>
+        <Textarea
+          placeholder="Type a message..."
+          className="resize-none min-h-[44px]"
+          rows={1}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyPress}
+          onPaste={handlePaste}
+          disabled={isLoading}
+        />
+        <Button 
+          className="self-end shrink-0" 
+          onClick={handleSendClick}
+          disabled={isLoading || (!input.trim() && selectedFiles.length === 0)}
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+ChatInputArea.displayName = 'ChatInputArea';
+
+
+// --- MAIN COMPONENT ---
 export function ChatPanel({ 
   isOpen, 
   onClose,
@@ -56,10 +187,8 @@ export function ChatPanel({
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<Array<{ file: File; preview: string }>>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -87,31 +216,20 @@ export function ChatPanel({
     localStorage.setItem('chatPanelSize', panelSize);
   }, [panelSize]);
 
-  // Auto-scroll to bottom when messages change or on mount
-  useEffect(() => {
-    const scrollToBottom = () => {
-      if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (scrollContainer) {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        }
-      }
-    };
-    
-    // Small delay to ensure content is rendered
-    const timer = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timer);
-  }, [messages, isOpen]);
-
-  // Scroll to bottom on initial mount
-  useEffect(() => {
-    if (isOpen && scrollAreaRef.current) {
+  // Auto-scroll to bottom
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [isOpen]);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [messages, isOpen]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isPinned && (e.target as HTMLElement).closest('.drag-handle')) {
@@ -146,69 +264,6 @@ export function ChatPanel({
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, dragOffset, isMinimized]);
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setSelectedImages(prev => [...prev, {
-            file,
-            preview: e.target?.result as string
-          }]);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSend = async () => {
-    if ((!input.trim() && selectedImages.length === 0) || isLoading) return;
-    
-    const imageData = selectedImages.map(img => img.preview);
-    await sendMessage(input, imageData);
-    
-    setInput('');
-    setSelectedImages([]);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setSelectedImages(prev => [...prev, {
-              file,
-              preview: e.target?.result as string
-            }]);
-          };
-          reader.readAsDataURL(file);
-        }
-      }
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -259,7 +314,6 @@ export function ChatPanel({
     doc.setFontSize(10);
     doc.text(new Date().toLocaleString(), margin, y);
     y += 15;
-
     doc.setFontSize(11);
 
     messages.forEach((msg, idx) => {
@@ -284,7 +338,6 @@ export function ChatPanel({
         doc.text(line, margin + 5, y);
         y += 7;
       });
-
       y += 5;
     });
 
@@ -327,12 +380,7 @@ export function ChatPanel({
         <div className="flex items-center gap-2">
           <Dialog open={showHistory} onOpenChange={setShowHistory}>
             <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                title="Conversation history"
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Conversation history">
                 <History className="h-4 w-4" />
               </Button>
             </DialogTrigger>
@@ -348,22 +396,13 @@ export function ChatPanel({
           </Dialog>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                title="Export chat"
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Export chat">
                 <Download className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={exportAsMarkdown}>
-                Export as Markdown
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportAsPDF}>
-                Export as PDF
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportAsMarkdown}>Export as Markdown</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportAsPDF}>Export as PDF</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
@@ -381,7 +420,7 @@ export function ChatPanel({
               size="icon"
               className="h-8 w-8"
               onClick={cyclePanelSize}
-              title={`Size: ${panelSize} (click to cycle)`}
+              title={`Size: ${panelSize}`}
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
@@ -391,9 +430,7 @@ export function ChatPanel({
             size="icon"
             className="h-8 w-8"
             onClick={() => {
-              if (confirm('Clear chat history?')) {
-                clearMessages();
-              }
+              if (confirm('Clear chat history?')) clearMessages();
             }}
             title="Clear chat history"
           >
@@ -433,29 +470,23 @@ export function ChatPanel({
                   </div>
                   <div className="flex-1 bg-muted rounded-lg p-3">
                     <p className="text-sm">
-                      Hello! I'm your AI productivity coach. I can help you create tasks, organize playbooks, 
-                      manage your schedule, and more. What would you like to work on?
+                      Hello! I'm your AI productivity coach. What would you like to work on?
                     </p>
                   </div>
                 </div>
               )}
               {messages.map((message, idx) => (
-                <div key={idx} className={cn(
-                  "flex items-start gap-3",
-                  message.role === 'user' && "flex-row-reverse"
-                )}>
+                <div key={idx} className={cn("flex items-start gap-3", message.role === 'user' && "flex-row-reverse")}>
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0",
-                    message.role === 'assistant' 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-accent text-accent-foreground"
+                    message.role === 'assistant' ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
                   )}>
                     {message.role === 'assistant' ? 'AI' : 'You'}
                   </div>
                   <div className={cn(
                     "flex-1 rounded-lg p-3 max-w-none",
                     message.role === 'assistant' 
-                      ? "bg-muted prose prose-sm break-words w-full prose-p:max-w-none prose-p:whitespace-pre-wrap prose-ul:max-w-none prose-ol:max-w-none prose-li:max-w-none prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:overflow-x-auto"
+                      ? "bg-muted prose prose-sm break-words w-full prose-p:max-w-none prose-p:whitespace-pre-wrap"
                       : "bg-accent"
                   )}>
                     {message.role === 'assistant' ? (
@@ -465,12 +496,7 @@ export function ChatPanel({
                         {message.images && message.images.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-2">
                             {message.images.map((img, imgIdx) => (
-                              <img
-                                key={imgIdx}
-                                src={img}
-                                alt="Uploaded"
-                                className="max-w-[200px] max-h-[200px] rounded-lg object-cover border-2 border-border"
-                              />
+                              <img key={imgIdx} src={img} alt="Uploaded" className="max-w-[200px] max-h-[200px] rounded-lg object-cover border-2 border-border" />
                             ))}
                           </div>
                         )}
@@ -484,9 +510,7 @@ export function ChatPanel({
               ))}
               {isLoading && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
-                    AI
-                  </div>
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">AI</div>
                   <div className="flex-1 bg-muted rounded-lg p-3">
                     <Loader2 className="h-4 w-4 animate-spin" />
                   </div>
@@ -497,65 +521,8 @@ export function ChatPanel({
             </ScrollArea>
           </div>
 
-          {/* Input Area */}
-          <div className="p-4 border-t space-y-2">
-            {selectedImages.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedImages.map((img, idx) => (
-                  <div key={idx} className="relative group">
-                    <img
-                      src={img.preview}
-                      alt="Preview"
-                      className="w-20 h-20 object-cover rounded-lg border-2 border-border"
-                    />
-                    <button
-                      onClick={() => removeImage(idx)}
-                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="self-end shrink-0"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-                title="Upload images"
-              >
-                <ImageIcon className="h-4 w-4" />
-              </Button>
-              <Textarea
-                placeholder="Type your message, upload an image, or paste an image..."
-                className="resize-none min-h-[44px]"
-                rows={2}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                onPaste={handlePaste}
-                disabled={isLoading}
-              />
-              <Button 
-                className="self-end shrink-0" 
-                onClick={handleSend}
-                disabled={isLoading || (!input.trim() && selectedImages.length === 0)}
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          {/* New Isolated Input Component */}
+          <ChatInputArea onSend={sendMessage} isLoading={isLoading} />
         </>
       )}
     </Card>
