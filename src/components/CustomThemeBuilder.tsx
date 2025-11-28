@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Image as ImageIcon, Palette, ChevronDown } from 'lucide-react';
+import { Image as ImageIcon, Palette, ChevronDown, Wand2 } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -331,6 +331,16 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
     });
   };
 
+  const handleAutoOptimize = () => {
+    setTheme((prev) => {
+      const optimizedColors = autoOptimizeThemeColors(prev.colors) as CustomTheme['colors'];
+      return {
+        ...prev,
+        colors: optimizedColors,
+      };
+    });
+  };
+
   const handleSave = () => {
     onSave(theme);
     removeThemePreview();
@@ -442,6 +452,16 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
                   </div>
                 </CollapsibleContent>
               </Collapsible>
+
+              {/* Manual Auto-Optimize Button */}
+              <Button 
+                variant="outline" 
+                onClick={handleAutoOptimize}
+                className="w-full"
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                Auto-Optimize All Colors
+              </Button>
 
               {/* Color Pickers */}
               <div className="space-y-4">
