@@ -84,7 +84,7 @@ export function WidgetPanel({
   onEditSoundSignatureWidget,
   onLogSoundSession,
 }: WidgetPanelProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   const hasWidgets = 
     reminderWidgets.length > 0 || 
@@ -108,7 +108,7 @@ export function WidgetPanel({
 
       {/* Side Panel */}
       <div
-        className={`fixed right-0 top-16 h-[calc(100vh-4rem)] w-96 bg-card border-l border-border z-30 transition-transform duration-300 ${
+        className={`fixed right-0 top-0 h-full w-96 bg-card border-l border-border z-30 transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         } overflow-y-auto`}
       >
