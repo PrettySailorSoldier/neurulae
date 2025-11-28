@@ -75,6 +75,8 @@ export function ColorPicker({ label, value, onChange, className }: ColorPickerPr
   const [hsl, setHSL] = useState<HSL>(parseHSL(value));
   const [savedColors, setSavedColors] = useState<string[]>([]);
   const [recentColors, setRecentColors] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [initialValue, setInitialValue] = useState(value);
 
   useEffect(() => {
     const saved = localStorage.getItem(SAVED_COLORS_KEY);
@@ -92,12 +94,24 @@ export function ColorPicker({ label, value, onChange, className }: ColorPickerPr
     setHSL(updated);
     const formatted = formatHSL(updated);
     onChange(formatted);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
     
-    // Add to recent colors
-    setRecentColors(prev => {
-      const filtered = prev.filter(c => c !== formatted);
-      return [formatted, ...filtered].slice(0, 8);
-    });
+    if (open) {
+      // Store initial value when opening
+      setInitialValue(value);
+    } else {
+      // Add to recent colors only when closing, if color changed
+      const currentColor = formatHSL(hsl);
+      if (currentColor !== initialValue) {
+        setRecentColors(prev => {
+          const filtered = prev.filter(c => c !== currentColor);
+          return [currentColor, ...filtered].slice(0, 8);
+        });
+      }
+    }
   };
 
   const handleEyeDropper = async () => {
@@ -135,7 +149,7 @@ export function ColorPicker({ label, value, onChange, className }: ColorPickerPr
   return (
     <div className={cn("space-y-2", className)}>
       <Label className="text-sm">{label}</Label>
-      <Popover>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
