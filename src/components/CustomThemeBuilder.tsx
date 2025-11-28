@@ -10,6 +10,7 @@ import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Image as ImageIcon, Palette } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
+import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -310,6 +311,16 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
     }));
   };
 
+  const handleApplyHarmony = (harmonyColors: Partial<CustomTheme['colors']>) => {
+    setTheme((prev) => ({
+      ...prev,
+      colors: {
+        ...prev.colors,
+        ...harmonyColors,
+      },
+    }));
+  };
+
   const handleSave = () => {
     onSave(theme);
     removeThemePreview();
@@ -391,10 +402,17 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="colors" className="space-y-4 mt-4">
+            <TabsContent value="colors" className="space-y-6 mt-4">
+              {/* Color Harmony Generator */}
+              <ColorHarmonyGenerator
+                baseColor={theme.colors.primary}
+                onApplyHarmony={handleApplyHarmony}
+              />
+
+              {/* Color Pickers */}
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Colors (HSL format)</h3>
+                  <h3 className="font-semibold mb-2">Fine-tune Colors (HSL format)</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Use the color pickers below to customize each color with sliders, eye dropper, and saved palettes
                   </p>
