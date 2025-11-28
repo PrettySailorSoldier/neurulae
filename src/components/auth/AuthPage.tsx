@@ -11,6 +11,7 @@ import { syncService } from '@/services/syncService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 
 export function AuthPage() {
@@ -22,6 +23,7 @@ export function AuthPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -56,6 +58,22 @@ export function AuthPage() {
           variant: 'destructive'
         });
       } else {
+        // Handle "Remember me" functionality
+        if (!rememberMe) {
+          // Move session from localStorage to sessionStorage for session-only persistence
+          const authKey = Object.keys(localStorage).find(key => 
+            key.startsWith('sb-') && key.includes('-auth-token')
+          );
+          
+          if (authKey) {
+            const authData = localStorage.getItem(authKey);
+            if (authData) {
+              sessionStorage.setItem(authKey, authData);
+              localStorage.removeItem(authKey);
+            }
+          }
+        }
+
         // Download cloud data after successful sign in
         const cloudData = await syncService.downloadAll();
         
@@ -237,6 +255,19 @@ export function AuthPage() {
                       )}
                     </button>
                   </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remember-me"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="remember-me"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Remember me
+                  </label>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Signing in...' : 'Sign In'}
