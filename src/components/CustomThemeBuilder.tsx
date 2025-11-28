@@ -8,11 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Image as ImageIcon, Palette, ChevronDown } from 'lucide-react';
+import { Image as ImageIcon, Palette, ChevronDown, Minimize2, Maximize2 } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { autoOptimizeThemeColors } from '@/lib/colorUtils';
+import { cn } from '@/lib/utils';
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -220,6 +221,7 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   const [theme, setTheme] = useState<CustomTheme>(existingTheme || defaultTheme);
   const [previewMode, setPreviewMode] = useState(false);
   const [showHarmonyGenerator, setShowHarmonyGenerator] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   useEffect(() => {
     if (existingTheme) {
@@ -341,7 +343,12 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   const handleClose = () => {
     removeThemePreview();
     setPreviewMode(false);
+    setMinimized(false);
     onOpenChange(false);
+  };
+
+  const toggleMinimize = () => {
+    setMinimized(!minimized);
   };
 
   const colorFields: { key: keyof CustomTheme['colors']; label: string }[] = [
@@ -362,11 +369,25 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   ];
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Custom Theme Builder</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open && !minimized} onOpenChange={handleClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Custom Theme Builder</DialogTitle>
+              {previewMode && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleMinimize}
+                  className="gap-2"
+                >
+                  <Minimize2 className="w-4 h-4" />
+                  Minimize for Color Picking
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
 
         <div className="space-y-6">
           <div className="space-y-2">
@@ -389,15 +410,23 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
           </div>
 
           {previewMode && (
-            <Card className="p-4 space-y-2 bg-card text-card-foreground">
-              <h3 className="font-semibold text-primary">Preview Card</h3>
-              <p className="text-muted-foreground">This is how muted text looks</p>
-              <div className="flex gap-2">
-                <Button size="sm">Primary Button</Button>
-                <Button size="sm" variant="secondary">Secondary</Button>
-                <Button size="sm" variant="outline">Outline</Button>
+            <div className="space-y-3">
+              <Card className="p-4 space-y-2 bg-card text-card-foreground">
+                <h3 className="font-semibold text-primary">Preview Card</h3>
+                <p className="text-muted-foreground">This is how muted text looks</p>
+                <div className="flex gap-2">
+                  <Button size="sm">Primary Button</Button>
+                  <Button size="sm" variant="secondary">Secondary</Button>
+                  <Button size="sm" variant="outline">Outline</Button>
+                </div>
+              </Card>
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                <p className="text-xs font-medium flex items-center gap-2">
+                  <Minimize2 className="w-3 h-3" />
+                  <span>Tip: Click "Minimize for Color Picking" above to hide this dialog and use the eye dropper tool to pick colors from your background image or other page elements</span>
+                </p>
               </div>
-            </Card>
+            </div>
           )}
 
           <Tabs defaultValue="colors" className="w-full">
@@ -788,5 +817,37 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Minimized floating button for color picking */}
+    {minimized && previewMode && (
+      <div className="fixed bottom-6 right-6 z-50">
+        <Card className="p-4 shadow-2xl border-2 border-primary">
+          <div className="flex items-center gap-3">
+            <div className="space-y-1">
+              <p className="font-semibold text-sm">Theme Preview Active</p>
+              <p className="text-xs text-muted-foreground">Use eye dropper to pick colors</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={toggleMinimize}
+                title="Restore editor"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleSave}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    )}
+  </>
   );
 }
