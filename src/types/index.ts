@@ -285,3 +285,36 @@ export interface SoundSignatureWidget {
   playlists: PlaylistRecommendation[];
   trackedActivities: string[];
 }
+
+// Brain Dump Widget - for externalizing intrusive thoughts
+export interface BrainDumpThought {
+  id: string;
+  content: string;
+  timestamp: string;
+}
+
+export interface BrainDumpWidget {
+  id: string;
+  type: 'brain-dump';
+  title: string;
+  thoughts: BrainDumpThought[];
+}
+
+// Potion Inventory Widget - gamified health tracker
+export interface PotionInventoryWidget {
+  id: string;
+  type: 'potion-inventory';
+  title: string;
+  healthLevel: number; // 0-100
+  manaLevel: number;   // 0-100
+  staminaLevel: number; // 0-100
+  lastDecayTime: string;
+  decayEnabled: boolean;
+}
+
+// Sunlight Anchor Widget - visual time awareness
+export interface SunlightAnchorWidget {
+  id: string;
+  type: 'sunlight-anchor';
+  title: string;
+}
