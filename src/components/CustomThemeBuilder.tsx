@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Image as ImageIcon, Palette } from 'lucide-react';
+import { ColorPicker } from '@/components/ColorPicker';
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -395,21 +396,17 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
                 <div>
                   <h3 className="font-semibold mb-2">Colors (HSL format)</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Format: "hue saturation% lightness%" (e.g., "262 83% 58%" for purple)
+                    Use the color pickers below to customize each color with sliders, eye dropper, and saved palettes
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {colorFields.map(({ key, label }) => (
-                    <div key={key} className="space-y-2">
-                      <Label htmlFor={key} className="text-sm">{label}</Label>
-                      <Input
-                        id={key}
-                        value={theme.colors[key]}
-                        onChange={(e) => handleColorChange(key, e.target.value)}
-                        placeholder="0 0% 100%"
-                        className="font-mono text-sm"
-                      />
-                    </div>
+                    <ColorPicker
+                      key={key}
+                      label={label}
+                      value={theme.colors[key]}
+                      onChange={(value) => handleColorChange(key, value)}
+                    />
                   ))}
                 </div>
               </div>
