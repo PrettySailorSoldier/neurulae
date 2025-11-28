@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Image as ImageIcon, Palette } from 'lucide-react';
+import { Image as ImageIcon, Palette, ChevronDown } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -217,6 +218,7 @@ const defaultTheme: CustomTheme = {
 export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, templateTheme }: CustomThemeBuilderProps) {
   const [theme, setTheme] = useState<CustomTheme>(existingTheme || defaultTheme);
   const [previewMode, setPreviewMode] = useState(false);
+  const [showHarmonyGenerator, setShowHarmonyGenerator] = useState(false);
 
   useEffect(() => {
     if (existingTheme) {
@@ -403,16 +405,32 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
             </TabsList>
 
             <TabsContent value="colors" className="space-y-6 mt-4">
-              {/* Color Harmony Generator */}
-              <ColorHarmonyGenerator
-                baseColor={theme.colors.primary}
-                onApplyHarmony={handleApplyHarmony}
-              />
+              {/* Color Harmony Generator - Toggleable */}
+              <Collapsible open={showHarmonyGenerator} onOpenChange={setShowHarmonyGenerator}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Palette className="w-4 h-4" />
+                      Color Harmony Generator
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showHarmonyGenerator ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <ColorHarmonyGenerator
+                    baseColor={theme.colors.primary}
+                    onApplyHarmony={handleApplyHarmony}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
 
               {/* Color Pickers */}
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Fine-tune Colors (HSL format)</h3>
+                  <h3 className="font-semibold mb-2">Colors (HSL format)</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Use the color pickers below to customize each color with sliders, eye dropper, and saved palettes
                   </p>
