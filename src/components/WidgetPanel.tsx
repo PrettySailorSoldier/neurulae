@@ -84,7 +84,7 @@ export function WidgetPanel({
   onEditSoundSignatureWidget,
   onLogSoundSession,
 }: WidgetPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const hasWidgets = 
     reminderWidgets.length > 0 || 
