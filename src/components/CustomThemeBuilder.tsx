@@ -12,6 +12,7 @@ import { Image as ImageIcon, Palette, ChevronDown } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { autoOptimizeThemeColors } from '@/lib/colorUtils';
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -314,13 +315,20 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   };
 
   const handleApplyHarmony = (harmonyColors: Partial<CustomTheme['colors']>) => {
-    setTheme((prev) => ({
-      ...prev,
-      colors: {
+    setTheme((prev) => {
+      const updatedColors = {
         ...prev.colors,
         ...harmonyColors,
-      },
-    }));
+      };
+      
+      // Auto-optimize foreground colors for visibility
+      const optimizedColors = autoOptimizeThemeColors(updatedColors) as CustomTheme['colors'];
+      
+      return {
+        ...prev,
+        colors: optimizedColors,
+      };
+    });
   };
 
   const handleSave = () => {
@@ -414,16 +422,24 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
                   >
                     <span className="flex items-center gap-2">
                       <Palette className="w-4 h-4" />
-                      Color Harmony Generator
+                      Color Harmony Generator (Auto-optimizes visibility)
                     </span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${showHarmonyGenerator ? 'rotate-180' : ''}`} />
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pt-4">
-                  <ColorHarmonyGenerator
-                    baseColor={theme.colors.primary}
-                    onApplyHarmony={handleApplyHarmony}
-                  />
+                  <div className="space-y-3">
+                    <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                      <p className="font-medium mb-1">✨ Smart Optimization Enabled</p>
+                      <p className="text-xs text-muted-foreground">
+                        Foreground colors automatically adjust to ensure text and UI elements remain visible on any background
+                      </p>
+                    </div>
+                    <ColorHarmonyGenerator
+                      baseColor={theme.colors.primary}
+                      onApplyHarmony={handleApplyHarmony}
+                    />
+                  </div>
                 </CollapsibleContent>
               </Collapsible>
 
