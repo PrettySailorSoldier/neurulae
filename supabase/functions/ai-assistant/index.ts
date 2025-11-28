@@ -1,9 +1,13 @@
-/// <reference lib="deno.window" />
-
+// @ts-ignore - Deno std library resolved at runtime
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+// @ts-ignore - Deno std library resolved at runtime
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+// @ts-ignore - Supabase client resolved at runtime
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4';
+// @ts-ignore - Zod is available at runtime in Deno
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+
+declare const Deno: any;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -722,7 +726,12 @@ Want me to schedule these for you?"`;
     });
 
     // Deterministic date/time responses - bypass LLM for these queries
-    const lastUserMsg = messages.slice().reverse().find(m => m.role === 'user')?.content.toLowerCase() || '';
+    interface Message {
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+    }
+
+    const lastUserMsg: string = messages.slice().reverse().find((m: Message) => m.role === 'user')?.content.toLowerCase() || '';
     const asksDate = /(what\s+(is\s+)?today\??|what\s+day\s+is\s+(it|today)\??|what\s+is\s+the\s+date\??|what'?s\s+today'?s\s+date\??)/i.test(lastUserMsg);
     const asksTime = /(what\s+time\s+is\s+it\??|what'?s\s+the\s+time\??|current\s+time\??|time\s+now\??)/i.test(lastUserMsg);
     
