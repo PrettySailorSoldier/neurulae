@@ -35,24 +35,30 @@ interface WidgetPanelProps {
   soundSignatureWidgets: SoundSignatureWidget[];
   onAddWidget: () => void;
   onEditWidget: (id: string) => void;
+  onDeleteWidget: (id: string) => void;
   onToggleWidgetItem: (widgetId: string, itemId: string) => void;
   onResetWidget: (widgetId: string) => void;
   onAddEnergyWidget: () => void;
   onEditEnergyWidget: (id: string) => void;
+  onDeleteEnergyWidget: (id: string) => void;
   onLogEnergy: (widgetId: string, category: string, level: number) => void;
   onAddMessengerWidget: () => void;
   onEditMessengerWidget: (id: string) => void;
+  onDeleteMessengerWidget: (id: string) => void;
   onCreateMessage: (widgetId: string) => void;
   onViewMessage: (widgetId: string, messageId: string) => void;
   onAddMoodGardenWidget: () => void;
   onEditMoodGardenWidget: (id: string) => void;
+  onDeleteMoodGardenWidget: (id: string) => void;
   onLogMood: (widgetId: string, emotion: string, intensity: number, note?: string) => void;
   onAddParallelUniverseWidget: () => void;
   onEditParallelUniverseWidget: (id: string) => void;
+  onDeleteParallelUniverseWidget: (id: string) => void;
   onLogDecision: (widgetId: string, question: string, chosen: string, alternatives: string[], context?: string) => void;
   onGenerateOutcome: (widgetId: string, decisionId: string) => void;
   onAddSoundSignatureWidget: () => void;
   onEditSoundSignatureWidget: (id: string) => void;
+  onDeleteSoundSignatureWidget: (id: string) => void;
   onLogSoundSession: (widgetId: string, soundType: string, duration: number, productivity: number, mood: string, activity: string) => void;
 }
 
@@ -65,24 +71,30 @@ export function WidgetPanel({
   soundSignatureWidgets,
   onAddWidget,
   onEditWidget,
+  onDeleteWidget,
   onToggleWidgetItem,
   onResetWidget,
   onAddEnergyWidget,
   onEditEnergyWidget,
+  onDeleteEnergyWidget,
   onLogEnergy,
   onAddMessengerWidget,
   onEditMessengerWidget,
+  onDeleteMessengerWidget,
   onCreateMessage,
   onViewMessage,
   onAddMoodGardenWidget,
   onEditMoodGardenWidget,
+  onDeleteMoodGardenWidget,
   onLogMood,
   onAddParallelUniverseWidget,
   onEditParallelUniverseWidget,
+  onDeleteParallelUniverseWidget,
   onLogDecision,
   onGenerateOutcome,
   onAddSoundSignatureWidget,
   onEditSoundSignatureWidget,
+  onDeleteSoundSignatureWidget,
   onLogSoundSession,
 }: WidgetPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -183,6 +195,7 @@ export function WidgetPanel({
                     widget={widget}
                     onLogEnergy={(category, level) => onLogEnergy(widget.id, category, level)}
                     onEdit={() => onEditEnergyWidget(widget.id)}
+                    onDelete={() => onDeleteEnergyWidget(widget.id)}
                   />
                 </div>
               ))}
@@ -193,6 +206,7 @@ export function WidgetPanel({
                     onCreateMessage={() => onCreateMessage(widget.id)}
                     onViewMessage={(msgId) => onViewMessage(widget.id, msgId)}
                     onEdit={() => onEditMessengerWidget(widget.id)}
+                    onDelete={() => onDeleteMessengerWidget(widget.id)}
                   />
                 </div>
               ))}
@@ -202,6 +216,7 @@ export function WidgetPanel({
                     widget={widget}
                     onLogMood={(emotion, intensity, note) => onLogMood(widget.id, emotion, intensity, note)}
                     onEdit={() => onEditMoodGardenWidget(widget.id)}
+                    onDelete={() => onDeleteMoodGardenWidget(widget.id)}
                   />
                 </div>
               ))}
@@ -212,6 +227,7 @@ export function WidgetPanel({
                     onLogDecision={(q, c, a, ctx) => onLogDecision(widget.id, q, c, a, ctx)}
                     onGenerateOutcome={(decId) => onGenerateOutcome(widget.id, decId)}
                     onEdit={() => onEditParallelUniverseWidget(widget.id)}
+                    onDelete={() => onDeleteParallelUniverseWidget(widget.id)}
                   />
                 </div>
               ))}
@@ -221,6 +237,7 @@ export function WidgetPanel({
                     widget={widget}
                     onLogSession={(s, d, p, m, a) => onLogSoundSession(widget.id, s, d, p, m, a)}
                     onEdit={() => onEditSoundSignatureWidget(widget.id)}
+                    onDelete={() => onDeleteSoundSignatureWidget(widget.id)}
                   />
                 </div>
               ))}
@@ -230,6 +247,7 @@ export function WidgetPanel({
                     widget={widget}
                     onToggleItem={onToggleWidgetItem}
                     onEdit={onEditWidget}
+                    onDelete={onDeleteWidget}
                     onReset={onResetWidget}
                   />
                 </div>

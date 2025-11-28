@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Plus, Mail, MailOpen, Calendar, Target } from "lucide-react";
+import { Settings, Plus, Mail, MailOpen, Calendar, Target, Trash2 } from "lucide-react";
 import { FutureSelfMessengerWidget as FutureSelfMessengerWidgetType } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
@@ -11,13 +11,15 @@ interface FutureSelfMessengerWidgetProps {
   onCreateMessage: () => void;
   onViewMessage: (messageId: string) => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
 export const FutureSelfMessengerWidget = ({ 
   widget, 
   onCreateMessage, 
   onViewMessage,
-  onEdit 
+  onEdit,
+  onDelete
 }: FutureSelfMessengerWidgetProps) => {
   const [viewingMessage, setViewingMessage] = useState<string | null>(null);
 
@@ -59,9 +61,14 @@ export const FutureSelfMessengerWidget = ({
               </CardTitle>
               <CardDescription>Messages from your past self</CardDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={onEdit}>
-              <Settings className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={onEdit}>
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onDelete} className="text-destructive hover:bg-destructive/10">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

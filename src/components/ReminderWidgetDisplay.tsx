@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { ReminderWidget } from '@/types';
-import { Settings, RotateCcw } from 'lucide-react';
+import { Settings, RotateCcw, Trash2 } from 'lucide-react';
 
 interface ReminderWidgetDisplayProps {
   widget: ReminderWidget;
   onToggleItem: (widgetId: string, itemId: string) => void;
   onEdit: (widgetId: string) => void;
+  onDelete: (widgetId: string) => void;
   onReset: (widgetId: string) => void;
 }
 
@@ -16,6 +17,7 @@ export const ReminderWidgetDisplay = ({
   widget,
   onToggleItem,
   onEdit,
+  onDelete,
   onReset,
 }: ReminderWidgetDisplayProps) => {
   const completedCount = widget.items.filter(item => item.completed).length;
@@ -48,6 +50,14 @@ export const ReminderWidgetDisplay = ({
               className="h-8 w-8"
             >
               <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(widget.id)}
+              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>

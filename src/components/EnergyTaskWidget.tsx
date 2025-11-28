@@ -2,16 +2,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Settings, Plus, TrendingUp, Zap } from "lucide-react";
+import { Settings, Plus, TrendingUp, Zap, Trash2 } from "lucide-react";
 import { EnergyTaskWidget as EnergyTaskWidgetType } from "@/types";
 
 interface EnergyTaskWidgetProps {
   widget: EnergyTaskWidgetType;
   onLogEnergy: (category: string, level: number) => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
-export const EnergyTaskWidget = ({ widget, onLogEnergy, onEdit }: EnergyTaskWidgetProps) => {
+export const EnergyTaskWidget = ({ widget, onLogEnergy, onEdit, onDelete }: EnergyTaskWidgetProps) => {
   const currentEnergy = widget.energyLogs.length > 0 
     ? widget.energyLogs[widget.energyLogs.length - 1] 
     : null;
@@ -51,9 +52,14 @@ export const EnergyTaskWidget = ({ widget, onLogEnergy, onEdit }: EnergyTaskWidg
             </CardTitle>
             <CardDescription>Track energy & get optimal task suggestions</CardDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onDelete} className="text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

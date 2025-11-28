@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ParallelUniverseWidget, Decision } from '@/types';
-import { GitBranch, Settings, Plus, Sparkles } from 'lucide-react';
+import { GitBranch, Settings, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -14,13 +14,15 @@ interface ParallelUniverseWidgetProps {
   onLogDecision: (question: string, chosen: string, alternatives: string[], context?: string) => void;
   onGenerateOutcome: (decisionId: string) => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
 export function ParallelUniverseWidget({ 
   widget, 
   onLogDecision, 
   onGenerateOutcome,
-  onEdit 
+  onEdit,
+  onDelete
 }: ParallelUniverseWidgetProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [question, setQuestion] = useState('');
@@ -61,9 +63,14 @@ export function ParallelUniverseWidget({
             </CardTitle>
             <CardDescription>Explore alternate paths</CardDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onDelete} className="text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
