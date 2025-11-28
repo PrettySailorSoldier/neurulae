@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +86,7 @@ export function WidgetPanel({
   onLogSoundSession,
 }: WidgetPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const hasWidgets = 
     reminderWidgets.length > 0 || 
@@ -96,10 +98,18 @@ export function WidgetPanel({
 
   return (
     <>
+      {/* Backdrop Overlay (Mobile Only) */}
+      {isMobile && isOpen && (
+        <div 
+          className="fixed inset-0 top-16 bg-black/50 z-20 animate-fade-in"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
       {/* Toggle Button */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 rounded-l-lg rounded-r-none"
+        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 rounded-l-lg rounded-r-none transition-all duration-300 hover:scale-105"
         size="sm"
         data-tutorial="widgets"
       >
@@ -108,7 +118,9 @@ export function WidgetPanel({
 
       {/* Side Panel */}
       <div
-        className={`fixed right-0 top-16 h-[calc(100vh-4rem)] w-96 bg-card border-l border-border z-30 transition-transform duration-300 ${
+        className={`fixed right-0 top-16 h-[calc(100vh-4rem)] ${
+          isMobile ? 'w-full' : 'w-96'
+        } bg-card border-l border-border z-30 transition-all duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         } overflow-y-auto`}
       >
@@ -165,56 +177,62 @@ export function WidgetPanel({
             </Card>
           ) : (
             <div className="space-y-4">
-              {energyWidgets.map(widget => (
-                <EnergyTaskWidgetDisplay
-                  key={widget.id}
-                  widget={widget}
-                  onLogEnergy={(category, level) => onLogEnergy(widget.id, category, level)}
-                  onEdit={() => onEditEnergyWidget(widget.id)}
-                />
+              {energyWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                  <EnergyTaskWidgetDisplay
+                    widget={widget}
+                    onLogEnergy={(category, level) => onLogEnergy(widget.id, category, level)}
+                    onEdit={() => onEditEnergyWidget(widget.id)}
+                  />
+                </div>
               ))}
-              {messengerWidgets.map(widget => (
-                <FutureSelfMessengerWidgetDisplay
-                  key={widget.id}
-                  widget={widget}
-                  onCreateMessage={() => onCreateMessage(widget.id)}
-                  onViewMessage={(msgId) => onViewMessage(widget.id, msgId)}
-                  onEdit={() => onEditMessengerWidget(widget.id)}
-                />
+              {messengerWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + index) * 50}ms` }}>
+                  <FutureSelfMessengerWidgetDisplay
+                    widget={widget}
+                    onCreateMessage={() => onCreateMessage(widget.id)}
+                    onViewMessage={(msgId) => onViewMessage(widget.id, msgId)}
+                    onEdit={() => onEditMessengerWidget(widget.id)}
+                  />
+                </div>
               ))}
-              {moodGardenWidgets.map(widget => (
-                <MoodGardenWidgetDisplay
-                  key={widget.id}
-                  widget={widget}
-                  onLogMood={(emotion, intensity, note) => onLogMood(widget.id, emotion, intensity, note)}
-                  onEdit={() => onEditMoodGardenWidget(widget.id)}
-                />
+              {moodGardenWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + messengerWidgets.length + index) * 50}ms` }}>
+                  <MoodGardenWidgetDisplay
+                    widget={widget}
+                    onLogMood={(emotion, intensity, note) => onLogMood(widget.id, emotion, intensity, note)}
+                    onEdit={() => onEditMoodGardenWidget(widget.id)}
+                  />
+                </div>
               ))}
-              {parallelUniverseWidgets.map(widget => (
-                <ParallelUniverseWidgetDisplay
-                  key={widget.id}
-                  widget={widget}
-                  onLogDecision={(q, c, a, ctx) => onLogDecision(widget.id, q, c, a, ctx)}
-                  onGenerateOutcome={(decId) => onGenerateOutcome(widget.id, decId)}
-                  onEdit={() => onEditParallelUniverseWidget(widget.id)}
-                />
+              {parallelUniverseWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + messengerWidgets.length + moodGardenWidgets.length + index) * 50}ms` }}>
+                  <ParallelUniverseWidgetDisplay
+                    widget={widget}
+                    onLogDecision={(q, c, a, ctx) => onLogDecision(widget.id, q, c, a, ctx)}
+                    onGenerateOutcome={(decId) => onGenerateOutcome(widget.id, decId)}
+                    onEdit={() => onEditParallelUniverseWidget(widget.id)}
+                  />
+                </div>
               ))}
-              {soundSignatureWidgets.map(widget => (
-                <SoundSignatureWidgetDisplay
-                  key={widget.id}
-                  widget={widget}
-                  onLogSession={(s, d, p, m, a) => onLogSoundSession(widget.id, s, d, p, m, a)}
-                  onEdit={() => onEditSoundSignatureWidget(widget.id)}
-                />
+              {soundSignatureWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + messengerWidgets.length + moodGardenWidgets.length + parallelUniverseWidgets.length + index) * 50}ms` }}>
+                  <SoundSignatureWidgetDisplay
+                    widget={widget}
+                    onLogSession={(s, d, p, m, a) => onLogSoundSession(widget.id, s, d, p, m, a)}
+                    onEdit={() => onEditSoundSignatureWidget(widget.id)}
+                  />
+                </div>
               ))}
-              {reminderWidgets.map(widget => (
-                <ReminderWidgetDisplay
-                  key={widget.id}
-                  widget={widget}
-                  onToggleItem={onToggleWidgetItem}
-                  onEdit={onEditWidget}
-                  onReset={onResetWidget}
-                />
+              {reminderWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + messengerWidgets.length + moodGardenWidgets.length + parallelUniverseWidgets.length + soundSignatureWidgets.length + index) * 50}ms` }}>
+                  <ReminderWidgetDisplay
+                    widget={widget}
+                    onToggleItem={onToggleWidgetItem}
+                    onEdit={onEditWidget}
+                    onReset={onResetWidget}
+                  />
+                </div>
               ))}
             </div>
           )}
