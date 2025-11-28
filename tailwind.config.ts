@@ -117,6 +117,32 @@ export default {
             opacity: "1",
           },
         },
+        "spiral-void": {
+          "0%": {
+            transform: "scale(1) rotate(0deg)",
+            opacity: "1",
+          },
+          "100%": {
+            transform: "scale(0) rotate(720deg) translate(0, 100px)",
+            opacity: "0",
+          },
+        },
+        "pulse-glow": {
+          "0%, 100%": {
+            boxShadow: "0 0 10px rgba(139, 92, 246, 0.5)",
+          },
+          "50%": {
+            boxShadow: "0 0 20px rgba(139, 92, 246, 0.8)",
+          },
+        },
+        "sun-float": {
+          "0%, 100%": {
+            transform: "translate(-50%, -50%) translateY(0)",
+          },
+          "50%": {
+            transform: "translate(-50%, -50%) translateY(-8px)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -124,6 +150,9 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
         "slide-up": "slide-up 0.3s ease-out",
+        "spiral-void": "spiral-void 0.6s ease-in forwards",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "sun-float": "sun-float 3s ease-in-out infinite",
       },
     },
   },

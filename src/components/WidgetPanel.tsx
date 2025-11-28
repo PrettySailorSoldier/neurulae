@@ -17,7 +17,10 @@ import type {
   FutureSelfMessengerWidget,
   MoodGardenWidget,
   ParallelUniverseWidget,
-  SoundSignatureWidget 
+  SoundSignatureWidget,
+  BrainDumpWidget,
+  PotionInventoryWidget,
+  SunlightAnchorWidget
 } from '@/types';
 import { ReminderWidgetDisplay } from './ReminderWidgetDisplay';
 import { EnergyTaskWidget as EnergyTaskWidgetDisplay } from './EnergyTaskWidget';
@@ -25,6 +28,9 @@ import { FutureSelfMessengerWidget as FutureSelfMessengerWidgetDisplay } from '.
 import { MoodGardenWidget as MoodGardenWidgetDisplay } from './MoodGardenWidget';
 import { ParallelUniverseWidget as ParallelUniverseWidgetDisplay } from './ParallelUniverseWidget';
 import { SoundSignatureWidget as SoundSignatureWidgetDisplay } from './SoundSignatureWidget';
+import { BrainDumpWidget as BrainDumpWidgetDisplay } from './BrainDumpWidget';
+import { PotionInventoryWidget as PotionInventoryWidgetDisplay } from './PotionInventoryWidget';
+import { SunlightAnchorWidget as SunlightAnchorWidgetDisplay } from './SunlightAnchorWidget';
 
 interface WidgetPanelProps {
   reminderWidgets: ReminderWidget[];
@@ -33,6 +39,9 @@ interface WidgetPanelProps {
   moodGardenWidgets: MoodGardenWidget[];
   parallelUniverseWidgets: ParallelUniverseWidget[];
   soundSignatureWidgets: SoundSignatureWidget[];
+  brainDumpWidgets: BrainDumpWidget[];
+  potionInventoryWidgets: PotionInventoryWidget[];
+  sunlightAnchorWidgets: SunlightAnchorWidget[];
   onAddWidget: () => void;
   onEditWidget: (id: string) => void;
   onDeleteWidget: (id: string) => void;
@@ -60,6 +69,14 @@ interface WidgetPanelProps {
   onEditSoundSignatureWidget: (id: string) => void;
   onDeleteSoundSignatureWidget: (id: string) => void;
   onLogSoundSession: (widgetId: string, soundType: string, duration: number, productivity: number, mood: string, activity: string) => void;
+  onAddBrainDumpWidget: () => void;
+  onDeleteBrainDumpWidget: (id: string) => void;
+  onAddThought: (widgetId: string, content: string) => void;
+  onAddPotionInventoryWidget: () => void;
+  onDeletePotionInventoryWidget: (id: string) => void;
+  onUpdatePotionLevels: (widgetId: string, updates: Partial<Pick<PotionInventoryWidget, 'healthLevel' | 'manaLevel' | 'staminaLevel' | 'lastDecayTime'>>) => void;
+  onAddSunlightAnchorWidget: () => void;
+  onDeleteSunlightAnchorWidget: (id: string) => void;
 }
 
 export function WidgetPanel({
@@ -69,6 +86,9 @@ export function WidgetPanel({
   moodGardenWidgets,
   parallelUniverseWidgets,
   soundSignatureWidgets,
+  brainDumpWidgets,
+  potionInventoryWidgets,
+  sunlightAnchorWidgets,
   onAddWidget,
   onEditWidget,
   onDeleteWidget,
@@ -96,6 +116,14 @@ export function WidgetPanel({
   onEditSoundSignatureWidget,
   onDeleteSoundSignatureWidget,
   onLogSoundSession,
+  onAddBrainDumpWidget,
+  onDeleteBrainDumpWidget,
+  onAddThought,
+  onAddPotionInventoryWidget,
+  onDeletePotionInventoryWidget,
+  onUpdatePotionLevels,
+  onAddSunlightAnchorWidget,
+  onDeleteSunlightAnchorWidget,
 }: WidgetPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -106,7 +134,10 @@ export function WidgetPanel({
     messengerWidgets.length > 0 ||
     moodGardenWidgets.length > 0 ||
     parallelUniverseWidgets.length > 0 ||
-    soundSignatureWidgets.length > 0;
+    soundSignatureWidgets.length > 0 ||
+    brainDumpWidgets.length > 0 ||
+    potionInventoryWidgets.length > 0 ||
+    sunlightAnchorWidgets.length > 0;
 
   return (
     <>
@@ -163,6 +194,17 @@ export function WidgetPanel({
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onAddSoundSignatureWidget}>
                     🎵 Sound Signature
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Kawaii-Tech Widgets</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={onAddBrainDumpWidget}>
+                    🌀 Brain Dump
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onAddPotionInventoryWidget}>
+                    🧪 Potion Inventory
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onAddSunlightAnchorWidget}>
+                    ☀️ Sunlight Anchor
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Custom</DropdownMenuLabel>
@@ -249,6 +291,35 @@ export function WidgetPanel({
                     onEdit={onEditWidget}
                     onDelete={onDeleteWidget}
                     onReset={onResetWidget}
+                  />
+                </div>
+              ))}
+              {brainDumpWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + messengerWidgets.length + moodGardenWidgets.length + parallelUniverseWidgets.length + soundSignatureWidgets.length + reminderWidgets.length + index) * 50}ms` }}>
+                  <BrainDumpWidgetDisplay
+                    widget={widget}
+                    onEdit={() => {}}
+                    onDelete={() => onDeleteBrainDumpWidget(widget.id)}
+                    onAddThought={(content) => onAddThought(widget.id, content)}
+                  />
+                </div>
+              ))}
+              {potionInventoryWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + messengerWidgets.length + moodGardenWidgets.length + parallelUniverseWidgets.length + soundSignatureWidgets.length + reminderWidgets.length + brainDumpWidgets.length + index) * 50}ms` }}>
+                  <PotionInventoryWidgetDisplay
+                    widget={widget}
+                    onEdit={() => {}}
+                    onDelete={() => onDeletePotionInventoryWidget(widget.id)}
+                    onUpdateLevels={(updates) => onUpdatePotionLevels(widget.id, updates)}
+                  />
+                </div>
+              ))}
+              {sunlightAnchorWidgets.map((widget, index) => (
+                <div key={widget.id} className="animate-fade-in" style={{ animationDelay: `${(energyWidgets.length + messengerWidgets.length + moodGardenWidgets.length + parallelUniverseWidgets.length + soundSignatureWidgets.length + reminderWidgets.length + brainDumpWidgets.length + potionInventoryWidgets.length + index) * 50}ms` }}>
+                  <SunlightAnchorWidgetDisplay
+                    widget={widget}
+                    onEdit={() => {}}
+                    onDelete={() => onDeleteSunlightAnchorWidget(widget.id)}
                   />
                 </div>
               ))}

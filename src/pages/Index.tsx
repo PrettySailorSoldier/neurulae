@@ -12,7 +12,7 @@ import { TaskSection } from '@/components/dashboard/TaskSection';
 import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, Plant, CustomTheme } from '@/types';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme } from '@/types';
 import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { AIAssistant } from '@/components/AIAssistant';
@@ -76,6 +76,10 @@ const Index = () => {
   const [soundSignatureWidgets, setSoundSignatureWidgets] = useLocalStorage<SoundSignatureWidget[]>('neurulae-sound-signature-widgets', []);
   const [editingSoundSignatureWidget, setEditingSoundSignatureWidget] = useState<SoundSignatureWidget | undefined>();
   const [soundSignatureWidgetEditorOpen, setSoundSignatureWidgetEditorOpen] = useState(false);
+  
+  const [brainDumpWidgets, setBrainDumpWidgets] = useLocalStorage<BrainDumpWidget[]>('neurulae-brain-dump-widgets', []);
+  const [potionInventoryWidgets, setPotionInventoryWidgets] = useLocalStorage<PotionInventoryWidget[]>('neurulae-potion-inventory-widgets', []);
+  const [sunlightAnchorWidgets, setSunlightAnchorWidgets] = useLocalStorage<SunlightAnchorWidget[]>('neurulae-sunlight-anchor-widgets', []);
   
   const [customTheme, setCustomTheme] = useLocalStorage<CustomTheme | null>('neurulae-custom-theme', null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
@@ -535,6 +539,88 @@ const Index = () => {
   const handleDeleteSoundSignatureWidget = (widgetId: string) => {
     setSoundSignatureWidgets(soundSignatureWidgets.filter(w => w.id !== widgetId));
     toast({ title: "Widget deleted", description: "Your sound signature widget has been removed." });
+  };
+
+  // Brain Dump Widget handlers
+  const handleAddBrainDumpWidget = () => {
+    const newWidget: BrainDumpWidget = {
+      id: crypto.randomUUID(),
+      type: 'brain-dump',
+      title: 'Brain Dump',
+      thoughts: [],
+    };
+    setBrainDumpWidgets([...brainDumpWidgets, newWidget]);
+    toast({ title: "Brain Dump created", description: "Send distracting thoughts to the void." });
+  };
+
+  const handleDeleteBrainDumpWidget = (widgetId: string) => {
+    setBrainDumpWidgets(brainDumpWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your brain dump widget has been removed." });
+  };
+
+  const handleAddThought = (widgetId: string, content: string) => {
+    setBrainDumpWidgets(brainDumpWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        return {
+          ...widget,
+          thoughts: [
+            ...widget.thoughts,
+            {
+              id: crypto.randomUUID(),
+              content,
+              timestamp: new Date().toISOString(),
+            }
+          ],
+        };
+      }
+      return widget;
+    }));
+  };
+
+  // Potion Inventory Widget handlers
+  const handleAddPotionInventoryWidget = () => {
+    const newWidget: PotionInventoryWidget = {
+      id: crypto.randomUUID(),
+      type: 'potion-inventory',
+      title: 'Potion Inventory',
+      healthLevel: 100,
+      manaLevel: 100,
+      staminaLevel: 100,
+      lastDecayTime: new Date().toISOString(),
+      decayEnabled: true,
+    };
+    setPotionInventoryWidgets([...potionInventoryWidgets, newWidget]);
+    toast({ title: "Potion Inventory created", description: "Track your health, mana, and stamina." });
+  };
+
+  const handleDeletePotionInventoryWidget = (widgetId: string) => {
+    setPotionInventoryWidgets(potionInventoryWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your potion inventory has been removed." });
+  };
+
+  const handleUpdatePotionLevels = (widgetId: string, updates: Partial<Pick<PotionInventoryWidget, 'healthLevel' | 'manaLevel' | 'staminaLevel' | 'lastDecayTime'>>) => {
+    setPotionInventoryWidgets(potionInventoryWidgets.map(widget => {
+      if (widget.id === widgetId) {
+        return { ...widget, ...updates };
+      }
+      return widget;
+    }));
+  };
+
+  // Sunlight Anchor Widget handlers
+  const handleAddSunlightAnchorWidget = () => {
+    const newWidget: SunlightAnchorWidget = {
+      id: crypto.randomUUID(),
+      type: 'sunlight-anchor',
+      title: 'Sunlight Anchor',
+    };
+    setSunlightAnchorWidgets([...sunlightAnchorWidgets, newWidget]);
+    toast({ title: "Sunlight Anchor created", description: "Visual time awareness without numbers." });
+  };
+
+  const handleDeleteSunlightAnchorWidget = (widgetId: string) => {
+    setSunlightAnchorWidgets(sunlightAnchorWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your sunlight anchor has been removed." });
   };
 
   // Auto-reset widgets based on schedule
@@ -1043,6 +1129,9 @@ const Index = () => {
             moodGardenWidgets={moodGardenWidgets}
             parallelUniverseWidgets={parallelUniverseWidgets}
             soundSignatureWidgets={soundSignatureWidgets}
+            brainDumpWidgets={brainDumpWidgets}
+            potionInventoryWidgets={potionInventoryWidgets}
+            sunlightAnchorWidgets={sunlightAnchorWidgets}
             onAddWidget={handleAddWidget}
             onEditWidget={handleEditWidget}
             onDeleteWidget={handleDeleteWidget}
@@ -1070,6 +1159,14 @@ const Index = () => {
             onEditSoundSignatureWidget={handleEditSoundSignatureWidget}
             onDeleteSoundSignatureWidget={handleDeleteSoundSignatureWidget}
             onLogSoundSession={handleLogSoundSession}
+            onAddBrainDumpWidget={handleAddBrainDumpWidget}
+            onDeleteBrainDumpWidget={handleDeleteBrainDumpWidget}
+            onAddThought={handleAddThought}
+            onAddPotionInventoryWidget={handleAddPotionInventoryWidget}
+            onDeletePotionInventoryWidget={handleDeletePotionInventoryWidget}
+            onUpdatePotionLevels={handleUpdatePotionLevels}
+            onAddSunlightAnchorWidget={handleAddSunlightAnchorWidget}
+            onDeleteSunlightAnchorWidget={handleDeleteSunlightAnchorWidget}
           />
           <div className="flex items-center gap-2">
             <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 md:auto-cols-auto" style={{ gridTemplateColumns: `repeat(${4 + customTabs.length}, minmax(0, 1fr))` }}>
@@ -1176,6 +1273,9 @@ const Index = () => {
         moodGardenWidgets={moodGardenWidgets}
         parallelUniverseWidgets={parallelUniverseWidgets}
         soundSignatureWidgets={soundSignatureWidgets}
+        brainDumpWidgets={brainDumpWidgets}
+        potionInventoryWidgets={potionInventoryWidgets}
+        sunlightAnchorWidgets={sunlightAnchorWidgets}
         onAddWidget={handleAddWidget}
         onEditWidget={handleEditWidget}
         onDeleteWidget={handleDeleteWidget}
@@ -1203,6 +1303,14 @@ const Index = () => {
         onEditSoundSignatureWidget={handleEditSoundSignatureWidget}
         onDeleteSoundSignatureWidget={handleDeleteSoundSignatureWidget}
         onLogSoundSession={handleLogSoundSession}
+        onAddBrainDumpWidget={handleAddBrainDumpWidget}
+        onDeleteBrainDumpWidget={handleDeleteBrainDumpWidget}
+        onAddThought={handleAddThought}
+        onAddPotionInventoryWidget={handleAddPotionInventoryWidget}
+        onDeletePotionInventoryWidget={handleDeletePotionInventoryWidget}
+        onUpdatePotionLevels={handleUpdatePotionLevels}
+        onAddSunlightAnchorWidget={handleAddSunlightAnchorWidget}
+        onDeleteSunlightAnchorWidget={handleDeleteSunlightAnchorWidget}
       />
 
       {/* New Tab Dialog */}
