@@ -1,7 +1,9 @@
+/// <reference lib="deno.window" />
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4';
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +18,7 @@ const getTimeOfDay = (hour: number) => {
   return 'night';
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -744,33 +746,46 @@ Want me to schedule these for you?"`;
     }
 
     // Transform the last user message to include images if provided
-    const transformedMessages = messages.map((msg, idx) => {
+    interface ContentPart {
+      type: 'text' | 'image_url';
+      text?: string;
+      image_url?: {
+      url: string;
+      };
+    }
+
+    interface TransformedMessage {
+      role: 'user' | 'assistant' | 'system';
+      content: string | ContentPart[];
+    }
+
+    const transformedMessages: TransformedMessage[] = messages.map((msg: { role: 'user' | 'assistant' | 'system'; content: string }, idx: number) => {
       // If this is the last user message and we have images, transform it to multimodal format
       if (msg.role === 'user' && idx === messages.length - 1 && images && images.length > 0) {
-        const contentParts: any[] = [];
-        
-        // Add text content if present
-        if (msg.content && msg.content.trim()) {
-          contentParts.push({
-            type: 'text',
-            text: msg.content
-          });
-        }
-        
-        // Add all images
-        images.forEach(imageData => {
-          contentParts.push({
-            type: 'image_url',
-            image_url: {
-              url: imageData
-            }
-          });
+      const contentParts: ContentPart[] = [];
+      
+      // Add text content if present
+      if (msg.content && msg.content.trim()) {
+        contentParts.push({
+        type: 'text',
+        text: msg.content
         });
-        
-        return {
-          role: msg.role,
-          content: contentParts
-        };
+      }
+      
+      // Add all images
+      images.forEach((imageData: string) => {
+        contentParts.push({
+        type: 'image_url',
+        image_url: {
+          url: imageData
+        }
+        });
+      });
+      
+      return {
+        role: msg.role,
+        content: contentParts
+      };
       }
       
       // Return regular messages as-is
