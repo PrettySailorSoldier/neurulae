@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { MoodGardenWidget, MoodEntry } from '@/types';
-import { Sprout, Flower2, Settings, Plus } from 'lucide-react';
+import { Sprout, Flower2, Settings, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ interface MoodGardenWidgetProps {
   widget: MoodGardenWidget;
   onLogMood: (emotion: string, intensity: number, note?: string) => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
 const emotionEmojis: Record<string, string> = {
@@ -37,7 +38,7 @@ const getPlantEmoji = (stage: string) => {
   }
 };
 
-export function MoodGardenWidget({ widget, onLogMood, onEdit }: MoodGardenWidgetProps) {
+export function MoodGardenWidget({ widget, onLogMood, onEdit, onDelete }: MoodGardenWidgetProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [emotion, setEmotion] = useState(widget.trackedEmotions[0] || 'joy');
   const [intensity, setIntensity] = useState([5]);
@@ -63,9 +64,14 @@ export function MoodGardenWidget({ widget, onLogMood, onEdit }: MoodGardenWidget
             </CardTitle>
             <CardDescription>Grow your emotional garden</CardDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onDelete} className="text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { SoundSignatureWidget } from '@/types';
-import { Music, Settings, Plus, TrendingUp } from 'lucide-react';
+import { Music, Settings, Plus, TrendingUp, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -14,9 +14,10 @@ interface SoundSignatureWidgetProps {
   widget: SoundSignatureWidget;
   onLogSession: (soundType: string, duration: number, productivity: number, mood: string, activity: string) => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
-export function SoundSignatureWidget({ widget, onLogSession, onEdit }: SoundSignatureWidgetProps) {
+export function SoundSignatureWidget({ widget, onLogSession, onEdit, onDelete }: SoundSignatureWidgetProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [soundType, setSoundType] = useState('');
   const [duration, setDuration] = useState('30');
@@ -61,9 +62,14 @@ export function SoundSignatureWidget({ widget, onLogSession, onEdit }: SoundSign
             </CardTitle>
             <CardDescription>Find your productivity soundtrack</CardDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onDelete} className="text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

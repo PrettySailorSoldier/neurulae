@@ -507,6 +507,36 @@ const Index = () => {
     }));
   };
 
+  const handleDeleteWidget = (widgetId: string) => {
+    setReminderWidgets(reminderWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your reminder widget has been removed." });
+  };
+
+  const handleDeleteEnergyWidget = (widgetId: string) => {
+    setEnergyWidgets(energyWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your energy widget has been removed." });
+  };
+
+  const handleDeleteMessengerWidget = (widgetId: string) => {
+    setMessengerWidgets(messengerWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your messenger widget has been removed." });
+  };
+
+  const handleDeleteMoodGardenWidget = (widgetId: string) => {
+    setMoodGardenWidgets(moodGardenWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your mood garden widget has been removed." });
+  };
+
+  const handleDeleteParallelUniverseWidget = (widgetId: string) => {
+    setParallelUniverseWidgets(parallelUniverseWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your parallel universe widget has been removed." });
+  };
+
+  const handleDeleteSoundSignatureWidget = (widgetId: string) => {
+    setSoundSignatureWidgets(soundSignatureWidgets.filter(w => w.id !== widgetId));
+    toast({ title: "Widget deleted", description: "Your sound signature widget has been removed." });
+  };
+
   // Auto-reset widgets based on schedule
   useEffect(() => {
     const checkResets = () => {
@@ -1015,24 +1045,30 @@ const Index = () => {
             soundSignatureWidgets={soundSignatureWidgets}
             onAddWidget={handleAddWidget}
             onEditWidget={handleEditWidget}
+            onDeleteWidget={handleDeleteWidget}
             onToggleWidgetItem={handleToggleWidgetItem}
             onResetWidget={handleResetWidget}
             onAddEnergyWidget={handleAddEnergyWidget}
             onEditEnergyWidget={handleEditEnergyWidget}
+            onDeleteEnergyWidget={handleDeleteEnergyWidget}
             onLogEnergy={handleLogEnergy}
             onAddMessengerWidget={handleAddMessengerWidget}
             onEditMessengerWidget={handleEditMessengerWidget}
+            onDeleteMessengerWidget={handleDeleteMessengerWidget}
             onCreateMessage={handleCreateMessage}
             onViewMessage={handleViewMessage}
             onAddMoodGardenWidget={handleAddMoodGardenWidget}
             onEditMoodGardenWidget={handleEditMoodGardenWidget}
+            onDeleteMoodGardenWidget={handleDeleteMoodGardenWidget}
             onLogMood={handleLogMood}
             onAddParallelUniverseWidget={handleAddParallelUniverseWidget}
             onEditParallelUniverseWidget={handleEditParallelUniverseWidget}
+            onDeleteParallelUniverseWidget={handleDeleteParallelUniverseWidget}
             onLogDecision={handleLogDecision}
             onGenerateOutcome={handleGenerateOutcome}
             onAddSoundSignatureWidget={handleAddSoundSignatureWidget}
             onEditSoundSignatureWidget={handleEditSoundSignatureWidget}
+            onDeleteSoundSignatureWidget={handleDeleteSoundSignatureWidget}
             onLogSoundSession={handleLogSoundSession}
           />
           <div className="flex items-center gap-2">
@@ -1142,24 +1178,30 @@ const Index = () => {
         soundSignatureWidgets={soundSignatureWidgets}
         onAddWidget={handleAddWidget}
         onEditWidget={handleEditWidget}
+        onDeleteWidget={handleDeleteWidget}
         onToggleWidgetItem={handleToggleWidgetItem}
         onResetWidget={handleResetWidget}
         onAddEnergyWidget={handleAddEnergyWidget}
         onEditEnergyWidget={handleEditEnergyWidget}
+        onDeleteEnergyWidget={handleDeleteEnergyWidget}
         onLogEnergy={handleLogEnergy}
         onAddMessengerWidget={handleAddMessengerWidget}
         onEditMessengerWidget={handleEditMessengerWidget}
+        onDeleteMessengerWidget={handleDeleteMessengerWidget}
         onCreateMessage={handleCreateMessage}
         onViewMessage={handleViewMessage}
         onAddMoodGardenWidget={handleAddMoodGardenWidget}
         onEditMoodGardenWidget={handleEditMoodGardenWidget}
+        onDeleteMoodGardenWidget={handleDeleteMoodGardenWidget}
         onLogMood={handleLogMood}
         onAddParallelUniverseWidget={handleAddParallelUniverseWidget}
         onEditParallelUniverseWidget={handleEditParallelUniverseWidget}
+        onDeleteParallelUniverseWidget={handleDeleteParallelUniverseWidget}
         onLogDecision={handleLogDecision}
         onGenerateOutcome={handleGenerateOutcome}
         onAddSoundSignatureWidget={handleAddSoundSignatureWidget}
         onEditSoundSignatureWidget={handleEditSoundSignatureWidget}
+        onDeleteSoundSignatureWidget={handleDeleteSoundSignatureWidget}
         onLogSoundSession={handleLogSoundSession}
       />
 
