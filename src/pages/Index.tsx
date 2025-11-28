@@ -1005,6 +1005,36 @@ const Index = () => {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="dashboard" className="space-y-6">
+          {/* Widget Panel */}
+          <WidgetPanel
+            reminderWidgets={reminderWidgets}
+            energyWidgets={energyWidgets}
+            messengerWidgets={messengerWidgets}
+            moodGardenWidgets={moodGardenWidgets}
+            parallelUniverseWidgets={parallelUniverseWidgets}
+            soundSignatureWidgets={soundSignatureWidgets}
+            onAddWidget={handleAddWidget}
+            onEditWidget={handleEditWidget}
+            onToggleWidgetItem={handleToggleWidgetItem}
+            onResetWidget={handleResetWidget}
+            onAddEnergyWidget={handleAddEnergyWidget}
+            onEditEnergyWidget={handleEditEnergyWidget}
+            onLogEnergy={handleLogEnergy}
+            onAddMessengerWidget={handleAddMessengerWidget}
+            onEditMessengerWidget={handleEditMessengerWidget}
+            onCreateMessage={handleCreateMessage}
+            onViewMessage={handleViewMessage}
+            onAddMoodGardenWidget={handleAddMoodGardenWidget}
+            onEditMoodGardenWidget={handleEditMoodGardenWidget}
+            onLogMood={handleLogMood}
+            onAddParallelUniverseWidget={handleAddParallelUniverseWidget}
+            onEditParallelUniverseWidget={handleEditParallelUniverseWidget}
+            onLogDecision={handleLogDecision}
+            onGenerateOutcome={handleGenerateOutcome}
+            onAddSoundSignatureWidget={handleAddSoundSignatureWidget}
+            onEditSoundSignatureWidget={handleEditSoundSignatureWidget}
+            onLogSoundSession={handleLogSoundSession}
+          />
           <div className="flex items-center gap-2">
             <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 md:auto-cols-auto" style={{ gridTemplateColumns: `repeat(${4 + customTabs.length}, minmax(0, 1fr))` }}>
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
