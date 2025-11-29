@@ -10,6 +10,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { TaskSection } from '@/components/dashboard/TaskSection';
 import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
+import { SettingsSheet } from '@/components/SettingsSheet';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme } from '@/types';
@@ -119,6 +120,9 @@ const Index = () => {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [initialAIMessage, setInitialAIMessage] = useState<string | undefined>();
   const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
+  
+  // Settings Sheet
+  const [settingsSheetOpen, setSettingsSheetOpen] = useState(false);
   
   // AI Preferences
   const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
@@ -1146,6 +1150,7 @@ const Index = () => {
         onSetEisenhowerOpen={setEisenhowerOpen}
         onSetChatPanelOpen={setIsChatPanelOpen}
         onSetTutorialOpen={setTutorialOpen}
+        onSetSettingsOpen={setSettingsSheetOpen}
         onThemeChange={setTheme}
         onCustomThemeClick={handleOpenCustomThemeBuilder}
         onEditCustomTheme={handleEditCustomTheme}
@@ -1618,6 +1623,13 @@ const Index = () => {
         onAddTask={handleAddTask}
         onAddPlaybook={handleAddPlaybook}
         onUpdatePlaybook={handleUpdatePlaybook}
+      />
+      
+      <SettingsSheet
+        open={settingsSheetOpen}
+        onOpenChange={setSettingsSheetOpen}
+        customTheme={customTheme}
+        onSaveCustomTheme={handleSaveCustomTheme}
       />
       
       {isMobile && <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />}
