@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Upload, Plus, X, FileText, Loader2 } from 'lucide-react';
+import { Calendar, Upload, Plus, X, FileText, Loader2, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ScheduleEntry {
@@ -28,7 +28,9 @@ export function ScheduleManager() {
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
   
   const [newEntry, setNewEntry] = useState({
     title: '',
@@ -203,6 +205,69 @@ export function ScheduleManager() {
     }
   };
 
+  const handleScreenshotUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !user) return;
+    
+    setUploadingScreenshot(true);
+    const files = Array.from(event.target.files);
+    
+    try {
+      const uploadPromises = files.map(async (file) => {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const { data, error } = await supabase.functions.invoke('parse-assignment-screenshot', {
+          body: formData,
+        });
+
+        if (error) throw error;
+        return data.entries || [];
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const allEntries = results.flat();
+
+      if (allEntries.length === 0) {
+        toast({
+          title: "No Assignments Found",
+          description: "Could not extract any assignments from the uploaded screenshots.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const scheduleEntries = allEntries.map((entry: any) => ({
+        user_id: user.id,
+        title: entry.title || 'Untitled',
+        description: entry.description || null,
+        start_time: entry.startTime,
+        end_time: entry.endTime,
+        category: entry.category || 'homework',
+        location: entry.course || null,
+        source: 'imported'
+      }));
+
+      await supabase.from('schedule_entries').insert(scheduleEntries);
+      
+      toast({
+        title: "✅ Schedule Imported",
+        description: `Added ${allEntries.length} assignments to your schedule.`,
+      });
+
+      loadEntries();
+    } catch (error) {
+      console.error('Error uploading screenshots:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process screenshots.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingScreenshot(false);
+      if (event.target) event.target.value = '';
+    }
+  };
+
   const handleDeleteEntry = async (id: string) => {
     try {
       const { error } = await supabase
@@ -233,29 +298,28 @@ export function ScheduleManager() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
-          Work & Homework Schedule
+          Manage Schedule
         </CardTitle>
         <CardDescription>
-          Upload your schedule PDF or add entries manually
+          Import your schedule from any source
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button
             variant="outline"
-            className="flex-1"
             onClick={() => document.getElementById('schedule-upload')?.click()}
             disabled={uploading}
           >
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Parsing PDF...
+                Parsing...
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload PDF Schedule
+                Upload PDF
               </>
             )}
           </Button>
@@ -266,10 +330,35 @@ export function ScheduleManager() {
             className="hidden"
             onChange={handleFileUpload}
           />
+
+          <Button
+            variant="outline"
+            onClick={() => screenshotInputRef.current?.click()}
+            disabled={uploadingScreenshot}
+          >
+            {uploadingScreenshot ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Camera className="h-4 w-4 mr-2" />
+                Upload Screenshot
+              </>
+            )}
+          </Button>
+          <input
+            ref={screenshotInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleScreenshotUpload}
+            className="hidden"
+          />
           
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex-1"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Manually
