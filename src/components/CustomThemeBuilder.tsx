@@ -422,7 +422,11 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
 
   return (
     <Sheet open={open} onOpenChange={handleClose} modal={false}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent 
+        side="right" 
+        className="w-full sm:max-w-2xl overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <SheetHeader>
           <SheetTitle>Custom Theme Builder</SheetTitle>
         </SheetHeader>
