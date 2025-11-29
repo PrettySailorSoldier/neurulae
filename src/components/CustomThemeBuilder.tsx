@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Image as ImageIcon, Palette, ChevronDown, Wand2, Upload, Save, X } from 'lucide-react';
+import { Image as ImageIcon, Palette, ChevronDown, Wand2, Upload, Save, X, Undo2, Redo2 } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -228,6 +228,8 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   const [previewMode, setPreviewMode] = useState(false);
   const [showHarmonyGenerator, setShowHarmonyGenerator] = useState(false);
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
+  const [themeHistory, setThemeHistory] = useState<CustomTheme[]>([existingTheme || defaultTheme]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const paletteImageRef = useRef<HTMLInputElement>(null);
 
   // Load saved palettes from localStorage
@@ -241,6 +243,39 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
       }
     }
   }, []);
+
+  // Add to history when theme changes (but not during undo/redo)
+  const updateThemeWithHistory = (newTheme: CustomTheme) => {
+    setTheme(newTheme);
+    setThemeHistory(prev => {
+      // Remove any "future" history if we're not at the end
+      const newHistory = prev.slice(0, historyIndex + 1);
+      // Add new state
+      return [...newHistory, newTheme];
+    });
+    setHistoryIndex(prev => prev + 1);
+  };
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < themeHistory.length - 1;
+
+  const handleUndo = () => {
+    if (canUndo) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setTheme(themeHistory[newIndex]);
+      toast.success('Undone');
+    }
+  };
+
+  const handleRedo = () => {
+    if (canRedo) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setTheme(themeHistory[newIndex]);
+      toast.success('Redone');
+    }
+  };
 
   useEffect(() => {
     if (existingTheme) {
@@ -326,40 +361,39 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   };
 
   const handleColorChange = (colorKey: keyof CustomTheme['colors'], value: string) => {
-    setTheme((prev) => ({
-      ...prev,
+    const newTheme = {
+      ...theme,
       colors: {
-        ...prev.colors,
+        ...theme.colors,
         [colorKey]: value,
       },
-    }));
+    };
+    updateThemeWithHistory(newTheme);
   };
 
   const handleApplyHarmony = (harmonyColors: Partial<CustomTheme['colors']>) => {
-    setTheme((prev) => {
-      const updatedColors = {
-        ...prev.colors,
-        ...harmonyColors,
-      };
-      
-      // Auto-optimize foreground colors for visibility
-      const optimizedColors = autoOptimizeThemeColors(updatedColors) as CustomTheme['colors'];
-      
-      return {
-        ...prev,
-        colors: optimizedColors,
-      };
-    });
+    const updatedColors = {
+      ...theme.colors,
+      ...harmonyColors,
+    };
+    
+    // Auto-optimize foreground colors for visibility
+    const optimizedColors = autoOptimizeThemeColors(updatedColors) as CustomTheme['colors'];
+    
+    const newTheme = {
+      ...theme,
+      colors: optimizedColors,
+    };
+    updateThemeWithHistory(newTheme);
   };
 
   const handleAutoOptimize = () => {
-    setTheme((prev) => {
-      const optimizedColors = autoOptimizeThemeColors(prev.colors) as CustomTheme['colors'];
-      return {
-        ...prev,
-        colors: optimizedColors,
-      };
-    });
+    const optimizedColors = autoOptimizeThemeColors(theme.colors) as CustomTheme['colors'];
+    const newTheme = {
+      ...theme,
+      colors: optimizedColors,
+    };
+    updateThemeWithHistory(newTheme);
     toast.success('Text colors optimized for readability');
   };
 
@@ -382,16 +416,17 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
         const dominantColors = extractColorsFromImage(imageData, 4);
 
         if (dominantColors.length >= 4) {
-          setTheme((prev) => ({
-            ...prev,
+          const newTheme = {
+            ...theme,
             colors: {
-              ...prev.colors,
+              ...theme.colors,
               primary: dominantColors[0],
               secondary: dominantColors[1],
               accent: dominantColors[2],
               background: dominantColors[3],
             },
-          }));
+          };
+          updateThemeWithHistory(newTheme);
           toast.success('Colors extracted from image!');
         }
       };
@@ -417,10 +452,11 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   };
 
   const handleLoadPalette = (palette: SavedPalette) => {
-    setTheme((prev) => ({
-      ...prev,
+    const newTheme = {
+      ...theme,
       colors: palette.colors,
-    }));
+    };
+    updateThemeWithHistory(newTheme);
     toast.success(`Palette "${palette.name}" loaded`);
   };
 
@@ -489,6 +525,24 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
               className="flex-1"
             >
               {previewMode ? 'Preview Active ✨' : 'Enable Live Preview'}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleUndo}
+              disabled={!canUndo}
+              title="Undo"
+            >
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRedo}
+              disabled={!canRedo}
+              title="Redo"
+            >
+              <Redo2 className="w-4 h-4" />
             </Button>
           </div>
 
