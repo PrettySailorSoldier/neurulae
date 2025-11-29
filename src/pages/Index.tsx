@@ -36,16 +36,20 @@ import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { ProfileSetupDialog } from '@/components/ProfileSetupDialog';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { MobileTabBar, MobileTab } from '@/components/MobileTabBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { FocusTimer } from '@/components/FocusTimer';
 
 const Index = () => {
   const { user } = useAuth();
   const { plan, isPremium, isAdmin } = usePremium();
   const [showSyncBanner, setShowSyncBanner] = useState(true);
   const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<MobileTab>('timeline');
   const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
+  const { preferences, savePreferences, loading: prefsLoading } = useUserPreferences();
   const [tasks, setTasks] = useLocalStorage<Task[]>('neurulae-tasks', []);
   const [priorities, setPriorities] = useLocalStorage<Task[]>('neurulae-priorities', []);
   const [projects, setProjects] = useLocalStorage<Project[]>('neurulae-projects', []);
@@ -81,7 +85,9 @@ const Index = () => {
   const [potionInventoryWidgets, setPotionInventoryWidgets] = useLocalStorage<PotionInventoryWidget[]>('neurulae-potion-inventory-widgets', []);
   const [sunlightAnchorWidgets, setSunlightAnchorWidgets] = useLocalStorage<SunlightAnchorWidget[]>('neurulae-sunlight-anchor-widgets', []);
   
-  const [customTheme, setCustomTheme] = useLocalStorage<CustomTheme | null>('neurulae-custom-theme', null);
+  // Use database-backed preferences for custom theme with localStorage as fallback
+  const [localCustomTheme, setLocalCustomTheme] = useLocalStorage<CustomTheme | null>('neurulae-custom-theme', null);
+  const [customTheme, setCustomTheme] = useState<CustomTheme | null>(null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
   
@@ -128,6 +134,24 @@ const Index = () => {
       setHasSeenTutorial(true);
     }
   }, [hasSeenTutorial, setHasSeenTutorial]);
+
+  // Load custom theme from database preferences on mount
+  useEffect(() => {
+    if (!prefsLoading && preferences.customTheme !== undefined) {
+      setCustomTheme(preferences.customTheme);
+      setLocalCustomTheme(preferences.customTheme); // Keep localStorage in sync
+    } else if (!prefsLoading && !user && localCustomTheme) {
+      // If not logged in, use localStorage
+      setCustomTheme(localCustomTheme);
+    }
+  }, [preferences.customTheme, prefsLoading, user, localCustomTheme]);
+
+  // Load theme from database preferences
+  useEffect(() => {
+    if (!prefsLoading && preferences.theme) {
+      setTheme(preferences.theme as Theme);
+    }
+  }, [preferences.theme, prefsLoading, setTheme]);
 
   // Daily refresh logic - load today's schedule on mount or date change
   useEffect(() => {
@@ -303,6 +327,13 @@ const Index = () => {
       root.style.removeProperty('--bg-filter-saturate');
     }
   }, [theme, customTheme]);
+
+  // Sync custom theme to database when it changes
+  useEffect(() => {
+    if (user && customTheme !== null && customTheme !== preferences.customTheme) {
+      savePreferences({ customTheme, theme });
+    }
+  }, [customTheme, user, savePreferences]);
 
   const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
     const newTask: Task = typeof taskOrTitle === 'string'
@@ -1003,11 +1034,18 @@ const Index = () => {
 
   const handleSaveCustomTheme = (newTheme: CustomTheme) => {
     setCustomTheme(newTheme);
+    setLocalCustomTheme(newTheme); // Keep localStorage in sync
     setTheme('custom');
     setTemplateTheme(undefined);
+    
+    // Sync to database
+    if (user) {
+      savePreferences({ customTheme: newTheme, theme: 'custom' });
+    }
+    
     toast({ 
       title: "Custom theme saved", 
-      description: `${newTheme.name} has been applied` 
+      description: `${newTheme.name} has been synced across all devices` 
     });
   };
 
@@ -1202,29 +1240,64 @@ const Index = () => {
 
           <TabsContent value="dashboard" className="space-y-6">
             {/* Main Workflow - Visual Timeline & Unified To-Do List */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              <ScheduleSection
-                timeBlocks={timeBlocks}
-                scheduledTasks={scheduledTasks}
-                tasks={tasks}
-                onAddTimeBlock={handleAddTimeBlock}
-                onUpdateTimeBlock={handleUpdateTimeBlock}
-                onDeleteTimeBlock={handleDeleteTimeBlock}
-                onAddTask={handleAddTask}
-              />
-              <TaskSection
-                tasks={tasks}
-                timeBlocks={timeBlocks}
-                onAddTask={handleAddTask}
-                onToggleComplete={handleToggleComplete}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onPrioritize={handlePrioritizeTasks}
-                onScheduleTasks={handleScheduleTasks}
-                onAskAI={handleAskAI}
-                showQuickActions={showQuickActions}
-              />
-            </div>
+            {isMobile ? (
+              <div className="pb-20">
+                {mobileTab === 'focus' && (
+                  <div className="space-y-4">
+                    <FocusTimer />
+                  </div>
+                )}
+                {mobileTab === 'timeline' && (
+                  <ScheduleSection
+                    timeBlocks={timeBlocks}
+                    scheduledTasks={scheduledTasks}
+                    tasks={tasks}
+                    onAddTimeBlock={handleAddTimeBlock}
+                    onUpdateTimeBlock={handleUpdateTimeBlock}
+                    onDeleteTimeBlock={handleDeleteTimeBlock}
+                    onAddTask={handleAddTask}
+                  />
+                )}
+                {mobileTab === 'tasks' && (
+                  <TaskSection
+                    tasks={tasks}
+                    timeBlocks={timeBlocks}
+                    onAddTask={handleAddTask}
+                    onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onPrioritize={handlePrioritizeTasks}
+                    onScheduleTasks={handleScheduleTasks}
+                    onAskAI={handleAskAI}
+                    showQuickActions={showQuickActions}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <ScheduleSection
+                  timeBlocks={timeBlocks}
+                  scheduledTasks={scheduledTasks}
+                  tasks={tasks}
+                  onAddTimeBlock={handleAddTimeBlock}
+                  onUpdateTimeBlock={handleUpdateTimeBlock}
+                  onDeleteTimeBlock={handleDeleteTimeBlock}
+                  onAddTask={handleAddTask}
+                />
+                <TaskSection
+                  tasks={tasks}
+                  timeBlocks={timeBlocks}
+                  onAddTask={handleAddTask}
+                  onToggleComplete={handleToggleComplete}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onPrioritize={handlePrioritizeTasks}
+                  onScheduleTasks={handleScheduleTasks}
+                  onAskAI={handleAskAI}
+                  showQuickActions={showQuickActions}
+                />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="projects">
@@ -1547,7 +1620,7 @@ const Index = () => {
         onUpdatePlaybook={handleUpdatePlaybook}
       />
       
-      {isMobile && <MobileBottomNav />}
+      {isMobile && <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />}
     </div>
   );
 };
