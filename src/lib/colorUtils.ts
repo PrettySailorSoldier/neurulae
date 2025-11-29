@@ -160,7 +160,7 @@ export const autoOptimizeThemeColors = (colors: Record<string, string>): Record<
 
 /**
  * Extract dominant colors from an image
- * Returns array of HSL color strings
+ * Returns array of HSL color strings (always returns exactly numColors)
  */
 export const extractColorsFromImage = (imageData: ImageData, numColors: number = 4): string[] => {
   const pixels = imageData.data;
@@ -173,19 +173,39 @@ export const extractColorsFromImage = (imageData: ImageData, numColors: number =
     const b = pixels[i + 2];
     const a = pixels[i + 3];
     
-    // Skip transparent or very light/dark pixels
-    if (a < 128 || (r > 240 && g > 240 && b > 240) || (r < 15 && g < 15 && b < 15)) continue;
+    // More lenient filtering - only skip fully transparent or extreme whites/blacks
+    if (a < 50 || (r > 250 && g > 250 && b > 250) || (r < 5 && g < 5 && b < 5)) continue;
     
     const hsl = rgbToHSL(r, g, b);
-    const key = `${Math.round(hsl.h / 10) * 10} ${Math.round(hsl.s / 10) * 10}% ${Math.round(hsl.l / 10) * 10}%`;
+    // Group colors more loosely (20-degree buckets instead of 10)
+    const key = `${Math.round(hsl.h / 20) * 20} ${Math.round(hsl.s / 15) * 15}% ${Math.round(hsl.l / 15) * 15}%`;
     colorCounts.set(key, (colorCounts.get(key) || 0) + 1);
   }
   
   // Sort by frequency and take top N
-  return Array.from(colorCounts.entries())
+  const extractedColors = Array.from(colorCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, numColors)
     .map(([color]) => color);
+  
+  // If we didn't find enough colors, generate variations of what we found
+  if (extractedColors.length < numColors) {
+    const baseColor = extractedColors.length > 0 
+      ? parseHSL(extractedColors[0]) 
+      : { h: 262, s: 83, l: 58 }; // Default purple if no colors found
+    
+    // Fill remaining slots with lightness variations
+    while (extractedColors.length < numColors) {
+      const variation = {
+        h: baseColor.h,
+        s: Math.max(20, baseColor.s - (extractedColors.length * 10)),
+        l: Math.min(85, Math.max(15, baseColor.l + ((extractedColors.length - 1) * 20)))
+      };
+      extractedColors.push(formatHSL(variation));
+    }
+  }
+  
+  return extractedColors;
 };
 
 /**
