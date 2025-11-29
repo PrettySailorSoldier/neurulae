@@ -513,13 +513,49 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   };
 
   const handleSave = async () => {
+    // Step 1: Save to localStorage FIRST (instant, optimistic)
+    const themeName = theme.name || 'Untitled Theme';
+    const themeId = theme.name.toLowerCase().replace(/\s+/g, '-') || Date.now().toString();
+    
+    const savedTheme: SavedPalette = {
+      id: themeId,
+      name: themeName,
+      colors: { ...theme.colors },
+    };
+
+    // Check if theme with this ID already exists
+    const existingIndex = savedPalettes.findIndex(p => p.id === themeId);
+    let updatedPalettes: SavedPalette[];
+    
+    if (existingIndex !== -1) {
+      // Update existing
+      updatedPalettes = [...savedPalettes];
+      updatedPalettes[existingIndex] = savedTheme;
+    } else {
+      // Add new
+      updatedPalettes = [...savedPalettes, savedTheme];
+    }
+
+    localStorage.setItem('saved_custom_palettes', JSON.stringify(updatedPalettes));
+    
+    // Step 2: Update UI state immediately
+    setSavedPalettes(updatedPalettes);
+
+    // Call the original onSave callback for local state updates
+    onSave(theme);
+    
+    toast.success('Theme saved to library');
+    removeThemePreview();
+    setPreviewMode(false);
+
+    // Step 3: Sync to Supabase in background (non-blocking)
     if (!user) {
-      toast.error('Must be signed in to save theme');
+      toast.info('Sign in to sync themes across devices');
+      onOpenChange(false);
       return;
     }
 
     try {
-      // Step A: Save to Supabase as active theme
       const { data: profileData, error: fetchError } = await supabase
         .from('profiles')
         .select('preferences')
@@ -545,45 +581,13 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
         throw updateError;
       }
 
-      // Step B & C: Save to localStorage library
-      const themeName = theme.name || 'Untitled Theme';
-      const themeId = theme.name.toLowerCase().replace(/\s+/g, '-') || Date.now().toString();
-      
-      const savedTheme: SavedPalette = {
-        id: themeId,
-        name: themeName,
-        colors: { ...theme.colors },
-      };
-
-      // Check if theme with this ID already exists
-      const existingIndex = savedPalettes.findIndex(p => p.id === themeId);
-      let updatedPalettes: SavedPalette[];
-      
-      if (existingIndex !== -1) {
-        // Update existing
-        updatedPalettes = [...savedPalettes];
-        updatedPalettes[existingIndex] = savedTheme;
-      } else {
-        // Add new
-        updatedPalettes = [...savedPalettes, savedTheme];
-      }
-
-      localStorage.setItem('saved_custom_palettes', JSON.stringify(updatedPalettes));
-      
-      // Step D: Update UI state
-      setSavedPalettes(updatedPalettes);
-
-      // Call the original onSave callback for local state updates
-      onSave(theme);
-      
-      toast.success('Theme saved as active and added to library');
-      removeThemePreview();
-      setPreviewMode(false);
-      onOpenChange(false);
+      toast.success('Theme synced to cloud');
     } catch (error: any) {
-      console.error('Failed to save theme:', error);
-      toast.error('Failed to save theme: ' + error.message);
+      console.error('Failed to sync theme to cloud:', error);
+      toast.error('Saved to library, but failed to sync to cloud');
     }
+    
+    onOpenChange(false);
   };
 
   const handleClose = () => {
