@@ -19,6 +19,7 @@ interface DashboardHeaderProps {
   onSetEisenhowerOpen: (open: boolean) => void;
   onSetChatPanelOpen: (open: boolean) => void;
   onSetTutorialOpen: (open: boolean) => void;
+  onSetSettingsOpen: (open: boolean) => void;
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick: () => void;
   onEditCustomTheme: () => void;
@@ -37,6 +38,7 @@ export function DashboardHeader({
   onSetEisenhowerOpen,
   onSetChatPanelOpen,
   onSetTutorialOpen,
+  onSetSettingsOpen,
   onThemeChange,
   onCustomThemeClick,
   onEditCustomTheme,
@@ -152,9 +154,13 @@ export function DashboardHeader({
                   </Link>
                 </Button>
               )}
-              {user && isPremium && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/settings">Settings</Link>
+              {user && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onSetSettingsOpen(true)}
+                >
+                  Settings
                 </Button>
               )}
               {!user && (
