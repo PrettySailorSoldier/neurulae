@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState, useEffect, useRef } from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,11 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Image as ImageIcon, Palette, ChevronDown, Wand2 } from 'lucide-react';
+import { Image as ImageIcon, Palette, ChevronDown, Wand2, Upload, Sparkles } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { autoOptimizeThemeColors } from '@/lib/colorUtils';
+import { autoOptimizeThemeColors, extractColorsFromImage } from '@/lib/colorUtils';
+import { toast } from 'sonner';
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -220,6 +221,7 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   const [theme, setTheme] = useState<CustomTheme>(existingTheme || defaultTheme);
   const [previewMode, setPreviewMode] = useState(false);
   const [showHarmonyGenerator, setShowHarmonyGenerator] = useState(false);
+  const paletteImageRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (existingTheme) {
@@ -339,6 +341,53 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
         colors: optimizedColors,
       };
     });
+    toast.success('Text colors optimized for readability');
+  };
+
+  const handleImagePaletteUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const dominantColors = extractColorsFromImage(imageData, 4);
+
+        if (dominantColors.length >= 4) {
+          setTheme((prev) => ({
+            ...prev,
+            colors: {
+              ...prev.colors,
+              primary: dominantColors[0],
+              secondary: dominantColors[1],
+              accent: dominantColors[2],
+              background: dominantColors[3],
+            },
+          }));
+          toast.success('Colors extracted from image!');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const applyQuickPalette = (paletteName: keyof typeof themeTemplates) => {
+    const palette = themeTemplates[paletteName];
+    setTheme((prev) => ({
+      ...prev,
+      colors: palette.colors,
+    }));
+    toast.success(`${palette.name} applied`);
   };
 
   const handleSave = () => {
@@ -372,11 +421,11 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   ];
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Custom Theme Builder</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={handleClose} modal={false}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Custom Theme Builder</SheetTitle>
+        </SheetHeader>
 
         <div className="space-y-6">
           <div className="space-y-2">
@@ -410,17 +459,75 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
             </Card>
           )}
 
-          <Tabs defaultValue="colors" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue="presets" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="presets">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Presets
+              </TabsTrigger>
               <TabsTrigger value="colors">
                 <Palette className="w-4 h-4 mr-2" />
                 Colors
               </TabsTrigger>
               <TabsTrigger value="background">
                 <ImageIcon className="w-4 h-4 mr-2" />
-                Background Image
+                Background
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="presets" className="space-y-6 mt-4">
+              {/* Quick Palettes */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Quick Palettes</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Click a palette to instantly apply its colors
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(themeTemplates).map(([key, palette]) => (
+                    <button
+                      key={key}
+                      onClick={() => applyQuickPalette(key as keyof typeof themeTemplates)}
+                      className="flex flex-col items-start gap-2 p-3 rounded-lg border hover:border-primary transition-colors"
+                    >
+                      <span className="text-sm font-medium">{palette.name.replace(' (Custom)', '')}</span>
+                      <div className="flex gap-1 w-full h-8">
+                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.primary})` }} />
+                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.secondary})` }} />
+                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.accent})` }} />
+                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.background})` }} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Generate from Image */}
+              <div className="space-y-4 pt-4 border-t">
+                <div>
+                  <h3 className="font-semibold mb-2">Generate from Image</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Upload an image to extract its dominant colors
+                  </p>
+                </div>
+                <input
+                  ref={paletteImageRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagePaletteUpload}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => paletteImageRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Image to Extract Colors
+                </Button>
+              </div>
+            </TabsContent>
 
             <TabsContent value="colors" className="space-y-6 mt-4">
               {/* Color Harmony Generator - Toggleable */}
@@ -432,36 +539,33 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
                   >
                     <span className="flex items-center gap-2">
                       <Palette className="w-4 h-4" />
-                      Color Harmony Generator (Auto-optimizes visibility)
+                      Color Harmony Generator
                     </span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${showHarmonyGenerator ? 'rotate-180' : ''}`} />
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pt-4">
-                  <div className="space-y-3">
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                      <p className="font-medium mb-1">✨ Smart Optimization Enabled</p>
-                      <p className="text-xs text-muted-foreground">
-                        Foreground colors automatically adjust to ensure text and UI elements remain visible on any background
-                      </p>
-                    </div>
-                    <ColorHarmonyGenerator
-                      baseColor={theme.colors.primary}
-                      onApplyHarmony={handleApplyHarmony}
-                    />
-                  </div>
+                  <ColorHarmonyGenerator
+                    baseColor={theme.colors.primary}
+                    onApplyHarmony={handleApplyHarmony}
+                  />
                 </CollapsibleContent>
               </Collapsible>
 
               {/* Manual Auto-Optimize Button */}
-              <Button 
-                variant="outline" 
-                onClick={handleAutoOptimize}
-                className="w-full"
-              >
-                <Wand2 className="w-4 h-4 mr-2" />
-                Auto-Optimize All Colors
-              </Button>
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleAutoOptimize}
+                  className="w-full"
+                >
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Auto-Optimize Text Contrast
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Adjusts text/foreground colors only to ensure readability. Base colors remain unchanged.
+                </p>
+              </div>
 
               {/* Color Pickers */}
               <div className="space-y-4">
@@ -796,17 +900,17 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
               </div>
             </TabsContent>
           </Tabs>
-
-          <div className="flex gap-2 pt-4 border-t">
-            <Button onClick={handleSave} className="flex-1">
-              Save Theme
-            </Button>
-            <Button onClick={handleClose} variant="outline" className="flex-1">
-              Cancel
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <SheetFooter className="pt-4 border-t">
+          <Button onClick={handleSave} className="flex-1">
+            Save Theme
+          </Button>
+          <Button onClick={handleClose} variant="outline" className="flex-1">
+            Cancel
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

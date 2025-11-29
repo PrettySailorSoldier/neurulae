@@ -133,42 +133,88 @@ export const ensureContrast = (foreground: HSL, background: HSL, minRatio: numbe
 };
 
 /**
- * Auto-optimize all theme colors based on background
+ * Auto-optimize ONLY foreground/text colors for contrast
+ * Does NOT modify base colors (primary, secondary, accent, background, etc.)
  */
 export const autoOptimizeThemeColors = (colors: Record<string, string>): Record<string, string> => {
   const background = parseHSL(colors.background || '0 0% 100%');
   const primary = parseHSL(colors.primary || '262 83% 58%');
-  const isLight = isLightBackground(background);
+  const secondary = parseHSL(colors.secondary || '220 14% 96%');
+  const accent = parseHSL(colors.accent || '220 14% 96%');
+  const card = parseHSL(colors.card || colors.background || '0 0% 100%');
+  const muted = parseHSL(colors.muted || '220 14% 96%');
   
   const optimized = {
-    background: colors.background,
-    foreground: generateForegroundColor(background),
-    card: generateCardColor(background),
-    cardForeground: generateForegroundColor(parseHSL(generateCardColor(background))),
-    primary: colors.primary,
-    primaryForeground: ensureContrast({ h: primary.h, s: 0, l: isLight ? 10 : 98 }, primary),
-    secondary: colors.secondary,
-    secondaryForeground: generateForegroundColor(background),
-    accent: colors.accent,
-    accentForeground: generateForegroundColor(background),
-    muted: colors.muted,
-    mutedForeground: formatHSL({
-      h: background.h,
-      s: Math.min(background.s * 0.5, 20),
-      l: isLight ? 45 : 65
-    }),
-    border: formatHSL({
-      h: background.h,
-      s: Math.min(background.s * 0.3, 15),
-      l: isLight ? 85 : 25
-    }),
-    input: formatHSL({
-      h: background.h,
-      s: background.s,
-      l: isLight ? 92 : 18
-    }),
+    ...colors, // Keep all base colors unchanged
+    // Only optimize foreground/text colors
+    foreground: ensureContrast(parseHSL(colors.foreground || '0 0% 0%'), background),
+    cardForeground: ensureContrast(parseHSL(colors.cardForeground || colors.foreground || '0 0% 0%'), card),
+    primaryForeground: ensureContrast(parseHSL(colors.primaryForeground || '0 0% 98%'), primary),
+    secondaryForeground: ensureContrast(parseHSL(colors.secondaryForeground || '0 0% 0%'), secondary),
+    accentForeground: ensureContrast(parseHSL(colors.accentForeground || '0 0% 0%'), accent),
+    mutedForeground: ensureContrast(parseHSL(colors.mutedForeground || '0 0% 46%'), muted),
   };
   
-  // Preserve any other custom colors that might exist
-  return { ...colors, ...optimized };
+  return optimized;
+};
+
+/**
+ * Extract dominant colors from an image
+ * Returns array of HSL color strings
+ */
+export const extractColorsFromImage = (imageData: ImageData, numColors: number = 4): string[] => {
+  const pixels = imageData.data;
+  const colorCounts: Map<string, number> = new Map();
+  
+  // Sample pixels (skip every 10 for performance)
+  for (let i = 0; i < pixels.length; i += 40) {
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+    const a = pixels[i + 3];
+    
+    // Skip transparent or very light/dark pixels
+    if (a < 128 || (r > 240 && g > 240 && b > 240) || (r < 15 && g < 15 && b < 15)) continue;
+    
+    const hsl = rgbToHSL(r, g, b);
+    const key = `${Math.round(hsl.h / 10) * 10} ${Math.round(hsl.s / 10) * 10}% ${Math.round(hsl.l / 10) * 10}%`;
+    colorCounts.set(key, (colorCounts.get(key) || 0) + 1);
+  }
+  
+  // Sort by frequency and take top N
+  return Array.from(colorCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, numColors)
+    .map(([color]) => color);
+};
+
+/**
+ * Convert RGB to HSL
+ */
+const rgbToHSL = (r: number, g: number, b: number): HSL => {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100),
+  };
 };
