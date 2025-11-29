@@ -6,8 +6,8 @@ import { usePremium } from "@/contexts/PremiumContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain, MessageSquarePlus, Upload, Loader2 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain, MessageSquarePlus } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
@@ -42,10 +42,6 @@ export default function Settings() {
   // Feedback Dialog
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [showFeedbackHistory, setShowFeedbackHistory] = useState(false);
-  
-  // Screenshot upload
-  const screenshotInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -173,69 +169,6 @@ export default function Settings() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
-  };
-  
-  const handleScreenshotUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0 || !user) return;
-    
-    setIsUploading(true);
-    const files = Array.from(event.target.files);
-    
-    try {
-      const uploadPromises = files.map(async (file) => {
-        const formData = new FormData();
-        formData.append('image', file);
-
-        const { data, error } = await supabase.functions.invoke('parse-assignment-screenshot', {
-          body: formData,
-        });
-
-        if (error) throw error;
-        return data.entries || [];
-      });
-
-      const results = await Promise.all(uploadPromises);
-      const allEntries = results.flat();
-
-      if (allEntries.length === 0) {
-        toast({
-          title: "No Assignments Found",
-          description: "Could not extract any assignments from the uploaded screenshots.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Create schedule entries
-      const scheduleEntries = allEntries.map((entry: any) => ({
-        user_id: user.id,
-        title: entry.title || 'Untitled',
-        description: entry.description || null,
-        start_time: entry.startTime,
-        end_time: entry.endTime,
-        category: entry.category || 'homework',
-        location: entry.course || null,
-        source: 'imported'
-      }));
-
-      await supabase.from('schedule_entries').insert(scheduleEntries);
-      
-      toast({
-        title: "✅ Schedule Imported",
-        description: `Added ${allEntries.length} assignments to your schedule.`,
-      });
-      
-    } catch (error) {
-      console.error('Error uploading screenshots:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process screenshots.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-      if (event.target) event.target.value = '';
-    }
   };
 
   const getPlanDisplay = () => {
@@ -460,50 +393,6 @@ export default function Settings() {
 
         {/* Schedule Manager */}
         <ScheduleManager />
-        
-        {/* Import Schedule */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Import Schedule
-            </CardTitle>
-            <CardDescription>Upload screenshots of your work or school schedule</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Upload screenshots from Canvas, Google Calendar, or any schedule app. The AI will extract assignments and events.
-            </p>
-            <input
-              ref={screenshotInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleScreenshotUpload}
-              className="hidden"
-            />
-            <Button 
-              onClick={() => screenshotInputRef.current?.click()}
-              disabled={isUploading}
-              className="w-full"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Schedule Screenshots
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Tip: You can upload multiple screenshots at once (work + school schedule)
-            </p>
-          </CardContent>
-        </Card>
 
         {/* Feedback & Support */}
         <Card className="mb-6">
