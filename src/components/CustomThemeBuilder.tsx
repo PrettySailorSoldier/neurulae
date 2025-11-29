@@ -14,6 +14,8 @@ import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { autoOptimizeThemeColors, extractColorsFromImage } from '@/lib/colorUtils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -224,13 +226,56 @@ interface SavedPalette {
 }
 
 export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, templateTheme }: CustomThemeBuilderProps) {
+  const { user } = useAuth();
   const [theme, setTheme] = useState<CustomTheme>(existingTheme || defaultTheme);
   const [previewMode, setPreviewMode] = useState(false);
   const [showHarmonyGenerator, setShowHarmonyGenerator] = useState(false);
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
   const [themeHistory, setThemeHistory] = useState<CustomTheme[]>([existingTheme || defaultTheme]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [isLoadingTheme, setIsLoadingTheme] = useState(false);
   const paletteImageRef = useRef<HTMLInputElement>(null);
+
+  // Load theme from Supabase on mount/open
+  useEffect(() => {
+    if (!open || !user) return;
+
+    const loadThemeFromDatabase = async () => {
+      setIsLoadingTheme(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('preferences')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error loading theme from database:', error);
+          return;
+        }
+
+        // Check if preferences contains a customTheme
+        const preferences = data?.preferences as any;
+        if (preferences?.customTheme) {
+          const loadedTheme = preferences.customTheme as CustomTheme;
+          setTheme(loadedTheme);
+          setThemeHistory([loadedTheme]);
+          setHistoryIndex(0);
+        } else if (existingTheme) {
+          // Fall back to existingTheme if provided
+          setTheme(existingTheme);
+          setThemeHistory([existingTheme]);
+          setHistoryIndex(0);
+        }
+      } catch (err) {
+        console.error('Failed to load theme:', err);
+      } finally {
+        setIsLoadingTheme(false);
+      }
+    };
+
+    loadThemeFromDatabase();
+  }, [open, user]);
 
   // Load saved palettes from localStorage
   useEffect(() => {
@@ -467,11 +512,52 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
     toast.success('Palette deleted');
   };
 
-  const handleSave = () => {
-    onSave(theme);
-    removeThemePreview();
-    setPreviewMode(false);
-    onOpenChange(false);
+  const handleSave = async () => {
+    if (!user) {
+      toast.error('Must be signed in to save theme');
+      return;
+    }
+
+    try {
+      // First, fetch current preferences
+      const { data: profileData, error: fetchError } = await supabase
+        .from('profiles')
+        .select('preferences')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      // Merge customTheme into existing preferences
+      const currentPreferences = (profileData?.preferences as any) || {};
+      const updatedPreferences = {
+        ...currentPreferences,
+        customTheme: theme,
+      };
+
+      // Update the database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ preferences: updatedPreferences })
+        .eq('id', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Call the original onSave callback for local state updates
+      onSave(theme);
+      
+      toast.success('Theme saved to database');
+      removeThemePreview();
+      setPreviewMode(false);
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Failed to save theme:', error);
+      toast.error('Failed to save theme: ' + error.message);
+    }
   };
 
   const handleClose = () => {
@@ -508,7 +594,15 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
           <SheetTitle>Custom Theme Builder</SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-6">
+        {isLoadingTheme ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center space-y-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-sm text-muted-foreground">Loading theme from database...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
           <div className="space-y-2">
             <Label>Theme Name</Label>
             <Input
@@ -1020,6 +1114,7 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
             </TabsContent>
           </Tabs>
         </div>
+        )}
 
         <SheetFooter className="pt-4 border-t">
           <Button onClick={handleSave} className="flex-1">
