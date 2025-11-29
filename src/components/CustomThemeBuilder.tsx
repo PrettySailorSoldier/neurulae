@@ -233,15 +233,13 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
   const [themeHistory, setThemeHistory] = useState<CustomTheme[]>([existingTheme || defaultTheme]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [isLoadingTheme, setIsLoadingTheme] = useState(false);
   const paletteImageRef = useRef<HTMLInputElement>(null);
 
-  // Load theme from Supabase on mount/open
+  // Load theme from Supabase in background (non-blocking)
   useEffect(() => {
     if (!open || !user) return;
 
     const loadThemeFromDatabase = async () => {
-      setIsLoadingTheme(true);
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -261,19 +259,15 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
           setTheme(loadedTheme);
           setThemeHistory([loadedTheme]);
           setHistoryIndex(0);
-        } else if (existingTheme) {
-          // Fall back to existingTheme if provided
-          setTheme(existingTheme);
-          setThemeHistory([existingTheme]);
-          setHistoryIndex(0);
         }
+        // If no theme in DB, keep using current state (default or existing)
       } catch (err) {
         console.error('Failed to load theme:', err);
-      } finally {
-        setIsLoadingTheme(false);
+        // On error, just keep current theme state
       }
     };
 
+    // Run in background, don't block UI
     loadThemeFromDatabase();
   }, [open, user]);
 
@@ -620,15 +614,7 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
           <SheetTitle>Custom Theme Builder</SheetTitle>
         </SheetHeader>
 
-        {isLoadingTheme ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center space-y-2">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-sm text-muted-foreground">Loading theme from database...</p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
+        <div className="space-y-6">
           <div className="space-y-2">
             <Label>Theme Name</Label>
             <Input
@@ -1140,7 +1126,6 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
             </TabsContent>
           </Tabs>
         </div>
-        )}
 
         <SheetFooter className="pt-4 border-t">
           <Button onClick={handleSave} className="flex-1">
