@@ -519,7 +519,7 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
     }
 
     try {
-      // First, fetch current preferences
+      // Step A: Save to Supabase as active theme
       const { data: profileData, error: fetchError } = await supabase
         .from('profiles')
         .select('preferences')
@@ -530,14 +530,12 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
         throw fetchError;
       }
 
-      // Merge customTheme into existing preferences
       const currentPreferences = (profileData?.preferences as any) || {};
       const updatedPreferences = {
         ...currentPreferences,
         customTheme: theme,
       };
 
-      // Update the database
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ preferences: updatedPreferences })
@@ -547,10 +545,38 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
         throw updateError;
       }
 
+      // Step B & C: Save to localStorage library
+      const themeName = theme.name || 'Untitled Theme';
+      const themeId = theme.name.toLowerCase().replace(/\s+/g, '-') || Date.now().toString();
+      
+      const savedTheme: SavedPalette = {
+        id: themeId,
+        name: themeName,
+        colors: { ...theme.colors },
+      };
+
+      // Check if theme with this ID already exists
+      const existingIndex = savedPalettes.findIndex(p => p.id === themeId);
+      let updatedPalettes: SavedPalette[];
+      
+      if (existingIndex !== -1) {
+        // Update existing
+        updatedPalettes = [...savedPalettes];
+        updatedPalettes[existingIndex] = savedTheme;
+      } else {
+        // Add new
+        updatedPalettes = [...savedPalettes, savedTheme];
+      }
+
+      localStorage.setItem('saved_custom_palettes', JSON.stringify(updatedPalettes));
+      
+      // Step D: Update UI state
+      setSavedPalettes(updatedPalettes);
+
       // Call the original onSave callback for local state updates
       onSave(theme);
       
-      toast.success('Theme saved to database');
+      toast.success('Theme saved as active and added to library');
       removeThemePreview();
       setPreviewMode(false);
       onOpenChange(false);
@@ -607,7 +633,7 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
             <Label>Theme Name</Label>
             <Input
               value={theme.name}
-              onChange={(e) => setTheme({ ...theme, name: e.target.value })}
+              onChange={(e) => updateThemeWithHistory({ ...theme, name: e.target.value })}
               placeholder="My Custom Theme"
             />
           </div>
