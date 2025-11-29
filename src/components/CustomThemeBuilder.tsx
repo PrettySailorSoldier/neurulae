@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { CustomTheme } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Image as ImageIcon, Palette, ChevronDown, Wand2, Upload, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Palette, ChevronDown, Wand2, Upload, Save, X } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { ColorHarmonyGenerator } from '@/components/ColorHarmonyGenerator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -217,11 +217,30 @@ const defaultTheme: CustomTheme = {
   },
 };
 
+interface SavedPalette {
+  id: string;
+  name: string;
+  colors: CustomTheme['colors'];
+}
+
 export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, templateTheme }: CustomThemeBuilderProps) {
   const [theme, setTheme] = useState<CustomTheme>(existingTheme || defaultTheme);
   const [previewMode, setPreviewMode] = useState(false);
   const [showHarmonyGenerator, setShowHarmonyGenerator] = useState(false);
+  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
   const paletteImageRef = useRef<HTMLInputElement>(null);
+
+  // Load saved palettes from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('saved_custom_palettes');
+    if (stored) {
+      try {
+        setSavedPalettes(JSON.parse(stored));
+      } catch (e) {
+        console.error('Failed to load saved palettes:', e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (existingTheme) {
@@ -381,13 +400,35 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
     reader.readAsDataURL(file);
   };
 
-  const applyQuickPalette = (paletteName: keyof typeof themeTemplates) => {
-    const palette = themeTemplates[paletteName];
+  const handleSavePalette = () => {
+    const paletteName = prompt('Enter a name for this palette:');
+    if (!paletteName) return;
+
+    const newPalette: SavedPalette = {
+      id: Date.now().toString(),
+      name: paletteName,
+      colors: { ...theme.colors },
+    };
+
+    const updated = [...savedPalettes, newPalette];
+    setSavedPalettes(updated);
+    localStorage.setItem('saved_custom_palettes', JSON.stringify(updated));
+    toast.success(`Palette "${paletteName}" saved!`);
+  };
+
+  const handleLoadPalette = (palette: SavedPalette) => {
     setTheme((prev) => ({
       ...prev,
       colors: palette.colors,
     }));
-    toast.success(`${palette.name} applied`);
+    toast.success(`Palette "${palette.name}" loaded`);
+  };
+
+  const handleDeletePalette = (paletteId: string) => {
+    const updated = savedPalettes.filter((p) => p.id !== paletteId);
+    setSavedPalettes(updated);
+    localStorage.setItem('saved_custom_palettes', JSON.stringify(updated));
+    toast.success('Palette deleted');
   };
 
   const handleSave = () => {
@@ -463,12 +504,8 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
             </Card>
           )}
 
-          <Tabs defaultValue="presets" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="presets">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Presets
-              </TabsTrigger>
+          <Tabs defaultValue="colors" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="colors">
                 <Palette className="w-4 h-4 mr-2" />
                 Colors
@@ -479,36 +516,9 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="presets" className="space-y-6 mt-4">
-              {/* Quick Palettes */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Quick Palettes</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Click a palette to instantly apply its colors
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(themeTemplates).map(([key, palette]) => (
-                    <button
-                      key={key}
-                      onClick={() => applyQuickPalette(key as keyof typeof themeTemplates)}
-                      className="flex flex-col items-start gap-2 p-3 rounded-lg border hover:border-primary transition-colors"
-                    >
-                      <span className="text-sm font-medium">{palette.name.replace(' (Custom)', '')}</span>
-                      <div className="flex gap-1 w-full h-8">
-                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.primary})` }} />
-                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.secondary})` }} />
-                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.accent})` }} />
-                        <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.background})` }} />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Generate from Image */}
-              <div className="space-y-4 pt-4 border-t">
+            <TabsContent value="colors" className="space-y-6 mt-4">
+              {/* Generate from Image - Now at the top */}
+              <div className="space-y-4 pb-4 border-b">
                 <div>
                   <h3 className="font-semibold mb-2">Generate from Image</h3>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -531,9 +541,60 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
                   Upload Image to Extract Colors
                 </Button>
               </div>
-            </TabsContent>
 
-            <TabsContent value="colors" className="space-y-6 mt-4">
+              {/* My Saved Palettes */}
+              <div className="space-y-4 pb-4 border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold mb-2">My Saved Palettes</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Save and load your custom color combinations
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleSavePalette}
+                    className="shrink-0"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Current
+                  </Button>
+                </div>
+                {savedPalettes.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2 mt-4">
+                    {savedPalettes.map((palette) => (
+                      <button
+                        key={palette.id}
+                        onClick={() => handleLoadPalette(palette)}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary transition-colors group"
+                      >
+                        <div className="flex gap-1 h-8 flex-1">
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.primary})` }} />
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.secondary})` }} />
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.accent})` }} />
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.background})` }} />
+                        </div>
+                        <span className="text-sm font-medium flex-shrink-0">{palette.name}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePalette(palette.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No saved palettes yet. Click "Save Current" to save your first palette.
+                  </p>
+                )}
+              </div>
               {/* Color Harmony Generator - Toggleable */}
               <Collapsible open={showHarmonyGenerator} onOpenChange={setShowHarmonyGenerator}>
                 <CollapsibleTrigger asChild>
