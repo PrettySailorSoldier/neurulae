@@ -1155,7 +1155,11 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6" role="main">
-        <StatsOverview onOpenScheduler={() => setSchedulerOpen(true)} />
+        <StatsOverview 
+          onOpenScheduler={() => setSchedulerOpen(true)} 
+          tasks={tasks}
+          playbooks={playbooks}
+        />
 
         {/* Tabbed Content */}
         <Tabs defaultValue="dashboard" className="space-y-6">
@@ -1244,7 +1248,7 @@ const Index = () => {
               <div className="pb-20">
                 {mobileTab === 'focus' && (
                   <div className="space-y-4">
-                    <FocusTimer />
+                    <FocusTimer tasks={tasks} playbooks={playbooks} />
                   </div>
                 )}
                 {mobileTab === 'timeline' && (

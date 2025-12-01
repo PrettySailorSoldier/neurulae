@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, X, Undo2, Edit2, Check } from 'lucide-react';
@@ -17,7 +17,7 @@ interface DragState {
   draggedId: string | null;
 }
 
-export function TodoTomatoes() {
+export const TodoTomatoes = memo(function TodoTomatoes() {
   const [todos, setTodos] = useLocalStorage<Todo[]>('neurulae-tomatoes', []);
   const [newTodoText, setNewTodoText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -275,4 +275,4 @@ export function TodoTomatoes() {
       </div>
     </div>
   );
-}
+});

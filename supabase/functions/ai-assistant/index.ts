@@ -801,6 +801,13 @@ Want me to schedule these for you?"`;
       return msg;
     });
 
+    console.log('Sending AI request:', {
+      model: 'google/gemini-2.5-pro',
+      messageCount: transformedMessages.length + 1,
+      hasImages: images && images.length > 0,
+      imagesCount: images?.length || 0,
+    });
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {

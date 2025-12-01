@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import { Play, Pause, RotateCcw, Clock, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimerHub } from './TimerHub';
-import { TimerState, TimerSession } from '@/types';
+import { TimerState, TimerSession, Task, Playbook } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const PRESETS = [
@@ -12,7 +13,12 @@ const PRESETS = [
   { label: '15 min', minutes: 15 },
 ];
 
-export function FocusTimer() {
+interface FocusTimerProps {
+  tasks?: Task[];
+  playbooks?: Playbook[];
+}
+
+export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [] }: FocusTimerProps) {
   const [timer, setTimer] = useState<TimerState>({
     isRunning: false,
     timeRemaining: 25 * 60,
@@ -20,6 +26,14 @@ export function FocusTimer() {
   });
   const [hubOpen, setHubOpen] = useState(false);
   const [sessions, setSessions] = useLocalStorage<TimerSession[]>('neurulae-timer-sessions', []);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(undefined);
+
+  // Memoize task/playbook options to prevent recalculation on every render
+  const taskOptions = useMemo(() => {
+    const activeTasks = tasks.filter(t => !t.completed).slice(0, 20);
+    const activePlaybooks = playbooks.slice(0, 10);
+    return { activeTasks, activePlaybooks };
+  }, [tasks, playbooks]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -64,7 +78,8 @@ export function FocusTimer() {
   };
 
   const handleSaveSession = (session: TimerSession) => {
-    setSessions([session, ...sessions]);
+    const enhancedSession = { ...session, taskId: selectedTaskId };
+    setSessions([enhancedSession, ...sessions]);
   };
 
   const progress = ((timer.totalTime - timer.timeRemaining) / timer.totalTime) * 100;
@@ -88,6 +103,41 @@ export function FocusTimer() {
               style={{ width: `${progress}%` }}
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Select value={selectedTaskId} onValueChange={setSelectedTaskId} disabled={timer.isRunning}>
+            <SelectTrigger className="w-full text-xs h-9">
+              <SelectValue placeholder="Select task (optional)" />
+            </SelectTrigger>
+            <SelectContent className="max-h-64 z-[100]">
+              <SelectItem value="none">No task selected</SelectItem>
+              {taskOptions.activeTasks.length > 0 && (
+                <>
+                  <SelectItem value="tasks-header" disabled className="font-semibold text-primary">
+                    Tasks
+                  </SelectItem>
+                  {taskOptions.activeTasks.map((task) => (
+                    <SelectItem key={task.id} value={task.id}>
+                      {task.title}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+              {taskOptions.activePlaybooks.length > 0 && (
+                <>
+                  <SelectItem value="playbooks-header" disabled className="font-semibold text-primary">
+                    Playbooks
+                  </SelectItem>
+                  {taskOptions.activePlaybooks.map((playbook) => (
+                    <SelectItem key={playbook.id} value={playbook.id}>
+                      📖 {playbook.title}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex gap-2 justify-center">
@@ -148,4 +198,4 @@ export function FocusTimer() {
       />
     </Card>
   );
-}
+});
