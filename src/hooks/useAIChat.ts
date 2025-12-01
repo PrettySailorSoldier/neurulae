@@ -413,8 +413,21 @@ export function useAIChat({
       });
 
       if (functionError) {
+        console.error('AI Assistant Error:', functionError, functionData);
         const errorMsg = functionData?.error || functionError.message || 'Failed to get AI response';
-        throw new Error(errorMsg);
+        
+        // Show user-friendly error messages
+        if (errorMsg.includes('Auth session missing')) {
+          throw new Error('Please sign in to use the AI assistant.');
+        } else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+          throw new Error('AI request timed out. Please try again with a shorter message.');
+        } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        } else if (errorMsg.includes('LOVABLE_API_KEY')) {
+          throw new Error('AI service not configured. Please contact support.');
+        } else {
+          throw new Error(`AI error: ${errorMsg}`);
+        }
       }
 
       // JSON/automation disabled: advisory-only mode. No embedded JSON parsing.
