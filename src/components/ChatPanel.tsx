@@ -159,7 +159,7 @@ ChatInputArea.displayName = 'ChatInputArea';
 
 
 // --- MAIN COMPONENT ---
-export function ChatPanel({ 
+const ChatPanelComponent = ({
   isOpen, 
   onClose,
   tasks,
@@ -171,7 +171,7 @@ export function ChatPanel({
   onAddTask,
   onAddPlaybook,
   onUpdatePlaybook,
-}: ChatPanelProps) {
+}: ChatPanelProps) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isPinned, setIsPinned] = useState(() => {
     const saved = localStorage.getItem('chatPanelPinned');
@@ -527,4 +527,7 @@ export function ChatPanel({
       )}
     </Card>
   );
-}
+};
+
+// Wrap with React.memo to prevent unnecessary re-renders
+export const ChatPanel = memo(ChatPanelComponent);

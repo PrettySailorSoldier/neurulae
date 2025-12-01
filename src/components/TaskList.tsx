@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Plus, Search, Filter, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +32,7 @@ interface TaskListProps {
   showQuickActions?: boolean;
 }
 
-export function TaskList({ 
+const TaskListComponent = ({ 
   tasks, 
   timeBlocks,
   onToggleComplete, 
@@ -43,7 +43,7 @@ export function TaskList({
   onScheduleTasks,
   onAskAI,
   showQuickActions = true,
-}: TaskListProps) {
+}: TaskListProps) => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -55,37 +55,43 @@ export function TaskList({
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const { canUseAIFeatures, showUpgradeModal, upgradeModalOpen, setUpgradeModalOpen } = useFeatureLimit();
 
-  // Filter out tasks without proper names and apply search/completion filters
-  const filteredTasks = tasks.filter(task => {
-    const hasValidTitle = task.title && task.title.trim().length > 0;
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCompleted = showCompleted || !task.completed;
-    return hasValidTitle && matchesSearch && matchesCompleted;
-  });
+  // MEMOIZE: Filter calculations to prevent unnecessary re-renders
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const hasValidTitle = task.title && task.title.trim().length > 0;
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCompleted = showCompleted || !task.completed;
+      return hasValidTitle && matchesSearch && matchesCompleted;
+    });
+  }, [tasks, searchQuery, showCompleted]);
 
-  // Separate daily vs ongoing tasks
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(23, 59, 59, 999);
+  // MEMOIZE: Daily/ongoing task separation
+  const { dailyTasks, ongoingTasks } = useMemo(() => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(23, 59, 59, 999);
 
-  const dailyTasks = filteredTasks.filter(task => {
-    if (task.type === 'daily') return true;
-    if (task.dueDate) {
-      const dueDate = new Date(task.dueDate);
-      return dueDate <= tomorrow;
-    }
-    return false;
-  });
+    const daily = filteredTasks.filter(task => {
+      if (task.type === 'daily') return true;
+      if (task.dueDate) {
+        const dueDate = new Date(task.dueDate);
+        return dueDate <= tomorrow;
+      }
+      return false;
+    });
 
-  const ongoingTasks = filteredTasks.filter(task => {
-    if (task.type === 'ongoing') return true;
-    if (task.dueDate) {
-      const dueDate = new Date(task.dueDate);
-      return dueDate > tomorrow;
-    }
-    return !task.dueDate; // Tasks without due dates are ongoing
-  });
+    const ongoing = filteredTasks.filter(task => {
+      if (task.type === 'ongoing') return true;
+      if (task.dueDate) {
+        const dueDate = new Date(task.dueDate);
+        return dueDate > tomorrow;
+      }
+      return !task.dueDate;
+    });
+
+    return { dailyTasks: daily, ongoingTasks: ongoing };
+  }, [filteredTasks]);
 
   const handleOpenTaskDialog = () => {
     setNewTaskTitle('');
@@ -368,4 +374,7 @@ export function TaskList({
       />
     </>
   );
-}
+};
+
+// Wrap with React.memo to prevent unnecessary re-renders
+export const TaskList = memo(TaskListComponent);

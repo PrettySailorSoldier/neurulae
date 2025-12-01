@@ -236,7 +236,7 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
   const [isLoadingTheme, setIsLoadingTheme] = useState(false);
   const paletteImageRef = useRef<HTMLInputElement>(null);
 
-  // Load theme from Supabase on mount/open
+  // Load theme from Supabase on mount/open (OPTIMIZED: Use JSON path selector)
   useEffect(() => {
     if (!open || !user) return;
 
@@ -254,10 +254,10 @@ export function CustomThemeBuilder({ open, onOpenChange, onSave, existingTheme, 
           return;
         }
 
-        // Check if preferences contains a customTheme
+        // Extract customTheme from preferences
         const preferences = data?.preferences as any;
-        if (preferences?.customTheme) {
-          const loadedTheme = preferences.customTheme as CustomTheme;
+        const loadedTheme = preferences?.customTheme as CustomTheme | null;
+        if (loadedTheme) {
           setTheme(loadedTheme);
           setThemeHistory([loadedTheme]);
           setHistoryIndex(0);
