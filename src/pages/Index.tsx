@@ -328,12 +328,8 @@ const Index = () => {
     }
   }, [theme, customTheme]);
 
-  // Sync custom theme to database when it changes
-  useEffect(() => {
-    if (user && customTheme !== null && customTheme !== preferences.customTheme) {
-      savePreferences({ customTheme, theme });
-    }
-  }, [customTheme, user, savePreferences]);
+  // REMOVED: Auto-sync effect that caused cascading writes
+  // Theme is now only synced when user explicitly saves in CustomThemeBuilder
 
   const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
     const newTask: Task = typeof taskOrTitle === 'string'
