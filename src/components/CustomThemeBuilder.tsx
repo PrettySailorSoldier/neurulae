@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,20 @@ import { autoOptimizeThemeColors, extractColorsFromImage } from "@/lib/colorUtil
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+// Import the Bouncer!
+import { useDatabaseWrite } from "@/hooks/useDatabaseWrite";
+
+// --- DEBOUNCE UTILITY (Stops database flooding) ---
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -239,44 +253,50 @@ export function CustomThemeBuilder({
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
   const [themeHistory, setThemeHistory] = useState<CustomTheme[]>([existingTheme || defaultTheme]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [isLoadingTheme, setIsLoadingTheme] = useState(false);
-  const paletteImageRef = useRef<HTMLInputElement>(null); // Load theme from Supabase on mount/open (OPTIMIZED: Use JSON path selector)
 
+  // REMOVED BLOCKING LOADING STATE
+  // const [isLoadingTheme, setIsLoadingTheme] = useState(false);
+
+  const paletteImageRef = useRef<HTMLInputElement>(null);
+
+  // Initialize the "Bouncer"
+  const { executeWrite } = useDatabaseWrite();
+
+  // OPTIMIZED LOAD: Fetch ONLY the theme, not the whole profile
   useEffect(() => {
     if (!open || !user) return;
 
     const loadThemeFromDatabase = async () => {
-      setIsLoadingTheme(true);
+      // No loading spinner trigger
       try {
         const { data, error } = await supabase.from("profiles").select("preferences").eq("id", user.id).single();
 
         if (error) {
-          console.error("Error loading theme from database:", error);
+          console.error("Error loading theme:", error);
           return;
-        } // Extract customTheme from preferences
+        }
 
         const preferences = data?.preferences as any;
-        const loadedTheme = preferences?.customTheme as CustomTheme | null;
-        if (loadedTheme) {
+        if (preferences?.customTheme) {
+          const loadedTheme = preferences.customTheme as CustomTheme;
           setTheme(loadedTheme);
           setThemeHistory([loadedTheme]);
           setHistoryIndex(0);
         } else if (existingTheme) {
-          // Fall back to existingTheme if provided
+          // Fallback logic
           setTheme(existingTheme);
           setThemeHistory([existingTheme]);
           setHistoryIndex(0);
         }
       } catch (err) {
         console.error("Failed to load theme:", err);
-      } finally {
-        setIsLoadingTheme(false);
       }
     };
 
     loadThemeFromDatabase();
-  }, [open, user]); // Load saved palettes from localStorage
+  }, [open, user, existingTheme]);
 
+  // Load saved palettes (Local Storage is fast, keep this)
   useEffect(() => {
     const stored = localStorage.getItem("saved_custom_palettes");
     if (stored) {
@@ -286,13 +306,13 @@ export function CustomThemeBuilder({
         console.error("Failed to load saved palettes:", e);
       }
     }
-  }, []); // Add to history when theme changes (but not during undo/redo)
+  }, []);
 
+  // Standard History Logic
   const updateThemeWithHistory = (newTheme: CustomTheme) => {
     setTheme(newTheme);
     setThemeHistory((prev) => {
-      // Remove any "future" history if we're not at the end
-      const newHistory = prev.slice(0, historyIndex + 1); // Add new state
+      const newHistory = prev.slice(0, historyIndex + 1);
       return [...newHistory, newTheme];
     });
     setHistoryIndex((prev) => prev + 1);
@@ -319,27 +339,13 @@ export function CustomThemeBuilder({
     }
   };
 
-  useEffect(() => {
-    if (existingTheme) {
-      setTheme(existingTheme);
-    } else if (templateTheme && themeTemplates[templateTheme]) {
-      setTheme({
-        ...themeTemplates[templateTheme],
-        backgroundImage: defaultTheme.backgroundImage,
-      });
-    } else {
-      setTheme(defaultTheme);
-    }
-  }, [existingTheme, templateTheme, open]);
-
+  // Standard Preview Logic
   useEffect(() => {
     if (previewMode && open) {
       applyThemePreview(theme);
     }
     return () => {
-      if (previewMode) {
-        removeThemePreview();
-      }
+      if (previewMode) removeThemePreview();
     };
   }, [previewMode, theme, open]);
 
@@ -348,16 +354,20 @@ export function CustomThemeBuilder({
     Object.entries(themeData.colors).forEach(([key, value]) => {
       const cssVar = `--${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
       root.style.setProperty(cssVar, value);
-    }); // Apply background image directly to body
+    });
 
     if (themeData.backgroundImage && themeData.backgroundImage.url) {
       const bg = themeData.backgroundImage;
-      const body = document.body; // Apply background styles
+      const body = document.body;
+
+      // Apply background styles
       body.style.backgroundImage = `url(${bg.url})`;
       body.style.backgroundSize = bg.size === "stretch" ? "100% 100%" : bg.size;
       body.style.backgroundPosition = bg.position.replace("-", " ");
       body.style.backgroundRepeat = bg.repeat;
-      body.style.backgroundAttachment = bg.attachment; // Apply overlay and filters via CSS variables (consumed by body::before)
+      body.style.backgroundAttachment = bg.attachment;
+
+      // Apply overlay and filters via CSS variables (consumed by body::before)
       root.style.setProperty("--bg-blur", `${bg.blur}px`);
       root.style.setProperty("--bg-opacity", `${bg.opacity / 100}`);
       root.style.setProperty("--overlay-color", bg.overlayColor);
@@ -373,16 +383,19 @@ export function CustomThemeBuilder({
   const removeThemePreview = () => {
     const root = document.documentElement;
     const body = document.body;
+
     Object.keys(theme.colors).forEach((key) => {
       const cssVar = `--${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
       root.style.removeProperty(cssVar);
-    }); // Remove background styles from body
+    });
 
+    // Remove background styles from body
     body.style.backgroundImage = "";
     body.style.backgroundSize = "";
     body.style.backgroundPosition = "";
     body.style.backgroundRepeat = "";
     body.style.backgroundAttachment = "";
+
     root.style.removeProperty("--bg-blur");
     root.style.removeProperty("--bg-opacity");
     root.style.removeProperty("--overlay-color");
@@ -397,33 +410,22 @@ export function CustomThemeBuilder({
   const handleColorChange = (colorKey: keyof CustomTheme["colors"], value: string) => {
     const newTheme = {
       ...theme,
-      colors: {
-        ...theme.colors,
-        [colorKey]: value,
-      },
+      colors: { ...theme.colors, [colorKey]: value },
     };
+    // Update LOCAL state immediately (fast)
     updateThemeWithHistory(newTheme);
   };
 
   const handleApplyHarmony = (harmonyColors: Partial<CustomTheme["colors"]>) => {
-    const updatedColors = {
-      ...theme.colors,
-      ...harmonyColors,
-    }; // Auto-optimize foreground colors for visibility
+    const updatedColors = { ...theme.colors, ...harmonyColors };
     const optimizedColors = autoOptimizeThemeColors(updatedColors) as CustomTheme["colors"];
-    const newTheme = {
-      ...theme,
-      colors: optimizedColors,
-    };
+    const newTheme = { ...theme, colors: optimizedColors };
     updateThemeWithHistory(newTheme);
   };
 
   const handleAutoOptimize = () => {
     const optimizedColors = autoOptimizeThemeColors(theme.colors) as CustomTheme["colors"];
-    const newTheme = {
-      ...theme,
-      colors: optimizedColors,
-    };
+    const newTheme = { ...theme, colors: optimizedColors };
     updateThemeWithHistory(newTheme);
     toast.success("Text colors optimized for readability");
   };
@@ -483,10 +485,7 @@ export function CustomThemeBuilder({
   };
 
   const handleLoadPalette = (palette: SavedPalette) => {
-    const newTheme = {
-      ...theme,
-      colors: palette.colors,
-    };
+    const newTheme = { ...theme, colors: palette.colors };
     updateThemeWithHistory(newTheme);
     toast.success(`Palette "${palette.name}" loaded`);
   };
@@ -499,72 +498,56 @@ export function CustomThemeBuilder({
   };
 
   const handleSave = async () => {
-    // Step 1: Save to localStorage FIRST (instant, optimistic)
+    // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
     const themeName = theme.name || "Untitled Theme";
     const themeId = theme.name.toLowerCase().replace(/\s+/g, "-") || Date.now().toString();
+
     const savedTheme: SavedPalette = {
       id: themeId,
       name: themeName,
       colors: { ...theme.colors },
-    }; // Check if theme with this ID already exists
+    };
 
     const existingIndex = savedPalettes.findIndex((p) => p.id === themeId);
-    let updatedPalettes: SavedPalette[];
-    if (existingIndex !== -1) {
-      // Update existing
-      updatedPalettes = [...savedPalettes];
-      updatedPalettes[existingIndex] = savedTheme;
-    } else {
-      // Add new
-      updatedPalettes = [...savedPalettes, savedTheme];
-    }
+    let updatedPalettes = existingIndex !== -1 ? [...savedPalettes] : [...savedPalettes, savedTheme];
 
-    localStorage.setItem("saved_custom_palettes", JSON.stringify(updatedPalettes)); // Step 2: Update UI state immediately
-    setSavedPalettes(updatedPalettes); // Call the original onSave callback for local state updates
+    if (existingIndex !== -1) updatedPalettes[existingIndex] = savedTheme;
 
+    // 1. Save to Disk (Browser)
+    localStorage.setItem("saved_custom_palettes", JSON.stringify(updatedPalettes));
+    setSavedPalettes(updatedPalettes);
+
+    // 2. Notify User & Close UI (Don't wait for cloud)
     onSave(theme);
-    toast.success("Theme saved to library");
+    toast.success("Theme saved!");
     removeThemePreview();
-    setPreviewMode(false); // Step 3: Sync to Supabase in background (non-blocking)
-
-    if (!user) {
-      toast.info("Sign in to sync themes across devices");
-      onOpenChange(false);
-      return;
-    }
-
-    try {
-      const { data: profileData, error: fetchError } = await supabase
-        .from("profiles")
-        .select("preferences")
-        .eq("id", user.id)
-        .single();
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      const currentPreferences = (profileData?.preferences as any) || {};
-      const updatedPreferences = {
-        ...currentPreferences,
-        customTheme: theme,
-      };
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ preferences: updatedPreferences })
-        .eq("id", user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      toast.success("Theme synced to cloud");
-    } catch (error: any) {
-      console.error("Failed to sync theme to cloud:", error);
-      toast.error("Saved to library, but failed to sync to cloud");
-    }
+    setPreviewMode(false);
     onOpenChange(false);
+
+    // 3. Sync to Cloud using the "Bouncer" (Safe Write)
+    if (user) {
+      executeWrite(
+        async () => {
+          const { data } = await supabase.from("profiles").select("preferences").eq("id", user.id).single();
+
+          const currentPreferences = (data?.preferences as any) || {};
+          await supabase
+            .from("profiles")
+            .update({
+              preferences: { ...currentPreferences, customTheme: theme },
+            })
+            .eq("id", user.id);
+        },
+        () => {
+          console.log("Theme synced to cloud successfully");
+        },
+        (error) => {
+          console.error("Failed to sync to cloud:", error);
+          // We don't show a toast here because the user is already done.
+          // The Bouncer handles the "Offline Mode" toast if too many fail.
+        },
+      );
+    }
   };
 
   const handleClose = () => {
@@ -592,706 +575,551 @@ export function CustomThemeBuilder({
 
   return (
     <Sheet open={open} onOpenChange={handleClose} modal={false}>
-           {" "}
       <SheetContent
         side="right"
         className="w-full sm:max-w-2xl overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
       >
-               {" "}
         <SheetHeader>
-                    <SheetTitle>Custom Theme Builder</SheetTitle>       {" "}
+          <SheetTitle>Custom Theme Builder</SheetTitle>
         </SheetHeader>
-               {" "}
-        {isLoadingTheme ? (
-          <div className="flex items-center justify-center py-12">
-                       {" "}
-            <div className="text-center space-y-2">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div> 
-                          <p className="text-sm text-muted-foreground">Loading theme from database...</p>         
-               {" "}
-            </div>
-                     {" "}
+
+        {/* REMOVED LOADING SPINNER BLOCK ENTIRELY */}
+
+        <div className="space-y-6 mt-6">
+          <div className="space-y-2">
+            <Label>Theme Name</Label>
+            <Input
+              value={theme.name}
+              onChange={(e) => updateThemeWithHistory({ ...theme, name: e.target.value })}
+              placeholder="My Custom Theme"
+            />
           </div>
-        ) : (
-          <div className="space-y-6">
-                     {" "}
-            <div className="space-y-2">
-                          <Label>Theme Name</Label>
-                         {" "}
-              <Input
-                value={theme.name}
-                onChange={(e) => updateThemeWithHistory({ ...theme, name: e.target.value })}
-                placeholder="My Custom Theme"
-              />
-                       {" "}
-            </div>
-                     {" "}
-            <div className="flex items-center gap-2">
-                         {" "}
-              <Button
-                variant={previewMode ? "default" : "outline"}
-                onClick={() => setPreviewMode(!previewMode)}
-                className="flex-1"
-              >
-                              {previewMode ? "Preview Active ✨" : "Enable Live Preview"}           {" "}
-              </Button>
-                         {" "}
-              <Button variant="outline" size="icon" onClick={handleUndo} disabled={!canUndo} title="Undo">
-                              <Undo2 className="w-4 h-4" />           {" "}
-              </Button>
-                         {" "}
-              <Button variant="outline" size="icon" onClick={handleRedo} disabled={!canRedo} title="Redo">
-                              <Redo2 className="w-4 h-4" />           {" "}
-              </Button>
-                       {" "}
-            </div>
-                     {" "}
-            {previewMode && (
-              <Card className="p-4 space-y-2 bg-card text-card-foreground">
-                              <h3 className="font-semibold text-primary">Preview Card</h3>             {" "}
-                <p className="text-muted-foreground">This is how muted text looks</p>             {" "}
-                <div className="flex gap-2">
-                                  <Button size="sm">Primary Button</Button>               {" "}
-                  <Button size="sm" variant="secondary">
-                    Secondary
-                  </Button>
-                                 {" "}
-                  <Button size="sm" variant="outline">
-                    Outline
-                  </Button>
-                               {" "}
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant={previewMode ? "default" : "outline"}
+              onClick={() => setPreviewMode(!previewMode)}
+              className="flex-1"
+            >
+              {previewMode ? "Preview Active ✨" : "Enable Live Preview"}
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleUndo} disabled={!canUndo} title="Undo">
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleRedo} disabled={!canRedo} title="Redo">
+              <Redo2 className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {previewMode && (
+            <Card className="p-4 space-y-2 bg-card text-card-foreground">
+              <h3 className="font-semibold text-primary">Preview Card</h3>
+              <p className="text-muted-foreground">This is how muted text looks</p>
+              <div className="flex gap-2">
+                <Button size="sm">Primary Button</Button>
+                <Button size="sm" variant="secondary">
+                  Secondary
+                </Button>
+                <Button size="sm" variant="outline">
+                  Outline
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          <Tabs defaultValue="colors" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="colors">
+                <Palette className="w-4 h-4 mr-2" />
+                Colors
+              </TabsTrigger>
+              <TabsTrigger value="background">
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Background
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="colors" className="space-y-6 mt-4">
+              {/* Generate from Image */}
+              <div className="space-y-4 pb-4 border-b">
+                <div>
+                  <h3 className="font-semibold mb-2">Generate from Image</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Upload an image to extract its dominant colors</p>
                 </div>
-                           {" "}
-              </Card>
-            )}
-                     {" "}
-            <Tabs defaultValue="colors" className="w-full">
-                         {" "}
-              <TabsList className="grid w-full grid-cols-2">
-                             {" "}
-                <TabsTrigger value="colors">
-                                  <Palette className="w-4 h-4 mr-2" />                Colors              {" "}
-                </TabsTrigger>
-                             {" "}
-                <TabsTrigger value="background">
-                                  <ImageIcon className="w-4 h-4 mr-2" />                Background              {" "}
-                </TabsTrigger>
-                           {" "}
-              </TabsList>
-                         {" "}
-              <TabsContent value="colors" className="space-y-6 mt-4">
-                              {/* Generate from Image - Now at the top */}             {" "}
-                <div className="space-y-4 pb-4 border-b">
-                                 {" "}
+                <input
+                  ref={paletteImageRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagePaletteUpload}
+                  className="hidden"
+                />
+                <Button variant="outline" className="w-full" onClick={() => paletteImageRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Image to Extract Colors
+                </Button>
+              </div>
+
+              {/* My Saved Palettes */}
+              <div className="space-y-4 pb-4 border-b">
+                <div className="flex items-center justify-between">
                   <div>
-                                      <h3 className="font-semibold mb-2">Generate from Image</h3>                 {" "}
-                    <p className="text-sm text-muted-foreground mb-4">
-                                          Upload an image to extract its dominant colors                  {" "}
-                    </p>
-                                   {" "}
+                    <h3 className="font-semibold mb-2">My Saved Palettes</h3>
+                    <p className="text-sm text-muted-foreground">Save and load your custom color combinations</p>
                   </div>
-                                 {" "}
-                  <input
-                    ref={paletteImageRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImagePaletteUpload}
-                    className="hidden"
-                  />
-                                 {" "}
-                  <Button variant="outline" className="w-full" onClick={() => paletteImageRef.current?.click()}>
-                                      <Upload className="w-4 h-4 mr-2" />                  Upload Image to Extract
-                    Colors                {" "}
+                  <Button size="sm" onClick={handleSavePalette} className="shrink-0">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Current
                   </Button>
-                               {" "}
                 </div>
-                              {/* My Saved Palettes */}             {" "}
-                <div className="space-y-4 pb-4 border-b">
-                                 {" "}
-                  <div className="flex items-center justify-between">
-                                     {" "}
-                    <div>
-                                          <h3 className="font-semibold mb-2">My Saved Palettes</h3>                   {" "}
-                      <p className="text-sm text-muted-foreground">
-                                              Save and load your custom color combinations                    {" "}
-                      </p>
-                                       {" "}
-                    </div>
-                                     {" "}
-                    <Button size="sm" onClick={handleSavePalette} className="shrink-0">
-                                          <Save className="w-4 h-4 mr-2" />                    Save Current            
-                           {" "}
-                    </Button>
-                                   {" "}
-                  </div>
-                                 {" "}
-                  {savedPalettes.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2 mt-4">
-                                         {" "}
-                      {savedPalettes.map((palette) => (
-                        <button
-                          key={palette.id}
-                          onClick={() => handleLoadPalette(palette)}
-                          className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary transition-colors group"
+                {savedPalettes.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2 mt-4">
+                    {savedPalettes.map((palette) => (
+                      <button
+                        key={palette.id}
+                        onClick={() => handleLoadPalette(palette)}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary transition-colors group"
+                      >
+                        <div className="flex gap-1 h-8 flex-1">
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.primary})` }} />
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.secondary})` }} />
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.accent})` }} />
+                          <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.background})` }} />
+                        </div>
+                        <span className="text-sm font-medium flex-shrink-0">{palette.name}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePalette(palette.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         >
-                                                 {" "}
-                          <div className="flex gap-1 h-8 flex-1">
-                                                     {" "}
-                            <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.primary})` }} />
-                                                     {" "}
-                            <div
-                              className="flex-1 rounded"
-                              style={{ background: `hsl(${palette.colors.secondary})` }}
-                            />
-                                                     {" "}
-                            <div className="flex-1 rounded" style={{ background: `hsl(${palette.colors.accent})` }} />
-                                                     {" "}
-                            <div
-                              className="flex-1 rounded"
-                              style={{ background: `hsl(${palette.colors.background})` }}
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <span className="text-sm font-medium flex-shrink-0">{palette.name}</span>                     
-                           {" "}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePalette(palette.id);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          >
-                                                      <X className="w-4 h-4" />                       {" "}
-                          </Button>
-                                               {" "}
-                        </button>
-                      ))}
-                                       {" "}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                                          No saved palettes yet. Click "Save Current" to save your first palette.      
-                                 {" "}
-                    </p>
-                  )}
-                               {" "}
-                </div>
-                              {/* Color Harmony Generator - Toggleable */}             {" "}
-                <Collapsible open={showHarmonyGenerator} onOpenChange={setShowHarmonyGenerator}>
-                                 {" "}
-                  <CollapsibleTrigger asChild>
-                                     {" "}
-                    <Button variant="outline" className="w-full justify-between">
-                                         {" "}
-                      <span className="flex items-center gap-2">
-                                              <Palette className="w-4 h-4" />                      Color Harmony
-                        Generator                    {" "}
-                      </span>
-                                         {" "}
-                      <ChevronDown
-                        className={`w-4 h-4 transition-transform ${showHarmonyGenerator ? "rotate-180" : ""}`}
-                      />
-                                       {" "}
-                    </Button>
-                                   {" "}
-                  </CollapsibleTrigger>
-                                 {" "}
-                  <CollapsibleContent className="pt-4">
-                                     {" "}
-                    <ColorHarmonyGenerator baseColor={theme.colors.primary} onApplyHarmony={handleApplyHarmony} />     
-                             {" "}
-                  </CollapsibleContent>
-                               {" "}
-                </Collapsible>
-                              {/* Manual Auto-Optimize Button */}             {" "}
-                <div className="space-y-2">
-                                 {" "}
-                  <Button variant="outline" onClick={handleAutoOptimize} className="w-full">
-                                      <Wand2 className="w-4 h-4 mr-2" />                  Auto-Optimize Text Contrast  
-                                 {" "}
-                  </Button>
-                                 {" "}
-                  <p className="text-xs text-muted-foreground">
-                                      Adjusts text/foreground colors only to ensure readability. Base colors remain
-                    unchanged.                {" "}
-                  </p>
-                               {" "}
-                </div>
-                              {/* Color Pickers */}             {" "}
-                <div className="space-y-4">
-                                 {" "}
-                  <div>
-                                      <h3 className="font-semibold mb-2">Colors (HSL format)</h3>                 {" "}
-                    <p className="text-sm text-muted-foreground mb-4">
-                                          Use the color pickers below to customize each color with sliders, eye dropper,
-                      and saved palettes                  {" "}
-                    </p>
-                                   {" "}
-                  </div>
-                                 {" "}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                     {" "}
-                    {colorFields.map(({ key, label }) => (
-                      <ColorPicker
-                        key={key}
-                        label={label}
-                        value={theme.colors[key]}
-                        onChange={(value) => handleColorChange(key, value)}
-                      />
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </button>
                     ))}
-                                   {" "}
                   </div>
-                               {" "}
-                </div>
-                           {" "}
-              </TabsContent>
-                         {" "}
-              <TabsContent value="background" className="space-y-6 mt-4">
-                             {" "}
-                <div className="space-y-4">
-                                 {" "}
-                  <div className="space-y-2">
-                                      <Label>Background Image</Label>                 {" "}
-                    <div className="flex gap-2">
-                                         {" "}
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              const url = event.target?.result as string;
-                              setTheme({
-                                ...theme,
-                                backgroundImage: { ...theme.backgroundImage!, url },
-                              });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                                       {" "}
-                    </div>
-                                     {" "}
-                    <Input
-                      value={theme.backgroundImage?.url || ""}
-                      onChange={(e) =>
-                        setTheme({
-                          ...theme,
-                          backgroundImage: { ...theme.backgroundImage!, url: e.target.value },
-                        })
-                      }
-                      placeholder="Or paste image URL..."
-                      className="mt-2"
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No saved palettes yet. Click "Save Current" to save your first palette.
+                  </p>
+                )}
+              </div>
+
+              {/* Color Harmony Generator */}
+              <Collapsible open={showHarmonyGenerator} onOpenChange={setShowHarmonyGenerator}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span className="flex items-center gap-2">
+                      <Palette className="w-4 h-4" />
+                      Color Harmony Generator
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${showHarmonyGenerator ? "rotate-180" : ""}`}
                     />
-                                     {" "}
-                    <p className="text-xs text-muted-foreground">
-                                          Upload from device or use URL from Unsplash, Pexels, etc.                
-                       {" "}
-                    </p>
-                                   {" "}
-                  </div>
-                                 {" "}
-                  {theme.backgroundImage?.url && (
-                    <>
-                                         {" "}
-                      <div className="grid grid-cols-2 gap-4">
-                                             {" "}
-                        <div className="space-y-2">
-                                                  <Label>Display Mode</Label>                       {" "}
-                          <Select
-                            value={theme.backgroundImage.size}
-                            onValueChange={(value: any) =>
-                              setTheme({
-                                ...theme,
-                                backgroundImage: { ...theme.backgroundImage!, size: value },
-                              })
-                            }
-                          >
-                                                     {" "}
-                            <SelectTrigger>
-                                                          <SelectValue />                         {" "}
-                            </SelectTrigger>
-                                                     {" "}
-                            <SelectContent>
-                                                          <SelectItem value="cover">Cover (fill)</SelectItem>           
-                                              <SelectItem value="contain">Contain (fit)</SelectItem>                   
-                                      <SelectItem value="auto">Auto (original)</SelectItem>                           {" "}
-                              <SelectItem value="stretch">Stretch</SelectItem>                         {" "}
-                            </SelectContent>
-                                                   {" "}
-                          </Select>
-                                               {" "}
-                        </div>
-                                             {" "}
-                        <div className="space-y-2">
-                                                  <Label>Position</Label>                       {" "}
-                          <Select
-                            value={theme.backgroundImage.position}
-                            onValueChange={(value: any) =>
-                              setTheme({
-                                ...theme,
-                                backgroundImage: { ...theme.backgroundImage!, position: value },
-                              })
-                            }
-                          >
-                                                     {" "}
-                            <SelectTrigger>
-                                                          <SelectValue />                         {" "}
-                            </SelectTrigger>
-                                                     {" "}
-                            <SelectContent>
-                                                          <SelectItem value="center">Center</SelectItem>               
-                                          <SelectItem value="top">Top</SelectItem>                           {" "}
-                              <SelectItem value="bottom">Bottom</SelectItem>                           {" "}
-                              <SelectItem value="left">Left</SelectItem>                           {" "}
-                              <SelectItem value="right">Right</SelectItem>                           {" "}
-                              <SelectItem value="top-left">Top Left</SelectItem>                           {" "}
-                              <SelectItem value="top-right">Top Right</SelectItem>                           {" "}
-                              <SelectItem value="bottom-left">Bottom Left</SelectItem>                           {" "}
-                              <SelectItem value="bottom-right">Bottom Right</SelectItem>                         {" "}
-                            </SelectContent>
-                                                   {" "}
-                          </Select>
-                                               {" "}
-                        </div>
-                                             {" "}
-                        <div className="space-y-2">
-                                                  <Label>Repeat</Label>                       {" "}
-                          <Select
-                            value={theme.backgroundImage.repeat}
-                            onValueChange={(value: any) =>
-                              setTheme({
-                                ...theme,
-                                backgroundImage: { ...theme.backgroundImage!, repeat: value },
-                              })
-                            }
-                          >
-                                                     {" "}
-                            <SelectTrigger>
-                                                          <SelectValue />                         {" "}
-                            </SelectTrigger>
-                                                     {" "}
-                            <SelectContent>
-                                                          <SelectItem value="no-repeat">No Repeat</SelectItem>         
-                                                <SelectItem value="repeat">Repeat (tile)</SelectItem>                   
-                                      <SelectItem value="repeat-x">Repeat X</SelectItem>                           {" "}
-                              <SelectItem value="repeat-y">Repeat Y</SelectItem>                           {" "}
-                              <SelectItem value="space">Space</SelectItem>                           {" "}
-                              <SelectItem value="round">Round</SelectItem>                         {" "}
-                            </SelectContent>
-                                                   {" "}
-                          </Select>
-                                               {" "}
-                        </div>
-                                             {" "}
-                        <div className="space-y-2">
-                                                  <Label>Attachment</Label>                       {" "}
-                          <Select
-                            value={theme.backgroundImage.attachment}
-                            onValueChange={(value: any) =>
-                              setTheme({
-                                ...theme,
-                                backgroundImage: { ...theme.backgroundImage!, attachment: value },
-                              })
-                            }
-                          >
-                                                     {" "}
-                            <SelectTrigger>
-                                                          <SelectValue />                         {" "}
-                            </SelectTrigger>
-                                                     {" "}
-                            <SelectContent>
-                                                          <SelectItem value="scroll">Scroll</SelectItem>               
-                                          <SelectItem value="fixed">Fixed (parallax)</SelectItem>                       
-                               {" "}
-                            </SelectContent>
-                                                   {" "}
-                          </Select>
-                                               {" "}
-                        </div>
-                                           {" "}
-                      </div>
-                                         {" "}
-                      <div className="space-y-4 pt-4 border-t">
-                                              <h4 className="font-semibold text-sm">Effects & Overlays</h4>             
-                                                      {" "}
-                        <div className="space-y-3">
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Image Opacity</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">{theme.backgroundImage.opacity}%</span>   
-                                                   {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.opacity]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: { ...theme.backgroundImage!, opacity: value },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Blur Effect</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">{theme.backgroundImage.blur}px</span>     
-                                                 {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.blur]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: { ...theme.backgroundImage!, blur: value },
-                                })
-                              }
-                              min={0}
-                              max={20}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <div className="space-y-2">
-                                                      <Label>Overlay Color (HSL)</Label>
-                                                     {" "}
-                            <Input
-                              value={theme.backgroundImage.overlayColor}
-                              onChange={(e) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: { ...theme.backgroundImage!, overlayColor: e.target.value },
-                                })
-                              }
-                              placeholder="0 0% 0%"
-                              className="font-mono text-sm"
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Overlay Opacity</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">
-                                {theme.backgroundImage.overlayOpacity}%
-                              </span>
-                                                       {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.overlayOpacity]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: { ...theme.backgroundImage!, overlayOpacity: value },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                               {" "}
-                        </div>
-                                           {" "}
-                      </div>
-                                         {" "}
-                      <div className="space-y-4 pt-4 border-t">
-                                              <h4 className="font-semibold text-sm">Image Filters</h4>                 
-                                                  {" "}
-                        <div className="space-y-3">
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Grayscale</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">
-                                {theme.backgroundImage.filter.grayscale}%
-                              </span>
-                                                       {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.filter.grayscale]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: {
-                                    ...theme.backgroundImage!,
-                                    filter: { ...theme.backgroundImage!.filter, grayscale: value },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Sepia</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">
-                                {theme.backgroundImage.filter.sepia}%
-                              </span>
-                                                       {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.filter.sepia]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: {
-                                    ...theme.backgroundImage!,
-                                    filter: { ...theme.backgroundImage!.filter, sepia: value },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Brightness</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">
-                                {theme.backgroundImage.filter.brightness}%
-                              </span>
-                                                       {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.filter.brightness]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: {
-                                    ...theme.backgroundImage!,
-                                    filter: { ...theme.backgroundImage!.filter, brightness: value },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={200}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Contrast</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">
-                                {theme.backgroundImage.filter.contrast}%
-                              </span>
-                                                       {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.filter.contrast]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: {
-                                    ...theme.backgroundImage!,
-                                    filter: { ...theme.backgroundImage!.filter, contrast: value },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={200}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                                 {" "}
-                          <div className="space-y-2">
-                                                     {" "}
-                            <div className="flex justify-between">
-                                                          <Label>Saturation</Label>                           {" "}
-                              <span className="text-sm text-muted-foreground">
-                                {theme.backgroundImage.filter.saturate}%
-                              </span>
-                                                       {" "}
-                            </div>
-                                                     {" "}
-                            <Slider
-                              value={[theme.backgroundImage.filter.saturate]}
-                              onValueChange={([value]) =>
-                                setTheme({
-                                  ...theme,
-                                  backgroundImage: {
-                                    ...theme.backgroundImage!,
-                                    filter: { ...theme.backgroundImage!.filter, saturate: value },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={200}
-                              step={1}
-                            />
-                                                   {" "}
-                          </div>
-                                               {" "}
-                        </div>
-                                           {" "}
-                      </div>
-                                       {" "}
-                    </>
-                  )}
-                               {" "}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <ColorHarmonyGenerator baseColor={theme.colors.primary} onApplyHarmony={handleApplyHarmony} />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Manual Auto-Optimize Button */}
+              <div className="space-y-2">
+                <Button variant="outline" onClick={handleAutoOptimize} className="w-full">
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Auto-Optimize Text Contrast
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Adjusts text/foreground colors only to ensure readability. Base colors remain unchanged.
+                </p>
+              </div>
+
+              {/* Color Pickers */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Colors (HSL format)</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Use the color pickers below to customize each color with sliders, eye dropper, and saved palettes
+                  </p>
                 </div>
-                           {" "}
-              </TabsContent>
-                       {" "}
-            </Tabs>
-                   {" "}
-          </div>
-        )}
-               {" "}
-        <SheetFooter className="pt-4 border-t">
-                   {" "}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {colorFields.map(({ key, label }) => (
+                    <ColorPicker
+                      key={key}
+                      label={label}
+                      value={theme.colors[key]}
+                      onChange={(value) => handleColorChange(key, value)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="background" className="space-y-6 mt-4">
+              <div className="space-y-4">
+                {/* ... Background controls (Same as before) ... */}
+                <div className="space-y-2">
+                  <Label>Background Image</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const url = event.target?.result as string;
+                            setTheme({
+                              ...theme,
+                              backgroundImage: { ...theme.backgroundImage!, url },
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                  </div>
+                  <Input
+                    value={theme.backgroundImage?.url || ""}
+                    onChange={(e) =>
+                      setTheme({
+                        ...theme,
+                        backgroundImage: { ...theme.backgroundImage!, url: e.target.value },
+                      })
+                    }
+                    placeholder="Or paste image URL..."
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Upload from device or use URL from Unsplash, Pexels, etc.
+                  </p>
+                </div>
+
+                {theme.backgroundImage?.url && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Display Mode</Label>
+                        <Select
+                          value={theme.backgroundImage.size}
+                          onValueChange={(value: any) =>
+                            setTheme({
+                              ...theme,
+                              backgroundImage: { ...theme.backgroundImage!, size: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cover">Cover (fill)</SelectItem>
+                            <SelectItem value="contain">Contain (fit)</SelectItem>
+                            <SelectItem value="auto">Auto (original)</SelectItem>
+                            <SelectItem value="stretch">Stretch</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Position</Label>
+                        <Select
+                          value={theme.backgroundImage.position}
+                          onValueChange={(value: any) =>
+                            setTheme({
+                              ...theme,
+                              backgroundImage: { ...theme.backgroundImage!, position: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="center">Center</SelectItem>
+                            <SelectItem value="top">Top</SelectItem>
+                            <SelectItem value="bottom">Bottom</SelectItem>
+                            <SelectItem value="left">Left</SelectItem>
+                            <SelectItem value="right">Right</SelectItem>
+                            <SelectItem value="top-left">Top Left</SelectItem>
+                            <SelectItem value="top-right">Top Right</SelectItem>
+                            <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                            <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Repeat</Label>
+                        <Select
+                          value={theme.backgroundImage.repeat}
+                          onValueChange={(value: any) =>
+                            setTheme({
+                              ...theme,
+                              backgroundImage: { ...theme.backgroundImage!, repeat: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="no-repeat">No Repeat</SelectItem>
+                            <SelectItem value="repeat">Repeat (tile)</SelectItem>
+                            <SelectItem value="repeat-x">Repeat X</SelectItem>
+                            <SelectItem value="repeat-y">Repeat Y</SelectItem>
+                            <SelectItem value="space">Space</SelectItem>
+                            <SelectItem value="round">Round</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Attachment</Label>
+                        <Select
+                          value={theme.backgroundImage.attachment}
+                          onValueChange={(value: any) =>
+                            setTheme({
+                              ...theme,
+                              backgroundImage: { ...theme.backgroundImage!, attachment: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="scroll">Scroll</SelectItem>
+                            <SelectItem value="fixed">Fixed (parallax)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t">
+                      <h4 className="font-semibold text-sm">Effects & Overlays</h4>
+
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Image Opacity</Label>
+                            <span className="text-sm text-muted-foreground">{theme.backgroundImage.opacity}%</span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.opacity]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: { ...theme.backgroundImage!, opacity: value },
+                              })
+                            }
+                            min={0}
+                            max={100}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Blur Effect</Label>
+                            <span className="text-sm text-muted-foreground">{theme.backgroundImage.blur}px</span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.blur]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: { ...theme.backgroundImage!, blur: value },
+                              })
+                            }
+                            min={0}
+                            max={20}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Overlay Color (HSL)</Label>
+                          <Input
+                            value={theme.backgroundImage.overlayColor}
+                            onChange={(e) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: { ...theme.backgroundImage!, overlayColor: e.target.value },
+                              })
+                            }
+                            placeholder="0 0% 0%"
+                            className="font-mono text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Overlay Opacity</Label>
+                            <span className="text-sm text-muted-foreground">
+                              {theme.backgroundImage.overlayOpacity}%
+                            </span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.overlayOpacity]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: { ...theme.backgroundImage!, overlayOpacity: value },
+                              })
+                            }
+                            min={0}
+                            max={100}
+                            step={1}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t">
+                      <h4 className="font-semibold text-sm">Image Filters</h4>
+
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Grayscale</Label>
+                            <span className="text-sm text-muted-foreground">
+                              {theme.backgroundImage.filter.grayscale}%
+                            </span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.filter.grayscale]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: {
+                                  ...theme.backgroundImage!,
+                                  filter: { ...theme.backgroundImage!.filter, grayscale: value },
+                                },
+                              })
+                            }
+                            min={0}
+                            max={100}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Sepia</Label>
+                            <span className="text-sm text-muted-foreground">{theme.backgroundImage.filter.sepia}%</span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.filter.sepia]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: {
+                                  ...theme.backgroundImage!,
+                                  filter: { ...theme.backgroundImage!.filter, sepia: value },
+                                },
+                              })
+                            }
+                            min={0}
+                            max={100}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Brightness</Label>
+                            <span className="text-sm text-muted-foreground">
+                              {theme.backgroundImage.filter.brightness}%
+                            </span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.filter.brightness]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: {
+                                  ...theme.backgroundImage!,
+                                  filter: { ...theme.backgroundImage!.filter, brightness: value },
+                                },
+                              })
+                            }
+                            min={0}
+                            max={200}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Contrast</Label>
+                            <span className="text-sm text-muted-foreground">
+                              {theme.backgroundImage.filter.contrast}%
+                            </span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.filter.contrast]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: {
+                                  ...theme.backgroundImage!,
+                                  filter: { ...theme.backgroundImage!.filter, contrast: value },
+                                },
+                              })
+                            }
+                            min={0}
+                            max={200}
+                            step={1}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>Saturation</Label>
+                            <span className="text-sm text-muted-foreground">
+                              {theme.backgroundImage.filter.saturate}%
+                            </span>
+                          </div>
+                          <Slider
+                            value={[theme.backgroundImage.filter.saturate]}
+                            onValueChange={([value]) =>
+                              setTheme({
+                                ...theme,
+                                backgroundImage: {
+                                  ...theme.backgroundImage!,
+                                  filter: { ...theme.backgroundImage!.filter, saturate: value },
+                                },
+                              })
+                            }
+                            min={0}
+                            max={200}
+                            step={1}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <SheetFooter className="pt-4 border-t mt-6">
           <Button onClick={handleSave} className="flex-1">
-                        Save Theme          {" "}
+            Save Theme
           </Button>
-                   {" "}
           <Button onClick={handleClose} variant="outline" className="flex-1">
-                        Cancel          {" "}
+            Cancel
           </Button>
-                 {" "}
         </SheetFooter>
-             {" "}
       </SheetContent>
-         {" "}
     </Sheet>
   );
 }
