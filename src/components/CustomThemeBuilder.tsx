@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,20 +16,8 @@ import { autoOptimizeThemeColors, extractColorsFromImage } from "@/lib/colorUtil
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-// Import the Bouncer!
+// Import the Bouncer logic
 import { useDatabaseWrite } from "@/hooks/useDatabaseWrite";
-
-// --- DEBOUNCE UTILITY (Stops database flooding) ---
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-  return debouncedValue;
-}
 
 interface CustomThemeBuilderProps {
   open: boolean;
@@ -254,9 +242,6 @@ export function CustomThemeBuilder({
   const [themeHistory, setThemeHistory] = useState<CustomTheme[]>([existingTheme || defaultTheme]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // REMOVED BLOCKING LOADING STATE
-  // const [isLoadingTheme, setIsLoadingTheme] = useState(false);
-
   const paletteImageRef = useRef<HTMLInputElement>(null);
 
   // Initialize the "Bouncer"
@@ -296,7 +281,7 @@ export function CustomThemeBuilder({
     loadThemeFromDatabase();
   }, [open, user, existingTheme]);
 
-  // Load saved palettes (Local Storage is fast, keep this)
+  // Load saved palettes from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("saved_custom_palettes");
     if (stored) {
@@ -485,7 +470,12 @@ export function CustomThemeBuilder({
   };
 
   const handleLoadPalette = (palette: SavedPalette) => {
-    const newTheme = { ...theme, colors: palette.colors };
+    const newTheme = {
+      ...theme,
+      // BUG FIX: Update the name to match the loaded palette
+      name: palette.name,
+      colors: palette.colors,
+    };
     updateThemeWithHistory(newTheme);
     toast.success(`Palette "${palette.name}" loaded`);
   };
@@ -500,6 +490,7 @@ export function CustomThemeBuilder({
   const handleSave = async () => {
     // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
     const themeName = theme.name || "Untitled Theme";
+    // Generate ID based on name to ensure uniqueness/overwriting logic works
     const themeId = theme.name.toLowerCase().replace(/\s+/g, "-") || Date.now().toString();
 
     const savedTheme: SavedPalette = {
@@ -708,43 +699,28 @@ export function CustomThemeBuilder({
                 )}
               </div>
 
-              {/* Color Harmony Generator */}
-              <Collapsible open={showHarmonyGenerator} onOpenChange={setShowHarmonyGenerator}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between">
-                    <span className="flex items-center gap-2">
-                      <Palette className="w-4 h-4" />
-                      Color Harmony Generator
-                    </span>
-                    <ChevronDown
-                      className={`w-4 h-4 transition-transform ${showHarmonyGenerator ? "rotate-180" : ""}`}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-4">
-                  <ColorHarmonyGenerator baseColor={theme.colors.primary} onApplyHarmony={handleApplyHarmony} />
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* Manual Auto-Optimize Button */}
-              <div className="space-y-2">
+              {/* Color Pickers */}
+              <div className="space-y-4">
+                <Collapsible open={showHarmonyGenerator} onOpenChange={setShowHarmonyGenerator}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="flex items-center gap-2">
+                        <Palette className="w-4 h-4" />
+                        Color Harmony Generator
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${showHarmonyGenerator ? "rotate-180" : ""}`}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <ColorHarmonyGenerator baseColor={theme.colors.primary} onApplyHarmony={handleApplyHarmony} />
+                  </CollapsibleContent>
+                </Collapsible>
                 <Button variant="outline" onClick={handleAutoOptimize} className="w-full">
                   <Wand2 className="w-4 h-4 mr-2" />
                   Auto-Optimize Text Contrast
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Adjusts text/foreground colors only to ensure readability. Base colors remain unchanged.
-                </p>
-              </div>
-
-              {/* Color Pickers */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Colors (HSL format)</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Use the color pickers below to customize each color with sliders, eye dropper, and saved palettes
-                  </p>
-                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {colorFields.map(({ key, label }) => (
                     <ColorPicker
@@ -760,7 +736,7 @@ export function CustomThemeBuilder({
 
             <TabsContent value="background" className="space-y-6 mt-4">
               <div className="space-y-4">
-                {/* ... Background controls (Same as before) ... */}
+                {/* ... Background controls ... */}
                 <div className="space-y-2">
                   <Label>Background Image</Label>
                   <div className="flex gap-2">
