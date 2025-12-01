@@ -12,6 +12,8 @@ import {
 import type { Theme, CustomTheme } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+// Import the Bouncer logic
+import { useDatabaseWrite } from "@/hooks/useDatabaseWrite";
 
 // Preset themes configuration
 const themes: { value: Theme; label: string; colors: string }[] = [
@@ -50,6 +52,8 @@ export function ThemeSwitcher({
   onUseAsTemplate,
 }: ThemeSwitcherProps) {
   const [savedThemes, setSavedThemes] = useState<SavedPalette[]>([]);
+  // Initialize the Bouncer hook
+  const { executeWrite } = useDatabaseWrite();
 
   const loadSavedThemes = () => {
     try {
@@ -85,11 +89,11 @@ export function ThemeSwitcher({
 
   // The logic to APPLY a theme directly from the list
   const handleApplySavedTheme = async (savedTheme: SavedPalette) => {
-    // 1. Switch UI immediately
+    // 1. Switch UI immediately (Optimistic)
     onThemeChange("custom");
     toast.info(`Applying ${savedTheme.name}...`);
 
-    // 2. Update Database in background
+    // 2. Update Database using the Bouncer (Safe Write)
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -113,23 +117,24 @@ export function ThemeSwitcher({
       },
     };
 
-    try {
-      const { data } = await supabase.from("profiles").select("preferences").eq("id", user.id).single();
+    executeWrite(
+      async () => {
+        const { data } = await supabase.from("profiles").select("preferences").eq("id", user.id).single();
+        const currentPreferences = (data?.preferences as any) || {};
 
-      const currentPreferences = (data?.preferences as any) || {};
-
-      await supabase
-        .from("profiles")
-        .update({
-          preferences: { ...currentPreferences, customTheme: fullTheme },
-        })
-        .eq("id", user.id);
-
-      toast.success(`${savedTheme.name} active!`);
-    } catch (error) {
-      console.error("Failed to sync applied theme", error);
-      toast.error("Could not sync theme to cloud");
-    }
+        await supabase
+          .from("profiles")
+          .update({
+            preferences: { ...currentPreferences, customTheme: fullTheme },
+          })
+          .eq("id", user.id);
+      },
+      () => toast.success(`${savedTheme.name} active!`),
+      (error) => {
+        console.error("Failed to sync applied theme", error);
+        // Bouncer handles the generic offline toast
+      },
+    );
   };
 
   return (
