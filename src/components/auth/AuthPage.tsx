@@ -15,13 +15,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 
 export function AuthPage() {
-  // Load saved credentials on mount
+  // Load saved email on mount (password is never stored for security)
   const savedEmail = localStorage.getItem('neurulae-saved-email') || '';
-  const savedPassword = localStorage.getItem('neurulae-saved-password') || '';
   const savedRememberMe = localStorage.getItem('neurulae-remember-me') === 'true';
 
   const [email, setEmail] = useState(savedEmail);
-  const [password, setPassword] = useState(savedPassword);
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -63,16 +62,12 @@ export function AuthPage() {
           variant: 'destructive'
         });
       } else {
-        // Handle "Remember me" functionality
+        // Handle "Remember me" functionality (only email, never password)
         if (rememberMe) {
-          // Save credentials to localStorage
           localStorage.setItem('neurulae-saved-email', email);
-          localStorage.setItem('neurulae-saved-password', password);
           localStorage.setItem('neurulae-remember-me', 'true');
         } else {
-          // Clear saved credentials
           localStorage.removeItem('neurulae-saved-email');
-          localStorage.removeItem('neurulae-saved-password');
           localStorage.setItem('neurulae-remember-me', 'false');
           
           // Move session from localStorage to sessionStorage for session-only persistence
