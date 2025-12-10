@@ -525,7 +525,33 @@ export function useAIChat({
           .eq('id', convId);
       }
 
-      // Advisory-only mode: ignore any actions returned; do not automate.
+      // Process any actions from the streamed response
+      // Actions are extracted from JSON blocks in the AI's response
+      const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
+      let match;
+      const extractedActions: any[] = [];
+
+      while ((match = jsonBlockRegex.exec(fullContent)) !== null) {
+        try {
+          const parsed = JSON.parse(match[1]);
+          if (parsed.action && parsed.data) {
+            extractedActions.push(parsed);
+          } else if (Array.isArray(parsed)) {
+            parsed.forEach((item: any) => {
+              if (item.action && item.data) {
+                extractedActions.push(item);
+              }
+            });
+          }
+        } catch (e) {
+          console.debug('Failed to parse JSON block in AI response:', e);
+        }
+      }
+
+      // Execute extracted actions
+      if (extractedActions.length > 0) {
+        handleAIActions(extractedActions);
+      }
     } catch (error) {
       console.error('Error in AI chat:', error);
       const msg = error instanceof Error ? error.message : 'Failed to send message';
