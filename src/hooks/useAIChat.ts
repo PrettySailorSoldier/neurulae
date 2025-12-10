@@ -378,16 +378,15 @@ export function useAIChat({
         throw new Error('Please sign in to use the AI assistant.');
       }
 
-      // Use direct fetch for streaming support
-      const functionsUrl = import.meta.env.VITE_SUPABASE_URL?.replace('.supabase.co', '.supabase.co/functions/v1') ||
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      // Extract the Supabase URL from the client's internal properties
+      const supabaseUrl = (supabase as any).supabaseUrl || '';
+      const functionsUrl = supabaseUrl.replace('.supabase.co', '.supabase.co/functions/v1');
 
       const response = await fetch(`${functionsUrl}/ai-assistant`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
         },
         body: JSON.stringify({
           messages: messagesForAI,
