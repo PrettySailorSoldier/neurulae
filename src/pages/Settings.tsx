@@ -6,7 +6,7 @@ import { usePremium } from "@/contexts/PremiumContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain, MessageSquarePlus } from "lucide-react";
+import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain, MessageSquarePlus, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -24,7 +24,7 @@ export default function Settings() {
   const { plan, isPremium, isAdmin, loading } = usePremium();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  
+
   const [profileLoading, setProfileLoading] = useState(false);
   const [aiStyle, setAiStyle] = useState<'direct' | 'balanced' | 'conversational'>('balanced');
   const [livingSituation, setLivingSituation] = useState<'alone' | 'with_others'>('alone');
@@ -33,12 +33,12 @@ export default function Settings() {
   const [workEndTime, setWorkEndTime] = useState('17:00');
   const [wakeTime, setWakeTime] = useState('07:00');
   const [sleepTime, setSleepTime] = useState('23:00');
-  
+
   // AI Preferences
   const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
   const [aiFirstMode, setAiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
   const [showQuickActions, setShowQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
-  
+
   // Feedback Dialog
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [showFeedbackHistory, setShowFeedbackHistory] = useState(false);
@@ -51,7 +51,7 @@ export default function Settings() {
 
   const loadProfile = async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -60,16 +60,16 @@ export default function Settings() {
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
-      
+
       if (data) {
         setAiStyle(data.ai_coaching_style as typeof aiStyle);
         setLivingSituation(data.living_situation as typeof livingSituation);
         setWakeTime(data.default_wake_time || '07:00');
         setSleepTime(data.default_sleep_time || '23:00');
-        
+
         if (data.work_schedule && Array.isArray(data.work_schedule) && data.work_schedule.length > 0) {
           const schedule = data.work_schedule as Array<{ dayOfWeek: number; startTime: string; endTime: string }>;
-          const days = schedule.map(s => 
+          const days = schedule.map(s =>
             ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][s.dayOfWeek]
           );
           setWorkDays(days);
@@ -84,7 +84,7 @@ export default function Settings() {
 
   const handleSaveProfile = async () => {
     if (!user) return;
-    
+
     setProfileLoading(true);
     try {
       const workSchedule = workDays.map(day => ({
@@ -143,7 +143,7 @@ export default function Settings() {
   };
 
   const toggleWorkDay = (day: string) => {
-    setWorkDays(prev => 
+    setWorkDays(prev =>
       prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
     );
   };
@@ -151,9 +151,9 @@ export default function Settings() {
   const handleManageSubscription = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
-      
+
       if (error) throw error;
-      
+
       if (data?.url) {
         window.open(data.url, '_blank');
       }
@@ -188,9 +188,20 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-16 max-w-2xl">
-        <div className="flex items-center gap-3 mb-8">
-          <SettingsIcon className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">Account Settings</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <SettingsIcon className="h-8 w-8" />
+            <h1 className="text-3xl font-bold">Account Settings</h1>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/app')}
+            className="h-10 w-10"
+            title="Close settings"
+          >
+            <X className="h-6 w-6" />
+          </Button>
         </div>
 
         {/* Account Info */}
@@ -204,7 +215,7 @@ export default function Settings() {
               <label className="text-sm text-muted-foreground">Email</label>
               <p className="text-lg">{user?.email}</p>
             </div>
-            
+
             <div>
               <label className="text-sm text-muted-foreground">Current Plan</label>
               <div className="flex items-center gap-2 mt-1">
@@ -297,7 +308,7 @@ export default function Settings() {
                   </Button>
                 ))}
               </div>
-              
+
               {workDays.length > 0 && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -368,9 +379,9 @@ export default function Settings() {
               </div>
               <Switch id="show-ai" checked={showAI} onCheckedChange={setShowAI} />
             </div>
-            
+
             <Separator />
-            
+
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="ai-first-mode">AI-First Mode</Label>
@@ -378,9 +389,9 @@ export default function Settings() {
               </div>
               <Switch id="ai-first-mode" checked={aiFirstMode} onCheckedChange={setAiFirstMode} />
             </div>
-            
+
             <Separator />
-            
+
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="quick-actions">Show Quick Actions</Label>
@@ -404,17 +415,17 @@ export default function Settings() {
             <CardDescription>Share your thoughts, ideas, or report issues</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full justify-start"
               onClick={() => setFeedbackDialogOpen(true)}
             >
               <MessageSquarePlus className="h-4 w-4 mr-2" />
               Submit Feedback
             </Button>
-            
+
             <Separator />
-            
+
             <div>
               <Button
                 variant="ghost"
@@ -424,7 +435,7 @@ export default function Settings() {
                 <span>My Feedback History</span>
                 <Badge variant="secondary">View</Badge>
               </Button>
-              
+
               {showFeedbackHistory && (
                 <div className="mt-4">
                   <FeedbackHistory />
@@ -457,9 +468,9 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground">
                     Manage your subscription, update payment method, or view billing history.
                   </p>
-                  <Button 
-                    onClick={handleManageSubscription} 
-                    variant="outline" 
+                  <Button
+                    onClick={handleManageSubscription}
+                    variant="outline"
                     className="w-full"
                   >
                     <CreditCard className="h-4 w-4 mr-2" />
@@ -477,16 +488,16 @@ export default function Settings() {
             <CardTitle>Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full justify-start"
               onClick={() => navigate('/app')}
             >
               Back to App
             </Button>
-            
-            <Button 
-              variant="outline" 
+
+            <Button
+              variant="outline"
               className="w-full justify-start text-destructive hover:text-destructive"
               onClick={handleSignOut}
             >
@@ -496,7 +507,7 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
-      
+
       <FeedbackDialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen} />
     </div>
   );
