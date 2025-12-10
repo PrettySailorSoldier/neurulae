@@ -96,7 +96,28 @@ serve(async (req) => {
       );
     }
 
-    // Redeem the code (create redemption record)
+    // ATOMIC: Increment usage counter with optimistic locking to prevent race conditions
+    // This ensures that if two requests try to redeem the last use simultaneously,
+    // only one will succeed (the other will get 0 rows updated)
+    const { data: updatedCode, error: updateError } = await supabaseClient
+      .from("promo_codes")
+      .update({ current_uses: promoCode.current_uses + 1 })
+      .eq("id", promoCode.id)
+      .eq("current_uses", promoCode.current_uses) // Optimistic lock: only update if count hasn't changed
+      .select()
+      .single();
+
+    if (updateError || !updatedCode) {
+      logStep("Failed to increment counter (race condition or limit reached)", { error: updateError?.message });
+      return new Response(
+        JSON.stringify({ error: "This promo code has reached its usage limit or was just redeemed. Please try again." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    logStep("Usage counter incremented atomically");
+
+    // Now create redemption record (after successful atomic increment)
     const { error: redemptionError } = await supabaseClient
       .from("promo_redemptions")
       .insert({
@@ -106,17 +127,12 @@ serve(async (req) => {
 
     if (redemptionError) {
       logStep("Failed to create redemption", { error: redemptionError.message });
+      // Rollback the usage counter increment
+      await supabaseClient
+        .from("promo_codes")
+        .update({ current_uses: promoCode.current_uses })
+        .eq("id", promoCode.id);
       throw new Error("Failed to redeem promo code");
-    }
-
-    // Increment usage counter
-    const { error: updateError } = await supabaseClient
-      .from("promo_codes")
-      .update({ current_uses: promoCode.current_uses + 1 })
-      .eq("id", promoCode.id);
-
-    if (updateError) {
-      logStep("Failed to update usage count", { error: updateError.message });
     }
 
     // Update user role to match promo code plan type
