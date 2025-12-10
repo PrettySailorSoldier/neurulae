@@ -618,6 +618,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_promo_code: {
+        Args: { code_input: string }
+        Returns: {
+          already_redeemed: boolean
+          plan_type: Database["public"]["Enums"]["app_role"]
+          valid: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "free" | "premium" | "lifetime" | "admin" | "creator"
