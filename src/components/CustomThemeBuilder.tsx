@@ -464,6 +464,7 @@ export function CustomThemeBuilder({
     const updated = [...savedPalettes, newPalette];
     setSavedPalettes(updated);
     localStorage.setItem("saved_custom_palettes", JSON.stringify(updated));
+    window.dispatchEvent(new Event("theme-saved"));
     toast.success(`Palette "${paletteName}" saved!`);
   };
 
@@ -481,13 +482,18 @@ export function CustomThemeBuilder({
     const updated = savedPalettes.filter((p) => p.id !== paletteId);
     setSavedPalettes(updated);
     localStorage.setItem("saved_custom_palettes", JSON.stringify(updated));
+    window.dispatchEvent(new Event("theme-saved"));
     toast.success("Palette deleted");
   };
 
   const handleSave = async () => {
     // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
     const themeName = theme.name || "Untitled Theme";
-    const themeId = theme.name.toLowerCase().replace(/\s+/g, "-") || Date.now().toString();
+
+    // Generate a unique ID for NEW themes using timestamp
+    // Only reuse an existing ID if we're explicitly editing a saved palette
+    const existingPalette = savedPalettes.find((p) => p.name === themeName);
+    const themeId = existingPalette?.id || Date.now().toString();
 
     const savedTheme: SavedPalette = {
       id: themeId,
@@ -495,14 +501,25 @@ export function CustomThemeBuilder({
       colors: { ...theme.colors },
     };
 
+    // If a palette with this ID already exists, update it; otherwise, append
     const existingIndex = savedPalettes.findIndex((p) => p.id === themeId);
-    let updatedPalettes = existingIndex !== -1 ? [...savedPalettes] : [...savedPalettes, savedTheme];
+    let updatedPalettes: SavedPalette[];
 
-    if (existingIndex !== -1) updatedPalettes[existingIndex] = savedTheme;
+    if (existingIndex !== -1) {
+      // Update existing palette
+      updatedPalettes = [...savedPalettes];
+      updatedPalettes[existingIndex] = savedTheme;
+    } else {
+      // Append new palette
+      updatedPalettes = [...savedPalettes, savedTheme];
+    }
 
     // 1. Save to Disk (Browser)
     localStorage.setItem("saved_custom_palettes", JSON.stringify(updatedPalettes));
     setSavedPalettes(updatedPalettes);
+
+    // Notify ThemeSwitcher component to reload saved themes
+    window.dispatchEvent(new Event("theme-saved"));
 
     // 2. Notify User & Close UI (Don't wait for cloud)
     onSave(theme);
