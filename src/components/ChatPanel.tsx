@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo } from 'react';
-import { X, Minus, Move, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History, Image as ImageIcon, X as XIcon, FileText } from 'lucide-react';
+import { X, Minus, Move, Send, Loader2, Trash2, Pin, PinOff, Maximize2, Download, History, Image as ImageIcon, X as XIcon, FileText, ChevronUp, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -118,7 +118,7 @@ const ChatInputArea = memo(({ onSend, isLoading }: { onSend: (text: string, imag
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,application/pdf" 
+          accept="image/*,application/pdf"
           multiple
           onChange={handleFileSelect}
           className="hidden"
@@ -135,7 +135,8 @@ const ChatInputArea = memo(({ onSend, isLoading }: { onSend: (text: string, imag
         </Button>
         <Textarea
           placeholder="Type a message..."
-          className="resize-none min-h-[44px]"
+          className="resize-none min-h-[44px] text-foreground"
+          style={{ color: 'hsl(var(--foreground))', caretColor: 'hsl(var(--foreground))' }}
           rows={1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -143,8 +144,8 @@ const ChatInputArea = memo(({ onSend, isLoading }: { onSend: (text: string, imag
           onPaste={handlePaste}
           disabled={isLoading}
         />
-        <Button 
-          className="self-end shrink-0" 
+        <Button
+          className="self-end shrink-0"
           onClick={handleSendClick}
           disabled={isLoading || (!input.trim() && selectedFiles.length === 0)}
         >
@@ -160,7 +161,7 @@ ChatInputArea.displayName = 'ChatInputArea';
 
 // --- MAIN COMPONENT ---
 const ChatPanelComponent = ({
-  isOpen, 
+  isOpen,
   onClose,
   tasks,
   timeBlocks,
@@ -188,7 +189,7 @@ const ChatPanelComponent = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showHistory, setShowHistory] = useState(false);
-  
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -319,7 +320,7 @@ const ChatPanelComponent = ({
     messages.forEach((msg, idx) => {
       const role = msg.role === 'assistant' ? 'AI' : 'You';
       const lines = doc.splitTextToSize(`${role}: ${msg.content}`, maxWidth);
-      
+
       if (y + (lines.length * 7) > pageHeight - margin) {
         doc.addPage();
         y = margin;
@@ -352,14 +353,18 @@ const ChatPanelComponent = ({
   };
 
   return (
-    <Card 
+    <Card
       className={cn(
         "fixed flex flex-col shadow-elevated z-50 transition-all duration-300",
-        isPinned 
-          ? "bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl rounded-b-none" 
-          : "w-[400px]",
-        isMinimized ? "h-[60px]" : isPinned ? getPinnedHeight() : "h-[600px]",
-        isDragging && "cursor-move"
+        isPinned
+          ? "bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl rounded-b-none border-t"
+          : "w-[400px] rounded-lg",
+        isMinimized
+          ? "h-[52px]"
+          : isPinned
+            ? getPinnedHeight()
+            : "h-[600px]",
+        isDragging && "cursor-move opacity-90"
       )}
       style={isPinned ? {} : { left: `${position.x}px`, top: `${position.y}px` }}
       onMouseDown={handleMouseDown}
@@ -388,7 +393,7 @@ const ChatPanelComponent = ({
               <DialogHeader>
                 <DialogTitle>Conversation History</DialogTitle>
               </DialogHeader>
-              <ConversationHistory 
+              <ConversationHistory
                 onSelectConversation={handleSelectConversation}
                 currentConversationId={conversationId}
               />
@@ -441,9 +446,9 @@ const ChatPanelComponent = ({
             size="icon"
             className="h-8 w-8"
             onClick={() => setIsMinimized(!isMinimized)}
-            title={isMinimized ? "Maximize" : "Minimize"}
+            title={isMinimized ? "Expand chat" : "Collapse chat"}
           >
-            <Minus className="h-4 w-4" />
+            {isMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
           <Button
             variant="ghost"
@@ -463,59 +468,59 @@ const ChatPanelComponent = ({
           <div className="flex-1 min-h-0 overflow-hidden">
             <ScrollArea ref={scrollAreaRef} className="h-full p-4">
               <div className="space-y-4 pr-4">
-              {messages.length === 0 && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
-                    AI
+                {messages.length === 0 && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
+                      AI
+                    </div>
+                    <div className="flex-1 bg-muted rounded-lg p-3">
+                      <p className="text-sm">
+                        Hello! I'm your AI productivity coach. What would you like to work on?
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 bg-muted rounded-lg p-3">
-                    <p className="text-sm">
-                      Hello! I'm your AI productivity coach. What would you like to work on?
-                    </p>
+                )}
+                {messages.map((message, idx) => (
+                  <div key={idx} className={cn("flex items-start gap-3", message.role === 'user' && "flex-row-reverse")}>
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0",
+                      message.role === 'assistant' ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
+                    )}>
+                      {message.role === 'assistant' ? 'AI' : 'You'}
+                    </div>
+                    <div className={cn(
+                      "flex-1 rounded-lg p-3 max-w-none",
+                      message.role === 'assistant'
+                        ? "bg-muted prose prose-sm break-words w-full prose-p:max-w-none prose-p:whitespace-pre-wrap"
+                        : "bg-accent"
+                    )}>
+                      {message.role === 'assistant' ? (
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      ) : (
+                        <div className="space-y-2">
+                          {message.images && message.images.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {message.images.map((img, imgIdx) => (
+                                <img key={imgIdx} src={img} alt="Uploaded" className="max-w-[200px] max-h-[200px] rounded-lg object-cover border-2 border-border" />
+                              ))}
+                            </div>
+                          )}
+                          {message.content && (
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-              {messages.map((message, idx) => (
-                <div key={idx} className={cn("flex items-start gap-3", message.role === 'user' && "flex-row-reverse")}>
-                  <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0",
-                    message.role === 'assistant' ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
-                  )}>
-                    {message.role === 'assistant' ? 'AI' : 'You'}
+                ))}
+                {isLoading && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">AI</div>
+                    <div className="flex-1 bg-muted rounded-lg p-3">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
                   </div>
-                  <div className={cn(
-                    "flex-1 rounded-lg p-3 max-w-none",
-                    message.role === 'assistant' 
-                      ? "bg-muted prose prose-sm break-words w-full prose-p:max-w-none prose-p:whitespace-pre-wrap"
-                      : "bg-accent"
-                  )}>
-                    {message.role === 'assistant' ? (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    ) : (
-                      <div className="space-y-2">
-                        {message.images && message.images.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {message.images.map((img, imgIdx) => (
-                              <img key={imgIdx} src={img} alt="Uploaded" className="max-w-[200px] max-h-[200px] rounded-lg object-cover border-2 border-border" />
-                            ))}
-                          </div>
-                        )}
-                        {message.content && (
-                          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">AI</div>
-                  <div className="flex-1 bg-muted rounded-lg p-3">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                </div>
-              )}
+                )}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>

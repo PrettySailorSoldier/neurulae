@@ -53,27 +53,35 @@ serve(async (req: Request) => {
       });
     }
 
-    // Rate limiting: 60 requests per minute for chat
-    const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
-    const { count: rateLimitCount } = await supabase
-      .from('rate_limits')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('action', 'ai_chat')
-      .gte('created_at', oneMinuteAgo);
+    // Rate limiting: 60 requests per minute for chat (non-blocking)
+    try {
+      const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+      const { count: rateLimitCount, error: rateLimitError } = await supabase
+        .from('rate_limits')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('action', 'ai_chat')
+        .gte('created_at', oneMinuteAgo);
 
-    if ((rateLimitCount || 0) >= 60) {
-      console.log('Rate limit exceeded for user:', user.id);
-      return new Response(JSON.stringify({ 
-        error: 'Rate limit exceeded. Please wait before sending more messages (max 60 per minute).'
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      // Only enforce if table exists and we got a count
+      if (!rateLimitError && (rateLimitCount || 0) >= 60) {
+        console.log('Rate limit exceeded for user:', user.id);
+        return new Response(JSON.stringify({
+          error: 'Rate limit exceeded. Please wait before sending more messages (max 60 per minute).'
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Record this request (non-blocking, ignore errors)
+      if (!rateLimitError) {
+        await supabase.from('rate_limits').insert({ user_id: user.id, action: 'ai_chat' }).catch(() => { });
+      }
+    } catch (rateLimitErr) {
+      // Rate limiting failed - continue without it
+      console.log('Rate limiting skipped:', rateLimitErr);
     }
-
-    // Record this request for rate limiting
-    await supabase.from('rate_limits').insert({ user_id: user.id, action: 'ai_chat' });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
