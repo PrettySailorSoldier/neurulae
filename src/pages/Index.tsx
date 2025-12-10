@@ -12,6 +12,8 @@ import { TaskSection } from '@/components/dashboard/TaskSection';
 import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSyncedStorage } from '@/hooks/useSyncedStorage';
+import { syncService } from '@/services/syncService';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme } from '@/types';
 import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
@@ -50,47 +52,47 @@ const Index = () => {
   const [mobileTab, setMobileTab] = useState<MobileTab>('timeline');
   const [theme, setTheme] = useLocalStorage<Theme>('neurulae-theme', 'orchid');
   const { preferences, savePreferences, loading: prefsLoading } = useUserPreferences();
-  const [tasks, setTasks] = useLocalStorage<Task[]>('neurulae-tasks', []);
-  const [priorities, setPriorities] = useLocalStorage<Task[]>('neurulae-priorities', []);
-  const [projects, setProjects] = useLocalStorage<Project[]>('neurulae-projects', []);
-  const [timeBlocks, setTimeBlocks] = useLocalStorage<TimeBlock[]>('neurulae-timeblocks', []);
-  const [scheduledTasks, setScheduledTasks] = useLocalStorage<ScheduledTask[]>('neurulae-scheduled-tasks', []);
-  const [playbooks, setPlaybooks] = useLocalStorage<Playbook[]>('neurulae-playbooks', []);
+  const [tasks, setTasks] = useSyncedStorage<Task[]>('neurulae-tasks', []);
+  const [priorities, setPriorities] = useSyncedStorage<Task[]>('neurulae-priorities', []);
+  const [projects, setProjects] = useSyncedStorage<Project[]>('neurulae-projects', []);
+  const [timeBlocks, setTimeBlocks] = useSyncedStorage<TimeBlock[]>('neurulae-timeblocks', []);
+  const [scheduledTasks, setScheduledTasks] = useSyncedStorage<ScheduledTask[]>('neurulae-scheduled-tasks', []);
+  const [playbooks, setPlaybooks] = useSyncedStorage<Playbook[]>('neurulae-playbooks', []);
   const [reminderWidgets, setReminderWidgets] = useLocalStorage<ReminderWidget[]>('neurulae-widgets', []);
   const [editingWidget, setEditingWidget] = useState<ReminderWidget | undefined>();
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false);
-  
+
   const [energyWidgets, setEnergyWidgets] = useLocalStorage<EnergyTaskWidget[]>('neurulae-energy-widgets', []);
   const [editingEnergyWidget, setEditingEnergyWidget] = useState<EnergyTaskWidget | undefined>();
   const [energyWidgetEditorOpen, setEnergyWidgetEditorOpen] = useState(false);
-  
+
   const [messengerWidgets, setMessengerWidgets] = useLocalStorage<FutureSelfMessengerWidget[]>('neurulae-messenger-widgets', []);
   const [editingMessengerWidget, setEditingMessengerWidget] = useState<FutureSelfMessengerWidget | undefined>();
   const [messengerWidgetEditorOpen, setMessengerWidgetEditorOpen] = useState(false);
   const [messengerEditorMode, setMessengerEditorMode] = useState<'settings' | 'message'>('settings');
-  
+
   const [moodGardenWidgets, setMoodGardenWidgets] = useLocalStorage<MoodGardenWidget[]>('neurulae-mood-garden-widgets', []);
   const [editingMoodGardenWidget, setEditingMoodGardenWidget] = useState<MoodGardenWidget | undefined>();
   const [moodGardenWidgetEditorOpen, setMoodGardenWidgetEditorOpen] = useState(false);
-  
+
   const [parallelUniverseWidgets, setParallelUniverseWidgets] = useLocalStorage<ParallelUniverseWidget[]>('neurulae-parallel-universe-widgets', []);
   const [editingParallelUniverseWidget, setEditingParallelUniverseWidget] = useState<ParallelUniverseWidget | undefined>();
   const [parallelUniverseWidgetEditorOpen, setParallelUniverseWidgetEditorOpen] = useState(false);
-  
+
   const [soundSignatureWidgets, setSoundSignatureWidgets] = useLocalStorage<SoundSignatureWidget[]>('neurulae-sound-signature-widgets', []);
   const [editingSoundSignatureWidget, setEditingSoundSignatureWidget] = useState<SoundSignatureWidget | undefined>();
   const [soundSignatureWidgetEditorOpen, setSoundSignatureWidgetEditorOpen] = useState(false);
-  
+
   const [brainDumpWidgets, setBrainDumpWidgets] = useLocalStorage<BrainDumpWidget[]>('neurulae-brain-dump-widgets', []);
   const [potionInventoryWidgets, setPotionInventoryWidgets] = useLocalStorage<PotionInventoryWidget[]>('neurulae-potion-inventory-widgets', []);
   const [sunlightAnchorWidgets, setSunlightAnchorWidgets] = useLocalStorage<SunlightAnchorWidget[]>('neurulae-sunlight-anchor-widgets', []);
-  
+
   // Use database-backed preferences for custom theme with localStorage as fallback
   const [localCustomTheme, setLocalCustomTheme] = useLocalStorage<CustomTheme | null>('neurulae-custom-theme', null);
   const [customTheme, setCustomTheme] = useState<CustomTheme | null>(null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
-  
+
   // Custom Tabs
   const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neurulae-custom-tabs', []);
   const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
@@ -98,33 +100,33 @@ const Index = () => {
   const [editTabsDialogOpen, setEditTabsDialogOpen] = useState(false);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
-  
+
   // Onboarding Tutorial
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [hasSeenTutorial, setHasSeenTutorial] = useLocalStorage<boolean>('neurulae-tutorial-seen', false);
-  
+
   // Profile Setup
   const [profileSetupOpen, setProfileSetupOpen] = useState(false);
   const [hasProfile, setHasProfile] = useLocalStorage<boolean>('neurulae-has-profile', false);
-  
+
   // Calendar Scheduler
   const [schedulerOpen, setSchedulerOpen] = useState(false);
-  
+
   // Eisenhower Matrix
   const [eisenhowerOpen, setEisenhowerOpen] = useState(false);
-  
+
   // AI Assistant
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [initialAIMessage, setInitialAIMessage] = useState<string | undefined>();
   const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
-  
+
   // AI Preferences
   const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
   const [aiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
   const [showQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
-  
+
   const { toast } = useToast();
 
   // Show tutorial on first visit
@@ -134,6 +136,48 @@ const Index = () => {
       setHasSeenTutorial(true);
     }
   }, [hasSeenTutorial, setHasSeenTutorial]);
+
+  // Download cloud data when user logs in (cross-device sync)
+  useEffect(() => {
+    const loadCloudData = async () => {
+      if (!user) return;
+
+      console.log('Loading cloud data for user:', user.id);
+      const cloudData = await syncService.downloadAll();
+
+      if (Object.keys(cloudData).length > 0) {
+        console.log('Found cloud data:', Object.keys(cloudData));
+
+        // Only update if cloud has data (don't overwrite with empty)
+        if (cloudData.tasks && Array.isArray(cloudData.tasks) && cloudData.tasks.length > 0) {
+          setTasks(cloudData.tasks);
+        }
+        if (cloudData.priorities && Array.isArray(cloudData.priorities) && cloudData.priorities.length > 0) {
+          setPriorities(cloudData.priorities);
+        }
+        if (cloudData.projects && Array.isArray(cloudData.projects) && cloudData.projects.length > 0) {
+          setProjects(cloudData.projects);
+        }
+        if (cloudData.timeblocks && Array.isArray(cloudData.timeblocks) && cloudData.timeblocks.length > 0) {
+          setTimeBlocks(cloudData.timeblocks);
+        }
+        if (cloudData['scheduled-tasks'] && Array.isArray(cloudData['scheduled-tasks']) && cloudData['scheduled-tasks'].length > 0) {
+          setScheduledTasks(cloudData['scheduled-tasks']);
+        }
+        if (cloudData.playbooks && Array.isArray(cloudData.playbooks) && cloudData.playbooks.length > 0) {
+          setPlaybooks(cloudData.playbooks);
+        }
+
+        toast({
+          title: "☁️ Synced",
+          description: "Your data has been loaded from the cloud.",
+          duration: 3000,
+        });
+      }
+    };
+
+    loadCloudData();
+  }, [user]);
 
   // Load custom theme from database preferences on mount
   useEffect(() => {
@@ -163,7 +207,7 @@ const Index = () => {
 
       if (lastVisitDate !== today) {
         console.log('New day detected, refreshing schedule...');
-        
+
         // Load today's schedule entries from database
         const { data, error } = await supabase
           .from('schedule_entries')
@@ -175,20 +219,20 @@ const Index = () => {
 
         if (!error && data) {
           console.log(`Loaded ${data.length} schedule entries for today`);
-          
+
           // Show morning brief if there are activities today
           if (data.length > 0) {
             const homeworkCount = data.filter(e => e.category === 'homework').length;
             const classCount = data.filter(e => e.category === 'class').length;
             const workCount = data.filter(e => e.category === 'work').length;
-            
+
             let description = 'Your schedule for today: ';
             const parts = [];
             if (workCount > 0) parts.push(`${workCount} work shift${workCount > 1 ? 's' : ''}`);
             if (classCount > 0) parts.push(`${classCount} class${classCount > 1 ? 'es' : ''}`);
             if (homeworkCount > 0) parts.push(`${homeworkCount} homework assignment${homeworkCount > 1 ? 's' : ''}`);
             description += parts.join(', ');
-            
+
             toast({
               title: "☀️ Good morning!",
               description,
@@ -208,20 +252,20 @@ const Index = () => {
   useEffect(() => {
     const checkProfile = async () => {
       if (!user || hasProfile) return;
-      
+
       const { data } = await supabase
         .from('user_profiles')
         .select('id')
         .eq('user_id', user.id)
         .single();
-      
+
       if (!data) {
         setProfileSetupOpen(true);
       } else {
         setHasProfile(true);
       }
     };
-    
+
     checkProfile();
   }, [user, hasProfile, setHasProfile]);
 
@@ -232,20 +276,20 @@ const Index = () => {
 
     const oldPrefixes = ['neuroflow-', 'neupath-'];
     const keySuffixes = [
-      'theme', 'tasks', 'priorities', 'projects', 'timeblocks', 'scheduled-tasks', 
+      'theme', 'tasks', 'priorities', 'projects', 'timeblocks', 'scheduled-tasks',
       'playbooks', 'widgets', 'energy-widgets', 'messenger-widgets',
-      'mood-garden-widgets', 'parallel-universe-widgets', 'sound-signature-widgets', 
-      'custom-theme', 'custom-tabs', 'timer-sessions', 'active-timer', 
+      'mood-garden-widgets', 'parallel-universe-widgets', 'sound-signature-widgets',
+      'custom-theme', 'custom-tabs', 'timer-sessions', 'active-timer',
       'chime-interval', 'chime-running', 'chime-count', 'chime-countdown'
     ];
 
     let migrated = 0;
     keySuffixes.forEach(suffix => {
       const newKey = `neurulae-${suffix}`;
-      
+
       // Check if new key already has data
       if (localStorage.getItem(newKey)) return;
-      
+
       // Try to find data from old prefixes (neupath first, then neuroflow)
       for (const prefix of oldPrefixes) {
         const oldKey = `${prefix}${suffix}`;
@@ -271,7 +315,7 @@ const Index = () => {
     document.documentElement.setAttribute('data-theme', theme);
     const body = document.body;
     const root = document.documentElement;
-    
+
     // Apply custom theme if selected
     if (theme === 'custom' && customTheme) {
       Object.entries(customTheme.colors).forEach(([key, value]) => {
@@ -282,14 +326,14 @@ const Index = () => {
       // Apply background image directly to body
       if (customTheme.backgroundImage && customTheme.backgroundImage.url) {
         const bg = customTheme.backgroundImage;
-        
+
         // Apply background styles
         body.style.backgroundImage = `url(${bg.url})`;
         body.style.backgroundSize = bg.size === 'stretch' ? '100% 100%' : bg.size;
         body.style.backgroundPosition = bg.position.replace('-', ' ');
         body.style.backgroundRepeat = bg.repeat;
         body.style.backgroundAttachment = bg.attachment;
-        
+
         // Set CSS variables for overlay and background filters (applied via body::before)
         root.style.setProperty('--bg-blur', `${bg.blur}px`);
         root.style.setProperty('--bg-opacity', `${bg.opacity / 100}`);
@@ -315,7 +359,7 @@ const Index = () => {
       body.style.backgroundPosition = '';
       body.style.backgroundRepeat = '';
       body.style.backgroundAttachment = '';
-      
+
       root.style.removeProperty('--bg-blur');
       root.style.removeProperty('--bg-opacity');
       root.style.removeProperty('--overlay-color');
@@ -334,24 +378,24 @@ const Index = () => {
   const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
     const newTask: Task = typeof taskOrTitle === 'string'
       ? {
-          id: crypto.randomUUID(),
-          title: taskOrTitle,
-          completed: false,
-          recurring: 'none',
-          createdAt: new Date().toISOString(),
-          ...(estimatedMinutes && { estimatedMinutes }),
-          ...(taskType && { taskType }),
-        }
+        id: crypto.randomUUID(),
+        title: taskOrTitle,
+        completed: false,
+        recurring: 'none',
+        createdAt: new Date().toISOString(),
+        ...(estimatedMinutes && { estimatedMinutes }),
+        ...(taskType && { taskType }),
+      }
       : {
-          id: crypto.randomUUID(),
-          ...taskOrTitle,
-          createdAt: new Date().toISOString(),
-        };
+        id: crypto.randomUUID(),
+        ...taskOrTitle,
+        createdAt: new Date().toISOString(),
+      };
     setTasks(prev => [...prev, newTask]);
   };
 
   const handleToggleComplete = (id: string) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
     setPriorities(priorities.map(task =>
@@ -360,16 +404,16 @@ const Index = () => {
   };
 
   const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === updatedTask.id ? updatedTask : task
     ));
     setPriorities(priorities.map(task =>
       task.id === updatedTask.id ? updatedTask : task
     ));
   };
-  
+
   const handleUpdateTaskById = (taskId: string, updates: Partial<Task>) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === taskId ? { ...task, ...updates } : task
     ));
     setPriorities(priorities.map(task =>
@@ -438,7 +482,7 @@ const Index = () => {
   };
 
   const handleUpdateTimeBlock = (id: string, blockData: Omit<TimeBlock, 'id' | 'createdAt'>) => {
-    setTimeBlocks(timeBlocks.map(block => 
+    setTimeBlocks(timeBlocks.map(block =>
       block.id === id ? { ...block, ...blockData } : block
     ));
   };
@@ -742,9 +786,9 @@ const Index = () => {
       }
       return widget;
     }));
-    toast({ 
-      title: "Energy logged", 
-      description: `${category.charAt(0).toUpperCase() + category.slice(1)} energy: ${level}/10` 
+    toast({
+      title: "Energy logged",
+      description: `${category.charAt(0).toUpperCase() + category.slice(1)} energy: ${level}/10`
     });
   };
 
@@ -786,7 +830,7 @@ const Index = () => {
 
   const handleSaveMessage = (message: Omit<FutureSelfMessage, 'id'>) => {
     if (!editingMessengerWidget) return;
-    
+
     const newMessage: FutureSelfMessage = {
       ...message,
       id: crypto.randomUUID(),
@@ -801,10 +845,10 @@ const Index = () => {
       }
       return widget;
     }));
-    
-    toast({ 
-      title: "Message scheduled", 
-      description: "Your future self will receive this message at the right time." 
+
+    toast({
+      title: "Message scheduled",
+      description: "Your future self will receive this message at the right time."
     });
   };
 
@@ -813,7 +857,7 @@ const Index = () => {
       if (widget.id === widgetId) {
         return {
           ...widget,
-          messages: widget.messages.map(msg => 
+          messages: widget.messages.map(msg =>
             msg.id === messageId ? { ...msg, delivered: true, deliveredAt: new Date().toISOString() } : msg
           ),
         };
@@ -863,16 +907,16 @@ const Index = () => {
         // Update or create plant for this emotion
         let updatedPlants = [...widget.plants];
         const existingPlantIndex = updatedPlants.findIndex(p => p.type === emotion);
-        
+
         if (existingPlantIndex >= 0) {
           // Update existing plant
           const plant = updatedPlants[existingPlantIndex];
           const newHealth = Math.min(100, plant.health + intensity);
-          const newStage: Plant['stage'] = 
+          const newStage: Plant['stage'] =
             newHealth < 25 ? 'seed' :
-            newHealth < 50 ? 'sprout' :
-            newHealth < 75 ? 'growing' : 'blooming';
-          
+              newHealth < 50 ? 'sprout' :
+                newHealth < 75 ? 'growing' : 'blooming';
+
           updatedPlants[existingPlantIndex] = {
             ...plant,
             health: newHealth,
@@ -950,9 +994,9 @@ const Index = () => {
   };
 
   const handleGenerateOutcome = (widgetId: string, decisionId: string) => {
-    toast({ 
-      title: "AI feature coming soon", 
-      description: "AI-generated alternate outcomes will be available in a future update" 
+    toast({
+      title: "AI feature coming soon",
+      description: "AI-generated alternate outcomes will be available in a future update"
     });
   };
 
@@ -984,11 +1028,11 @@ const Index = () => {
   };
 
   const handleLogSoundSession = (
-    widgetId: string, 
-    soundType: string, 
-    duration: number, 
-    productivity: number, 
-    mood: string, 
+    widgetId: string,
+    soundType: string,
+    duration: number,
+    productivity: number,
+    mood: string,
     activity: string
   ) => {
     setSoundSignatureWidgets(soundSignatureWidgets.map(widget => {
@@ -1033,24 +1077,24 @@ const Index = () => {
     setLocalCustomTheme(newTheme); // Keep localStorage in sync
     setTheme('custom');
     setTemplateTheme(undefined);
-    
+
     // Sync to database
     if (user) {
       savePreferences({ customTheme: newTheme, theme: 'custom' });
     }
-    
-    toast({ 
-      title: "Custom theme saved", 
-      description: `${newTheme.name} has been synced across all devices` 
+
+    toast({
+      title: "Custom theme saved",
+      description: `${newTheme.name} has been synced across all devices`
     });
   };
 
   const handleDeleteCustomTheme = () => {
     setCustomTheme(null);
     setTheme('orchid');
-    toast({ 
-      title: "Custom theme deleted", 
-      description: "Switched to Orchid Velvet theme" 
+    toast({
+      title: "Custom theme deleted",
+      description: "Switched to Orchid Velvet theme"
     });
   };
 
@@ -1074,7 +1118,7 @@ const Index = () => {
 
   const handleRenameCustomTab = (tabId: string, newName: string) => {
     if (!newName.trim()) return;
-    setCustomTabs(customTabs.map(tab => 
+    setCustomTabs(customTabs.map(tab =>
       tab.id === tabId ? { ...tab, name: newName.trim() } : tab
     ));
     toast({ title: "Tab renamed" });
@@ -1109,13 +1153,13 @@ const Index = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle shortcuts when not in an input field
       const isInputField = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-      
+
       // Cmd/Ctrl + K for AI Assistant
       if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !isInputField) {
         e.preventDefault();
         setIsAIAssistantOpen(prev => !prev);
       }
-      
+
       // Cmd/Ctrl + / for keyboard shortcuts
       if ((e.metaKey || e.ctrlKey) && e.key === '/' && !isInputField) {
         e.preventDefault();
@@ -1151,8 +1195,8 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6" role="main">
-        <StatsOverview 
-          onOpenScheduler={() => setSchedulerOpen(true)} 
+        <StatsOverview
+          onOpenScheduler={() => setSchedulerOpen(true)}
           tasks={tasks}
           playbooks={playbooks}
         />
@@ -1333,8 +1377,8 @@ const Index = () => {
       </main>
 
       {/* Onboarding Tutorial */}
-      <OnboardingTutorial 
-        open={tutorialOpen} 
+      <OnboardingTutorial
+        open={tutorialOpen}
         onOpenChange={setTutorialOpen}
       />
 
@@ -1514,14 +1558,14 @@ const Index = () => {
         widget={editingWidget}
         onSave={handleSaveWidget}
       />
-      
+
       <EnergyTaskWidgetEditor
         open={energyWidgetEditorOpen}
         onClose={() => setEnergyWidgetEditorOpen(false)}
         widget={editingEnergyWidget}
         onSave={handleSaveEnergyWidget}
       />
-      
+
       <FutureSelfMessengerEditor
         open={messengerWidgetEditorOpen}
         onClose={() => setMessengerWidgetEditorOpen(false)}
@@ -1530,28 +1574,28 @@ const Index = () => {
         onSave={handleSaveMessengerWidget}
         onSaveMessage={handleSaveMessage}
       />
-      
+
       <MoodGardenWidgetEditor
         open={moodGardenWidgetEditorOpen}
         onOpenChange={setMoodGardenWidgetEditorOpen}
         widget={editingMoodGardenWidget}
         onSave={handleSaveMoodGardenWidget}
       />
-      
+
       <ParallelUniverseWidgetEditor
         open={parallelUniverseWidgetEditorOpen}
         onOpenChange={setParallelUniverseWidgetEditorOpen}
         widget={editingParallelUniverseWidget}
         onSave={handleSaveParallelUniverseWidget}
       />
-      
+
       <SoundSignatureWidgetEditor
         open={soundSignatureWidgetEditorOpen}
         onOpenChange={setSoundSignatureWidgetEditorOpen}
         widget={editingSoundSignatureWidget}
         onSave={handleSaveSoundSignatureWidget}
       />
-      
+
       <CustomThemeBuilder
         open={customThemeBuilderOpen}
         onOpenChange={setCustomThemeBuilderOpen}
@@ -1559,7 +1603,7 @@ const Index = () => {
         existingTheme={theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined}
         templateTheme={templateTheme}
       />
-      
+
       <CalendarScheduler
         open={schedulerOpen}
         onOpenChange={setSchedulerOpen}
@@ -1568,14 +1612,14 @@ const Index = () => {
         timeBlocks={timeBlocks}
         onScheduleTask={handleScheduleTask}
       />
-      
+
       <EisenhowerMatrix
         open={eisenhowerOpen}
         onOpenChange={setEisenhowerOpen}
         tasks={[...tasks, ...priorities]}
         onUpdateTask={handleUpdateTaskById}
       />
-      
+
       {showAI && (
         <AIAssistant
           open={isAIAssistantOpen}
@@ -1597,7 +1641,7 @@ const Index = () => {
         open={keyboardShortcutsOpen}
         onOpenChange={setKeyboardShortcutsOpen}
       />
-      
+
       <ProfileSetupDialog
         open={profileSetupOpen}
         onOpenChange={(open) => {
@@ -1605,9 +1649,9 @@ const Index = () => {
           if (!open) setHasProfile(true);
         }}
       />
-      
-      <ChatPanel 
-        isOpen={isChatPanelOpen} 
+
+      <ChatPanel
+        isOpen={isChatPanelOpen}
         onClose={() => setIsChatPanelOpen(false)}
         tasks={tasks}
         timeBlocks={timeBlocks}
@@ -1619,7 +1663,7 @@ const Index = () => {
         onAddPlaybook={handleAddPlaybook}
         onUpdatePlaybook={handleUpdatePlaybook}
       />
-      
+
       {isMobile && <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />}
     </div>
   );
