@@ -16,6 +16,7 @@ import { autoOptimizeThemeColors, extractColorsFromImage } from "@/lib/colorUtil
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePremium } from "@/contexts/PremiumContext";
 // Import the Bouncer logic
 import { useDatabaseWrite } from "@/hooks/useDatabaseWrite";
 
@@ -245,6 +246,7 @@ export function CustomThemeBuilder({
 
   // Initialize the "Bouncer"
   const { executeWrite } = useDatabaseWrite();
+  const { isPremium } = usePremium();
 
   // OPTIMIZED LOAD: Fetch ONLY the theme, not the whole profile
   useEffect(() => {
@@ -279,8 +281,10 @@ export function CustomThemeBuilder({
     loadThemeFromDatabase();
   }, [open, user, existingTheme]);
 
-  // Load saved palettes from localStorage
+  // Load saved palettes from localStorage when sheet opens
   useEffect(() => {
+    if (!open) return;
+
     const stored = localStorage.getItem("saved_custom_palettes");
     if (stored) {
       try {
@@ -289,7 +293,7 @@ export function CustomThemeBuilder({
         console.error("Failed to load saved palettes:", e);
       }
     }
-  }, []);
+  }, [open]);
 
   // Standard History Logic
   const updateThemeWithHistory = (newTheme: CustomTheme) => {
@@ -487,12 +491,20 @@ export function CustomThemeBuilder({
   };
 
   const handleSave = async () => {
+    // FREE TIER LIMIT: Max 3 custom themes for free users
+    const existingPalette = savedPalettes.find((p) => p.name === (theme.name || "Untitled Theme"));
+    const isNewTheme = !existingPalette;
+
+    if (!isPremium && isNewTheme && savedPalettes.length >= 3) {
+      toast.error("Free tier limit reached! Upgrade to Premium for unlimited themes.");
+      return;
+    }
+
     // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
     const themeName = theme.name || "Untitled Theme";
 
     // Generate a unique ID for NEW themes using timestamp
-    // Only reuse an existing ID if we're explicitly editing a saved palette
-    const existingPalette = savedPalettes.find((p) => p.name === themeName);
+    // Only reuse an existing ID if we're explicitly editing a saved palette (existingPalette already set above)
     const themeId = existingPalette?.id || Date.now().toString();
 
     const savedTheme: SavedPalette = {

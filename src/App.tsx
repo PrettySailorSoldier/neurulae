@@ -2,9 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { PremiumProvider } from "@/contexts/PremiumContext";
+import { PremiumProvider, usePremium } from "@/contexts/PremiumContext";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { PublicOnly } from "@/components/auth/PublicOnly";
 import Index from "./pages/Index";
@@ -19,6 +19,25 @@ import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+// Protected route that requires admin access
+function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAdmin, loading } = usePremium();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/app" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -37,7 +56,7 @@ const App = () => (
               <Route path="/success" element={<Success />} />
               <Route path="/my-schedule" element={<RequireAuth><MyAvailability /></RequireAuth>} />
               <Route path="/my-plan" element={<RequireAuth><MyPlan /></RequireAuth>} />
-              <Route path="/admin" element={<RequireAuth><AdminPanel /></RequireAuth>} />
+              <Route path="/admin" element={<RequireAuth><ProtectedAdminRoute><AdminPanel /></ProtectedAdminRoute></RequireAuth>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
@@ -49,3 +68,4 @@ const App = () => (
 );
 
 export default App;
+

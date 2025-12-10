@@ -6,28 +6,26 @@ import { usePremium } from "@/contexts/PremiumContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Sparkles, Brain, MessageSquarePlus, X } from "lucide-react";
+import { Crown, Settings as SettingsIcon, LogOut, CreditCard, User, Clock, Briefcase, Brain, MessageSquarePlus, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import { ScheduleManager } from "@/components/ScheduleManager";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
-import { FeedbackHistory } from "@/components/FeedbackHistory";
 import { PromoCodeInput } from "@/components/PromoCodeInput";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { plan, isPremium, isAdmin, loading } = usePremium();
+  const { plan, isPremium, isAdmin, loading, checkSubscription } = usePremium();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [aiStyle, setAiStyle] = useState<'direct' | 'balanced' | 'conversational'>('balanced');
-  const [livingSituation, setLivingSituation] = useState<'alone' | 'with_others'>('alone');
   const [workDays, setWorkDays] = useState<string[]>([]);
   const [workStartTime, setWorkStartTime] = useState('09:00');
   const [workEndTime, setWorkEndTime] = useState('17:00');
@@ -39,9 +37,9 @@ export default function Settings() {
   const [aiFirstMode, setAiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
   const [showQuickActions, setShowQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
 
-  // Feedback Dialog
+  // Collapsible sections
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
-  const [showFeedbackHistory, setShowFeedbackHistory] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -63,7 +61,6 @@ export default function Settings() {
 
       if (data) {
         setAiStyle(data.ai_coaching_style as typeof aiStyle);
-        setLivingSituation(data.living_situation as typeof livingSituation);
         setWakeTime(data.default_wake_time || '07:00');
         setSleepTime(data.default_sleep_time || '23:00');
 
@@ -98,7 +95,6 @@ export default function Settings() {
         .upsert({
           user_id: user.id,
           ai_coaching_style: aiStyle,
-          living_situation: livingSituation,
           work_schedule: workSchedule,
           default_wake_time: wakeTime,
           default_sleep_time: sleepTime,
@@ -106,35 +102,15 @@ export default function Settings() {
 
       if (error) throw error;
 
-      // Update recurring blocks
-      await supabase
-        .from('recurring_time_blocks')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('category', 'work');
-
-      if (workDays.length > 0) {
-        const recurringBlocks = workSchedule.map(schedule => ({
-          user_id: user.id,
-          title: 'Work',
-          day_of_week: schedule.dayOfWeek,
-          start_time: schedule.startTime,
-          end_time: schedule.endTime,
-          category: 'work',
-        }));
-
-        await supabase.from('recurring_time_blocks').insert(recurringBlocks);
-      }
-
       toast({
-        title: 'Profile Updated',
-        description: 'Your preferences have been saved.',
+        title: 'Settings Saved',
+        description: 'Your preferences have been updated.',
       });
     } catch (error) {
       console.error('Error saving profile:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save profile.',
+        description: 'Failed to save settings.',
         variant: 'destructive',
       });
     } finally {
@@ -151,9 +127,7 @@ export default function Settings() {
   const handleManageSubscription = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
-
       if (error) throw error;
-
       if (data?.url) {
         window.open(data.url, '_blank');
       }
@@ -171,6 +145,24 @@ export default function Settings() {
     navigate('/auth');
   };
 
+  const handleClaimAdmin = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('claim-admin');
+      if (error) throw error;
+      toast({
+        title: "🎉 Admin Access Granted",
+        description: data.message || "You are now an admin!",
+      });
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to claim admin access",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getPlanDisplay = () => {
     if (loading) return "Loading...";
     if (isAdmin) return "Admin";
@@ -179,326 +171,247 @@ export default function Settings() {
     return "Free";
   };
 
-  const getPlanBadgeVariant = () => {
-    if (isAdmin) return "default";
-    if (isPremium) return "default";
-    return "secondary";
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-16 max-w-2xl">
-        <div className="flex items-center justify-between mb-8">
+      <div className="container mx-auto px-4 py-8 max-w-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <SettingsIcon className="h-8 w-8" />
-            <h1 className="text-3xl font-bold">Account Settings</h1>
+            <SettingsIcon className="h-7 w-7" />
+            <h1 className="text-2xl font-bold">Settings</h1>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/app')}
-            className="h-10 w-10"
-            title="Close settings"
+            title="Close"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
 
-        {/* Account Info */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-            <CardDescription>Your account details and current plan</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm text-muted-foreground">Email</label>
-              <p className="text-lg">{user?.email}</p>
-            </div>
-
-            <div>
-              <label className="text-sm text-muted-foreground">Current Plan</label>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant={getPlanBadgeVariant()} className="text-lg py-1">
-                  {isPremium && <Crown className="h-4 w-4 mr-1" />}
-                  {getPlanDisplay()}
-                </Badge>
-                {isAdmin && (
-                  <Button variant="secondary" size="sm" asChild>
-                    <Link to="/admin">Admin Panel</Link>
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Promo Code */}
-        <PromoCodeInput />
-
-        {/* Profile & Preferences */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 1: ACCOUNT & SUBSCRIPTION
+        ═══════════════════════════════════════════════════════════════════ */}
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <User className="h-5 w-5" />
-              Profile & Preferences
+              Account
             </CardTitle>
-            <CardDescription>Customize how your AI assistant works for you</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <Label className="text-base font-semibold mb-3 flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                AI Coaching Style
-              </Label>
-              <RadioGroup value={aiStyle} onValueChange={(v) => setAiStyle(v as typeof aiStyle)}>
-                <div className="flex items-start space-x-3 p-3 border rounded-lg">
-                  <RadioGroupItem value="direct" id="direct-setting" />
-                  <div className="flex-1">
-                    <Label htmlFor="direct-setting" className="font-semibold cursor-pointer">Direct & Decisive</Label>
-                    <p className="text-sm text-muted-foreground">Takes action immediately without asking permission</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 p-3 border rounded-lg">
-                  <RadioGroupItem value="balanced" id="balanced-setting" />
-                  <div className="flex-1">
-                    <Label htmlFor="balanced-setting" className="font-semibold cursor-pointer">Balanced</Label>
-                    <p className="text-sm text-muted-foreground">Takes action but explains reasoning</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 p-3 border rounded-lg">
-                  <RadioGroupItem value="conversational" id="conversational-setting" />
-                  <div className="flex-1">
-                    <Label htmlFor="conversational-setting" className="font-semibold cursor-pointer">Conversational</Label>
-                    <p className="text-sm text-muted-foreground">Asks questions and explores options together</p>
-                  </div>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label className="text-base font-semibold mb-3 block">Living Situation</Label>
-              <RadioGroup value={livingSituation} onValueChange={(v) => setLivingSituation(v as typeof livingSituation)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="alone" id="alone-setting" />
-                  <Label htmlFor="alone-setting" className="cursor-pointer">I live alone</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="with_others" id="with_others-setting" />
-                  <Label htmlFor="with_others-setting" className="cursor-pointer">I live with others</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label className="text-base font-semibold mb-3 flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Work Schedule
-              </Label>
-              <p className="text-sm text-muted-foreground mb-3">Select your work days</p>
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                  <Button
-                    key={day}
-                    variant={workDays.includes(day) ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => toggleWorkDay(day)}
-                  >
-                    {day.slice(0, 3)}
-                  </Button>
-                ))}
-              </div>
-
-              {workDays.length > 0 && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Work starts at</Label>
-                    <Input
-                      type="time"
-                      value={workStartTime}
-                      onChange={(e) => setWorkStartTime(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Work ends at</Label>
-                    <Input
-                      type="time"
-                      value={workEndTime}
-                      onChange={(e) => setWorkEndTime(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-base font-semibold mb-3 flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Daily Rhythm
-              </Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>I usually wake up at</Label>
-                  <Input
-                    type="time"
-                    value={wakeTime}
-                    onChange={(e) => setWakeTime(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>I usually sleep at</Label>
-                  <Input
-                    type="time"
-                    value={sleepTime}
-                    onChange={(e) => setSleepTime(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Button onClick={handleSaveProfile} disabled={profileLoading} className="w-full">
-              {profileLoading ? 'Saving...' : 'Save Profile'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* AI Assistant Preferences */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5" />
-              AI Assistant Preferences
-            </CardTitle>
-            <CardDescription>Control how the AI assistant appears and behaves</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Email & Plan */}
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="show-ai">Show AI Assistant</Label>
-                <p className="text-sm text-muted-foreground">Display the AI command bar at the bottom</p>
+              <div>
+                <p className="text-sm text-muted-foreground">Signed in as</p>
+                <p className="font-medium">{user?.email}</p>
               </div>
-              <Switch id="show-ai" checked={showAI} onCheckedChange={setShowAI} />
+              <Badge variant={isPremium || isAdmin ? "default" : "secondary"} className="h-7">
+                {isPremium && <Crown className="h-3 w-3 mr-1" />}
+                {getPlanDisplay()}
+              </Badge>
             </div>
 
             <Separator />
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="ai-first-mode">AI-First Mode</Label>
-                <p className="text-sm text-muted-foreground">Expand AI bar by default on app load</p>
-              </div>
-              <Switch id="ai-first-mode" checked={aiFirstMode} onCheckedChange={setAiFirstMode} />
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="quick-actions">Show Quick Actions</Label>
-                <p className="text-sm text-muted-foreground">Display "Ask AI" buttons throughout the app</p>
-              </div>
-              <Switch id="quick-actions" checked={showQuickActions} onCheckedChange={setShowQuickActions} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Schedule Manager */}
-        <ScheduleManager />
-
-        {/* Feedback & Support */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquarePlus className="h-5 w-5" />
-              Feedback & Support
-            </CardTitle>
-            <CardDescription>Share your thoughts, ideas, or report issues</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => setFeedbackDialogOpen(true)}
-            >
-              <MessageSquarePlus className="h-4 w-4 mr-2" />
-              Submit Feedback
-            </Button>
-
-            <Separator />
-
-            <div>
-              <Button
-                variant="ghost"
-                className="w-full justify-between"
-                onClick={() => setShowFeedbackHistory(!showFeedbackHistory)}
-              >
-                <span>My Feedback History</span>
-                <Badge variant="secondary">View</Badge>
-              </Button>
-
-              {showFeedbackHistory && (
-                <div className="mt-4">
-                  <FeedbackHistory />
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Subscription Management */}
-        {!isAdmin && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Subscription</CardTitle>
-              <CardDescription>Manage your subscription and billing</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!isPremium ? (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    You're currently on the free plan. Upgrade to unlock premium features.
-                  </p>
-                  <Button onClick={() => navigate('/pricing')} className="w-full">
+            {/* Subscription Actions */}
+            {!isAdmin && (
+              <div className="space-y-2">
+                {!isPremium ? (
+                  <Button onClick={() => navigate('/pricing')} className="w-full" size="sm">
                     <Crown className="h-4 w-4 mr-2" />
-                    View Premium Plans
+                    Upgrade to Premium
                   </Button>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your subscription, update payment method, or view billing history.
-                  </p>
-                  <Button
-                    onClick={handleManageSubscription}
-                    variant="outline"
-                    className="w-full"
-                  >
+                ) : (
+                  <Button onClick={handleManageSubscription} variant="outline" className="w-full" size="sm">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Manage Subscription
                   </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                )}
+                <PromoCodeInput />
+              </div>
+            )}
 
-        {/* Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Actions</CardTitle>
+            {/* Admin Controls */}
+            {isAdmin && (
+              <Button variant="secondary" size="sm" asChild className="w-full">
+                <Link to="/admin">Open Admin Panel</Link>
+              </Button>
+            )}
+            {user?.email === 'astro.naught3@gmail.com' && !isAdmin && (
+              <Button variant="outline" size="sm" onClick={handleClaimAdmin} className="w-full">
+                Claim Admin Access
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 2: AI PREFERENCES (Consolidated)
+        ═══════════════════════════════════════════════════════════════════ */}
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Brain className="h-5 w-5" />
+              AI Assistant
+            </CardTitle>
+            <CardDescription>Customize your AI coaching experience</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
+            {/* AI Visibility Toggles */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="show-ai" className="cursor-pointer">Show AI Bar</Label>
+                <Switch id="show-ai" checked={showAI} onCheckedChange={setShowAI} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ai-first-mode" className="cursor-pointer">AI-First Mode</Label>
+                <Switch id="ai-first-mode" checked={aiFirstMode} onCheckedChange={setAiFirstMode} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="quick-actions" className="cursor-pointer">Quick Actions</Label>
+                <Switch id="quick-actions" checked={showQuickActions} onCheckedChange={setShowQuickActions} />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* AI Coaching Style */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Coaching Style</Label>
+              <RadioGroup value={aiStyle} onValueChange={(v) => setAiStyle(v as typeof aiStyle)} className="space-y-2">
+                <div className="flex items-center space-x-2 p-2 border rounded-md hover:bg-accent/50 cursor-pointer">
+                  <RadioGroupItem value="direct" id="direct" />
+                  <Label htmlFor="direct" className="cursor-pointer flex-1">
+                    <span className="font-medium">Direct</span>
+                    <span className="text-muted-foreground text-xs ml-2">Takes action immediately</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-2 border rounded-md hover:bg-accent/50 cursor-pointer">
+                  <RadioGroupItem value="balanced" id="balanced" />
+                  <Label htmlFor="balanced" className="cursor-pointer flex-1">
+                    <span className="font-medium">Balanced</span>
+                    <span className="text-muted-foreground text-xs ml-2">Acts with explanation</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-2 border rounded-md hover:bg-accent/50 cursor-pointer">
+                  <RadioGroupItem value="conversational" id="conversational" />
+                  <Label htmlFor="conversational" className="cursor-pointer flex-1">
+                    <span className="font-medium">Conversational</span>
+                    <span className="text-muted-foreground text-xs ml-2">Explores options together</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 3: SCHEDULE & RHYTHM (Collapsible)
+        ═══════════════════════════════════════════════════════════════════ */}
+        <Collapsible open={scheduleOpen} onOpenChange={setScheduleOpen}>
+          <Card className="mb-4">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-3 cursor-pointer hover:bg-accent/50 rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Clock className="h-5 w-5" />
+                    Schedule & Rhythm
+                  </CardTitle>
+                  {scheduleOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+                <CardDescription>Work schedule and daily routine</CardDescription>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-4 pt-0">
+                {/* Work Days */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Work Days
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                      const fullDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][i];
+                      return (
+                        <Button
+                          key={day}
+                          variant={workDays.includes(fullDay) ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleWorkDay(fullDay)}
+                          className="w-11"
+                        >
+                          {day}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {workDays.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Work Start</Label>
+                      <Input type="time" value={workStartTime} onChange={(e) => setWorkStartTime(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Work End</Label>
+                      <Input type="time" value={workEndTime} onChange={(e) => setWorkEndTime(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Daily Rhythm */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Wake Time</Label>
+                    <Input type="time" value={wakeTime} onChange={(e) => setWakeTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Sleep Time</Label>
+                    <Input type="time" value={sleepTime} onChange={(e) => setSleepTime(e.target.value)} />
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveProfile} disabled={profileLoading} className="w-full" size="sm">
+                  {profileLoading ? 'Saving...' : 'Save Schedule'}
+                </Button>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 4: SUPPORT & ACTIONS
+        ═══════════════════════════════════════════════════════════════════ */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <MessageSquarePlus className="h-5 w-5" />
+              Support
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => navigate('/app')}
+              size="sm"
+              onClick={() => setFeedbackDialogOpen(true)}
             >
-              Back to App
+              <MessageSquarePlus className="h-4 w-4 mr-2" />
+              Send Feedback
             </Button>
 
+            <Separator className="my-3" />
+
             <Button
-              variant="outline"
-              className="w-full justify-start text-destructive hover:text-destructive"
+              variant="ghost"
+              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+              size="sm"
               onClick={handleSignOut}
             >
               <LogOut className="h-4 w-4 mr-2" />
