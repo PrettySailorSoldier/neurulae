@@ -789,6 +789,7 @@ Want me to schedule these for you?"`;
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-pro',
+        stream: true,
         messages: [
           { role: 'system', content: systemPrompt },
           ...transformedMessages
@@ -821,80 +822,93 @@ Want me to schedule these for you?"`;
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    const data = await response.json();
-    let assistantMessage = data.choices[0].message.content;
-
-    // Post-processing: Replace any incorrect time patterns with the correct time
-    const correctTime = context?.temporal?.localTime;
-    if (correctTime) {
-      // Find all time patterns in the message (e.g., "3:07 PM", "1:56 AM")
-      const timePattern = /\b\d{1,2}:\d{2}\s*[APap][Mm]\b/g;
-      const timesInMessage = assistantMessage.match(timePattern) || [];
-
-      // Replace any time that doesn't match the correct time
-      timesInMessage.forEach((foundTime: string) => {
-        if (foundTime.toUpperCase() !== correctTime.toUpperCase()) {
-          assistantMessage = assistantMessage.replace(new RegExp(foundTime, 'g'), correctTime);
-          console.log(`Replaced incorrect time "${foundTime}" with correct time "${correctTime}"`);
-        }
-      });
+    // Stream the response directly to the client
+    // The client will parse SSE events and display chunks as they arrive
+    if (!response.body) {
+      throw new Error('No response body received from AI gateway');
     }
 
-    // Post-processing: Replace any incorrect date patterns with the correct date
-    const correctDate = context?.temporal?.localDate;
-    if (correctDate) {
-      // Find "Today is <weekday>, <Month> <D>, <YYYY>" patterns
-      const datePattern = /Today is [A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/g;
-      const datesInMessage = assistantMessage.match(datePattern) || [];
+    // Create a TransformStream to process and forward the streaming response
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-      // Replace any date that doesn't match the correct date
-      datesInMessage.forEach((foundDate: string) => {
-        const expectedPattern = `Today is ${correctDate}`;
-        if (foundDate !== expectedPattern) {
-          assistantMessage = assistantMessage.replace(foundDate, expectedPattern);
-          console.log(`Replaced incorrect date "${foundDate}" with correct date "${expectedPattern}"`);
-        }
-      });
-    }
-
-    // Extract structured actions from the response
-    const actions: any[] = [];
-
-    // Look for JSON blocks in the response
-    const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
-    let match;
-
-    while ((match = jsonBlockRegex.exec(assistantMessage)) !== null) {
+    // Process the stream in the background
+    (async () => {
       try {
-        const jsonContent = match[1];
-        const parsed = JSON.parse(jsonContent);
+        const reader = response.body!.getReader();
+        let fullContent = '';
 
-        // If it's a single action object
-        if (parsed.action && parsed.data) {
-          actions.push(parsed);
-        }
-        // If it's an array of actions
-        else if (Array.isArray(parsed)) {
-          parsed.forEach(item => {
-            if (item.action && item.data) {
-              actions.push(item);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                // Send a final message with any extracted actions
+                const actions: any[] = [];
+                const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
+                let match;
+                while ((match = jsonBlockRegex.exec(fullContent)) !== null) {
+                  try {
+                    const parsed = JSON.parse(match[1]);
+                    if (parsed.action && parsed.data) {
+                      actions.push(parsed);
+                    } else if (Array.isArray(parsed)) {
+                      parsed.forEach(item => {
+                        if (item.action && item.data) {
+                          actions.push(item);
+                        }
+                      });
+                    }
+                  } catch (e) {
+                    // Skip malformed JSON
+                  }
+                }
+
+                // Send final event with actions if any
+                if (actions.length > 0) {
+                  await writer.write(encoder.encode(`data: ${JSON.stringify({ actions })}\n\n`));
+                }
+                await writer.write(encoder.encode('data: [DONE]\n\n'));
+                continue;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullContent += content;
+                  // Forward the text chunk to the client
+                  await writer.write(encoder.encode(`data: ${JSON.stringify({ text: content })}\n\n`));
+                }
+              } catch (e) {
+                // Skip malformed SSE data
+              }
             }
-          });
+          }
         }
-      } catch (e) {
-        console.error('Failed to parse JSON block in AI response:', e);
+      } catch (error) {
+        console.error('Stream processing error:', error);
+        await writer.write(encoder.encode(`data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`));
+      } finally {
+        await writer.close();
       }
-    }
+    })();
 
-    // Clean up the message by removing the JSON blocks
-    // We want to keep the conversational part but remove the technical instructions
-    assistantMessage = assistantMessage.replace(jsonBlockRegex, '').trim();
-
-    return new Response(JSON.stringify({
-      message: assistantMessage,
-      actions
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(readable, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
 
   } catch (error) {

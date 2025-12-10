@@ -8,40 +8,40 @@
   :root {
     --background: 281 20% 30%;
     --foreground: 48 100% 92%;
-    
+
     --card: 281 25% 35%;
     --card-foreground: 48 100% 92%;
-    
+
     --popover: 281 30% 32%;
     --popover-foreground: 48 100% 92%;
-    
+
     --primary: 338 70% 50%;
     --primary-foreground: 0 0% 100%;
-    
+
     --secondary: 321 45% 55%;
     --secondary-foreground: 0 0% 100%;
-    
+
     --muted: 281 15% 45%;
     --muted-foreground: 48 50% 75%;
-    
+
     --accent: 338 70% 55%;
     --accent-foreground: 0 0% 100%;
-    
+
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    
+
     --border: 281 20% 40%;
     --input: 281 20% 25%;
     --ring: 338 70% 55%;
-    
+
     --radius: 0.75rem;
-    
+
     --gradient-primary: linear-gradient(135deg, hsl(338 70% 50%), hsl(321 45% 55%));
     --gradient-card: linear-gradient(145deg, hsl(281 30% 32%), hsl(281 25% 35%));
-    
+
     --shadow-card: 0 4px 6px -1px hsl(281 50% 10% / 0.3), 0 2px 4px -1px hsl(281 50% 10% / 0.2);
     --shadow-elevated: 0 10px 15px -3px hsl(281 50% 10% / 0.4), 0 4px 6px -2px hsl(281 50% 10% / 0.3);
-    
+
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Background image control variables */
@@ -54,8 +54,11 @@
     --bg-filter-brightness: 100%;
     --bg-filter-contrast: 100%;
     --bg-filter-saturate: 100%;
+
+    /* Explicit input text color for guaranteed visibility */
+    --input-text: var(--foreground);
   }
-  
+
   /* Jellyfish Dream Theme */
   [data-theme="jellyfish"] {
     --background: 216 60% 8%;
@@ -73,7 +76,7 @@
     --muted: 216 40% 25%;
     --muted-foreground: 325 20% 65%;
   }
-  
+
   /* Liquid Sunset Theme */
   [data-theme="sunset"] {
     --background: 15 30% 88%;
@@ -91,7 +94,7 @@
     --muted: 200 25% 80%;
     --muted-foreground: 215 30% 45%;
   }
-  
+
   /* Bluebonnet Birch Theme */
   [data-theme="bluebonnet"] {
     --background: 225 50% 45%;
@@ -109,7 +112,7 @@
     --muted: 225 35% 50%;
     --muted-foreground: 45 35% 75%;
   }
-  
+
   /* Ocean Breeze Theme */
   [data-theme="ocean"] {
     --background: 195 60% 15%;
@@ -127,7 +130,7 @@
     --muted: 195 40% 30%;
     --muted-foreground: 180 25% 75%;
   }
-  
+
   /* Forest Calm Theme */
   [data-theme="forest"] {
     --background: 150 35% 20%;
@@ -145,7 +148,7 @@
     --muted: 150 25% 35%;
     --muted-foreground: 50 30% 75%;
   }
-  
+
   /* Midnight Purple Theme */
   [data-theme="midnight"] {
     --background: 265 45% 12%;
@@ -163,7 +166,7 @@
     --muted: 265 30% 28%;
     --muted-foreground: 280 20% 70%;
   }
-  
+
   /* Candy Store Theme */
   [data-theme="candy"] {
     --background: 0 0% 20%;
@@ -194,7 +197,10 @@
   }
 
   /* Ensure app content sits above the overlay */
-  #root { position: relative; z-index: 1; }
+  #root {
+    position: relative;
+    z-index: 1;
+  }
 
   /* Overlay layer for background effects and color tint */
   body::before {
@@ -207,9 +213,24 @@
     -webkit-backdrop-filter: blur(var(--bg-blur)) grayscale(var(--bg-filter-grayscale)) sepia(var(--bg-filter-sepia)) brightness(var(--bg-filter-brightness)) contrast(var(--bg-filter-contrast)) saturate(var(--bg-filter-saturate));
     z-index: 0;
   }
+
+  /* Explicit text visibility for inputs - prevents dark-on-dark issue */
+  input,
+  textarea,
+  select {
+    color: hsl(var(--foreground)) !important;
+    caret-color: hsl(var(--foreground));
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 1;
+  }
 }
 
 @layer base {
+
   /* Ensure react-day-picker calendars don't overlap surrounding content */
   .rdp {
     position: relative;
@@ -223,23 +244,23 @@
   .card-elevated {
     @apply bg-card border-border rounded-lg shadow-lg transition-all duration-300;
   }
-  
+
   .btn-primary {
     @apply bg-primary text-primary-foreground hover:opacity-90 transition-all duration-200;
   }
-  
+
   .draggable {
     @apply cursor-move transition-all duration-200;
   }
-  
+
   .draggable:hover {
     @apply scale-105 shadow-lg;
   }
-  
+
   .drop-zone {
     @apply border-2 border-dashed border-border rounded-lg p-4 transition-colors duration-200;
   }
-  
+
   .drop-zone.drag-over {
     @apply border-primary bg-primary/10;
   }

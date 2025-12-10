@@ -31,10 +31,10 @@ const calculateAvailableWindows = (blocks: TimeBlock[]) => {
       return isToday(blockDate);
     })
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  
+
   const windows = [];
   let lastEnd = now;
-  
+
   for (const block of todayBlocks) {
     const blockStart = new Date(block.startTime);
     if (blockStart > lastEnd) {
@@ -50,7 +50,7 @@ const calculateAvailableWindows = (blocks: TimeBlock[]) => {
     const blockEnd = new Date(block.endTime);
     lastEnd = blockEnd > lastEnd ? blockEnd : lastEnd;
   }
-  
+
   return windows;
 };
 
@@ -153,9 +153,9 @@ export function useAIChat({
             title: data.title,
             description: data.description || '',
             category: data.category || 'productivity',
-            steps: Array.isArray(data.steps) 
-              ? data.steps.map((step: any) => typeof step === 'string' 
-                ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null } 
+            steps: Array.isArray(data.steps)
+              ? data.steps.map((step: any) => typeof step === 'string'
+                ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null }
                 : step)
               : [],
             isTemplate: false,
@@ -173,9 +173,9 @@ export function useAIChat({
           const existingPlaybook = playbooks.find(p => p.id === data.playbookId || p.title === data.title);
           if (existingPlaybook) {
             onUpdatePlaybook(existingPlaybook.id, {
-              steps: data.steps ? Array.isArray(data.steps) 
-                ? data.steps.map((step: any) => typeof step === 'string' 
-                  ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null } 
+              steps: data.steps ? Array.isArray(data.steps)
+                ? data.steps.map((step: any) => typeof step === 'string'
+                  ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null }
                   : step)
                 : existingPlaybook.steps : existingPlaybook.steps,
               title: data.title || existingPlaybook.title,
@@ -199,15 +199,15 @@ export function useAIChat({
               notes: data.description || '',
               subtasks: [],
             });
-            
+
             if (data.playbook) {
               onAddPlaybook({
                 title: data.playbook.title,
                 description: data.playbook.description || '',
                 category: data.playbook.category || 'productivity',
                 steps: Array.isArray(data.playbook.steps)
-                  ? data.playbook.steps.map((step: any) => typeof step === 'string' 
-                    ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null } 
+                  ? data.playbook.steps.map((step: any) => typeof step === 'string'
+                    ? { id: crypto.randomUUID(), title: step, completed: false, estimatedMinutes: null }
                     : step)
                   : [],
                 isTemplate: false,
@@ -215,7 +215,7 @@ export function useAIChat({
                 resetOnRecurrence: false,
               });
             }
-            
+
             toast({
               title: '🎯 Project Created',
               description: `"${data.title}" project and resources are ready.`,
@@ -260,7 +260,7 @@ export function useAIChat({
                   type: 'dedicated',
                   scheduleType: 'everyday',
                 });
-                
+
                 toast({
                   title: '⏰ Time Block Added',
                   description: `Added "${data.title}" to your calendar.`,
@@ -324,7 +324,7 @@ export function useAIChat({
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       let profileData = null;
       let scheduleEntries: any[] = [];
-      
+
       if (currentUser) {
         const { data } = await supabase
           .from('user_profiles')
@@ -340,19 +340,19 @@ export function useAIChat({
           .gte('end_time', new Date().toISOString())
           .order('start_time', { ascending: true })
           .limit(20);
-        
+
         scheduleEntries = entries || [];
       }
 
       const now = new Date();
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      
+
       const hours = now.getHours();
       const minutes = now.getMinutes();
       const ampm = hours >= 12 ? 'PM' : 'AM';
       const displayHours = hours % 12 || 12;
       const formattedTime = `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-      
+
       const temporalContext = {
         timestamp: now.toISOString(),
         localDate: now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
@@ -372,8 +372,24 @@ export function useAIChat({
         { role: userMessage.role, content: userMessage.content }
       ];
 
-      const { data: functionData, error: functionError } = await supabase.functions.invoke('ai-assistant', {
-        body: {
+      // Get the current session for auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Please sign in to use the AI assistant.');
+      }
+
+      // Use direct fetch for streaming support
+      const functionsUrl = import.meta.env.VITE_SUPABASE_URL?.replace('.supabase.co', '.supabase.co/functions/v1') ||
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
+      const response = await fetch(`${functionsUrl}/ai-assistant`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({
           messages: messagesForAI,
           images: images,
           context: {
@@ -409,42 +425,97 @@ export function useAIChat({
             livingAlone: profileData.living_situation === 'alone',
             workSchedule: profileData.work_schedule || [],
           } : null,
-        },
+        }),
       });
 
-      if (functionError) {
-        console.error('AI Assistant Error:', functionError, functionData);
-        const errorMsg = functionData?.error || functionError.message || 'Failed to get AI response';
-        
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorMsg = errorData?.error || `Request failed: ${response.status}`;
+
         // Show user-friendly error messages
         if (errorMsg.includes('Auth session missing')) {
           throw new Error('Please sign in to use the AI assistant.');
-        } else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-          throw new Error('AI request timed out. Please try again with a shorter message.');
-        } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+        } else if (response.status === 429 || errorMsg.includes('rate limit')) {
           throw new Error('Too many requests. Please wait a moment and try again.');
-        } else if (errorMsg.includes('LOVABLE_API_KEY')) {
-          throw new Error('AI service not configured. Please contact support.');
+        } else if (response.status === 402) {
+          throw new Error('AI credits depleted. Please add credits to continue.');
         } else {
           throw new Error(`AI error: ${errorMsg}`);
         }
       }
 
-      // JSON/automation disabled: advisory-only mode. No embedded JSON parsing.
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream available');
+      }
 
+      // Create an assistant message placeholder that we'll update as chunks arrive
       const assistantMessage: Message = {
         role: 'assistant',
-        content: functionData.message,
+        content: '',
         timestamp: new Date().toISOString(),
       };
 
+      // Add the empty message to the list - it will be updated as chunks arrive
       setMessages(prev => [...prev, assistantMessage]);
 
-      if (convId) {
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+
+              if (parsed.text) {
+                fullContent += parsed.text;
+                // Update the assistant message with accumulated content
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+                    updated[lastIdx] = { ...updated[lastIdx], content: fullContent };
+                  }
+                  return updated;
+                });
+              }
+
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+            } catch (e) {
+              // Skip malformed SSE data (but throw if it's a real error)
+              if (e instanceof Error && e.message !== 'Unexpected token') {
+                console.debug('SSE parse skip:', e);
+              }
+            }
+          }
+        }
+      }
+
+      // Save final message to database
+      if (convId && fullContent) {
         await supabase.from('chat_messages').insert({
           conversation_id: convId,
           role: 'assistant',
-          content: assistantMessage.content
+          content: fullContent
         });
       }
 
@@ -463,6 +534,15 @@ export function useAIChat({
         title: 'Error',
         description: msg.includes('Auth session missing') ? 'Please sign in to use the AI assistant.' : msg,
         variant: 'destructive',
+      });
+
+      // Remove the incomplete assistant message on error
+      setMessages(prev => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg?.role === 'assistant' && lastMsg.content === '') {
+          return prev.slice(0, -1);
+        }
+        return prev;
       });
     } finally {
       setIsLoading(false);
