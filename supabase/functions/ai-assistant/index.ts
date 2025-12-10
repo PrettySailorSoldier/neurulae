@@ -146,44 +146,44 @@ serve(async (req: Request) => {
 
         const tasks = Array.isArray(ctx?.tasks)
           ? ctx.tasks.map((t: any) => ({
-              id: String(t.id),
-              name: String(t.name ?? t.title ?? '').slice(0, 500),
-              due_date: t.due_date ?? t.dueDate ?? undefined,
-              estimated_minutes:
-                typeof t.estimated_minutes === 'number'
-                  ? t.estimated_minutes
-                  : typeof t.estimatedMinutes === 'number'
+            id: String(t.id),
+            name: String(t.name ?? t.title ?? '').slice(0, 500),
+            due_date: t.due_date ?? t.dueDate ?? undefined,
+            estimated_minutes:
+              typeof t.estimated_minutes === 'number'
+                ? t.estimated_minutes
+                : typeof t.estimatedMinutes === 'number'
                   ? t.estimatedMinutes
                   : typeof t.focusTimeMinutes === 'number'
-                  ? t.focusTimeMinutes
-                  : undefined,
-              type: t.type ?? t.taskType ?? undefined,
-              status:
-                typeof t.completed === 'boolean'
-                  ? t.completed
-                    ? 'completed'
-                    : 'pending'
-                  : t.status,
-            }))
+                    ? t.focusTimeMinutes
+                    : undefined,
+            type: t.type ?? t.taskType ?? undefined,
+            status:
+              typeof t.completed === 'boolean'
+                ? t.completed
+                  ? 'completed'
+                  : 'pending'
+                : t.status,
+          }))
           : undefined;
 
         const timeBlocks = Array.isArray(ctx?.timeBlocks)
           ? ctx.timeBlocks
-              .map((b: any) => {
-                const day = b.day_of_week ?? b.dayOfWeek;
-                const start = b.start_time ?? b.startTime;
-                const end = b.end_time ?? b.endTime;
-                if (day === undefined || !start || !end) return null; // skip blocks we can't normalize
-                return {
-                  id: String(b.id ?? crypto.randomUUID()),
-                  title: String(b.title ?? b.name ?? 'Block').slice(0, 200),
-                  day_of_week: Number(day),
-                  start_time: String(start),
-                  end_time: String(end),
-                  category: b.category ?? b.type ?? undefined,
-                };
-              })
-              .filter(Boolean)
+            .map((b: any) => {
+              const day = b.day_of_week ?? b.dayOfWeek;
+              const start = b.start_time ?? b.startTime;
+              const end = b.end_time ?? b.endTime;
+              if (day === undefined || !start || !end) return null; // skip blocks we can't normalize
+              return {
+                id: String(b.id ?? crypto.randomUUID()),
+                title: String(b.title ?? b.name ?? 'Block').slice(0, 200),
+                day_of_week: Number(day),
+                start_time: String(start),
+                end_time: String(end),
+                category: b.category ?? b.type ?? undefined,
+              };
+            })
+            .filter(Boolean)
           : undefined;
 
         const normalizedContext = {
@@ -205,11 +205,11 @@ serve(async (req: Request) => {
     })();
 
     const validation = requestSchema.safeParse(normalized);
-    
+
     if (!validation.success) {
       console.error('Validation error:', validation.error.errors);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Invalid request format. Please check your input and try again.'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -221,10 +221,10 @@ serve(async (req: Request) => {
     // Build enhanced system prompt with context
     const isStuckMode = mode === 'stuck_interview';
     // Use client-provided hour24 from temporal context for accurate time-of-day calculation
-    const timeOfDay = context?.temporal?.hour24 !== undefined 
-      ? getTimeOfDay(context.temporal.hour24) 
+    const timeOfDay = context?.temporal?.hour24 !== undefined
+      ? getTimeOfDay(context.temporal.hour24)
       : 'unknown';
-    
+
     // All UI components
     // - Tasks
     // - Time blocks
@@ -237,12 +237,12 @@ serve(async (req: Request) => {
     // - Today schedule
     // - Upcoming schedule
     // - Available time windows
-    
+
     // Get user profile info
     const coachingStyle = userProfile?.aiStyle || 'balanced';
     const livingAlone = userProfile?.livingAlone ?? true;
     const workSchedule = (userProfile?.workSchedule as any[]) || [];
-    
+
     const stuckModePrompt = `You are a compassionate productivity coach guiding someone who feels overwhelmed and doesn't know where to start. Your mission is to help them identify what needs attention through a gentle, structured interview process.
 
 **IMAGE ANALYSIS**: When users share images (screenshots, photos of notes, schedules, whiteboards, etc.), analyze them carefully and reference specific details in your response. Images can contain schedules, task lists, homework assignments, or anything else relevant to productivity.
@@ -250,7 +250,7 @@ serve(async (req: Request) => {
 ### USER PROFILE CONTEXT
 **AI Coaching Style**: ${coachingStyle}
 **Living Situation**: ${livingAlone ? 'Lives alone' : 'Lives with others'}
-**Work Schedule**: ${workSchedule.length > 0 ? workSchedule.map((s: any) => `${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][s.dayOfWeek]} ${s.startTime}-${s.endTime}`).join(', ') : 'Not set'}
+**Work Schedule**: ${workSchedule.length > 0 ? workSchedule.map((s: any) => `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][s.dayOfWeek]} ${s.startTime}-${s.endTime}`).join(', ') : 'Not set'}
 
 ## Temporal Awareness & Realistic Scheduling
 
@@ -264,19 +264,19 @@ STRICT TIME RULE: NEVER mention the current time or date unless explicitly asked
 - Day of Week: ${context?.temporal?.dayName || 'Unknown'}
 - Timezone: ${context?.temporal?.timezone || 'Unknown'}
 - Today's Schedule: ${context?.todaySchedule?.length || 0} time blocks
-${context?.todaySchedule && context.todaySchedule.length > 0 
-  ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
-  : '  - No scheduled blocks'}
+${context?.todaySchedule && context.todaySchedule.length > 0
+        ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
+        : '  - No scheduled blocks'}
 
 ### Upcoming Work/Class Schedule:
 ${context?.upcomingSchedule && context.upcomingSchedule.length > 0
-  ? context.upcomingSchedule.slice(0, 10).map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.category})${s.location ? ` at ${s.location}` : ''}`).join('\n')
-  : '  - No work/class schedule entries'}
+        ? context.upcomingSchedule.slice(0, 10).map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.category})${s.location ? ` at ${s.location}` : ''}`).join('\n')
+        : '  - No work/class schedule entries'}
 
 ### Available Time Windows Today:
-${context?.availableTimeWindows && context.availableTimeWindows.length > 0 
-  ? context.availableTimeWindows.map((w: any) => `  - ${w.start} to ${w.end} (${w.duration} available)`).join('\n')
-  : '  - Schedule is full or no clear windows identified'}
+${context?.availableTimeWindows && context.availableTimeWindows.length > 0
+        ? context.availableTimeWindows.map((w: any) => `  - ${w.start} to ${w.end} (${w.duration} available)`).join('\n')
+        : '  - Schedule is full or no clear windows identified'}
 
 ### Scheduling Rules You MUST Follow:
 
@@ -426,7 +426,7 @@ You're not here to be a therapist - you're a **productivity coach** helping some
 ### USER PROFILE CONTEXT
 **AI Coaching Style**: ${coachingStyle}
 **Living Situation**: ${livingAlone ? 'Lives alone' : 'Lives with others'}
-**Work Schedule**: ${workSchedule.length > 0 ? workSchedule.map((s: any) => `${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][s.dayOfWeek]} ${s.startTime}-${s.endTime}`).join(', ') : 'Not set'}
+**Work Schedule**: ${workSchedule.length > 0 ? workSchedule.map((s: any) => `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][s.dayOfWeek]} ${s.startTime}-${s.endTime}`).join(', ') : 'Not set'}
 
 ## Temporal Awareness & Realistic Scheduling
 
@@ -440,19 +440,19 @@ STRICT TIME RULE: NEVER mention the current time or date unless explicitly asked
 - Day of Week: ${context?.temporal?.dayName || 'Unknown'}
 - Timezone: ${context?.temporal?.timezone || 'Unknown'}
 - Today's Schedule: ${context?.todaySchedule?.length || 0} time blocks
-${context?.todaySchedule && context.todaySchedule.length > 0 
-  ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
-  : '  - No scheduled blocks'}
+${context?.todaySchedule && context.todaySchedule.length > 0
+        ? context.todaySchedule.map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.duration})`).join('\n')
+        : '  - No scheduled blocks'}
 
 ### Upcoming Work/Class Schedule:
 ${context?.upcomingSchedule && context.upcomingSchedule.length > 0
-  ? context.upcomingSchedule.slice(0, 10).map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.category})${s.location ? ` at ${s.location}` : ''}`).join('\n')
-  : '  - No work/class schedule entries'}
+        ? context.upcomingSchedule.slice(0, 10).map((s: any) => `  - ${s.startTime} to ${s.endTime}: ${s.title} (${s.category})${s.location ? ` at ${s.location}` : ''}`).join('\n')
+        : '  - No work/class schedule entries'}
 
 ### Available Time Windows Today:
-${context?.availableTimeWindows && context.availableTimeWindows.length > 0 
-  ? context.availableTimeWindows.map((w: any) => `  - ${w.start} to ${w.end} (${w.duration} available)`).join('\n')
-  : '  - Schedule is full or no clear windows identified'}
+${context?.availableTimeWindows && context.availableTimeWindows.length > 0
+        ? context.availableTimeWindows.map((w: any) => `  - ${w.start} to ${w.end} (${w.duration} available)`).join('\n')
+        : '  - Schedule is full or no clear windows identified'}
 
 ### Scheduling Rules You MUST Follow:
 
@@ -712,8 +712,7 @@ After that, I'd suggest tackling 'Update project timeline' while you're in work 
 
 Want me to schedule these for you?"`;
 
-    const advisoryOverride = `CRITICAL OVERRIDE: Respond in plain, bulleted English only. NEVER output JSON, code fences, or {curly braces}. Do not include any "action" objects or structured data. You are an advisor, not an automator. Always reason using Google Gemini 2.5 Pro. Provide natural-language "Suggested Block" recommendations with times.`;
-    const systemPrompt = `${advisoryOverride}\n\n${isStuckMode ? stuckModePrompt : directModePrompt}`;
+    const systemPrompt = `${isStuckMode ? stuckModePrompt : directModePrompt}`;
 
     console.log('AI Assistant request:', {
       userId: user.id,
@@ -725,41 +724,15 @@ Want me to schedule these for you?"`;
       timezone: context?.temporal?.timezone,
     });
 
-    // Deterministic date/time responses - bypass LLM for these queries
-    interface Message {
-      role: 'user' | 'assistant' | 'system';
-      content: string;
-    }
 
-    const lastUserMsg: string = messages.slice().reverse().find((m: Message) => m.role === 'user')?.content.toLowerCase() || '';
-    const asksDate = /(what\s+(is\s+)?today\??|what\s+day\s+is\s+(it|today)\??|what\s+is\s+the\s+date\??|what'?s\s+today'?s\s+date\??)/i.test(lastUserMsg);
-    const asksTime = /(what\s+time\s+is\s+it\??|what'?s\s+the\s+time\??|current\s+time\??|time\s+now\??)/i.test(lastUserMsg);
-    
-    if (asksDate || asksTime) {
-      const ld = context?.temporal?.localDate ?? new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const lt = context?.temporal?.localTime ?? new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      const tz = context?.temporal?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-      
-      const message = asksDate
-        ? `Today is ${ld}. It is ${lt} in your timezone (${tz}).`
-        : `It's ${lt} (${tz}).`;
-      
-      console.log('Deterministic date/time response triggered:', { asksDate, asksTime, message });
-      
-      return new Response(JSON.stringify({
-        message,
-        actions: []
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Deterministic date/time responses removed to allow AI to handle multiple intents
 
     // Transform the last user message to include images if provided
     interface ContentPart {
       type: 'text' | 'image_url';
       text?: string;
       image_url?: {
-      url: string;
+        url: string;
       };
     }
 
@@ -771,32 +744,32 @@ Want me to schedule these for you?"`;
     const transformedMessages: TransformedMessage[] = messages.map((msg: { role: 'user' | 'assistant' | 'system'; content: string }, idx: number) => {
       // If this is the last user message and we have images, transform it to multimodal format
       if (msg.role === 'user' && idx === messages.length - 1 && images && images.length > 0) {
-      const contentParts: ContentPart[] = [];
-      
-      // Add text content if present
-      if (msg.content && msg.content.trim()) {
-        contentParts.push({
-        type: 'text',
-        text: msg.content
-        });
-      }
-      
-      // Add all images
-      images.forEach((imageData: string) => {
-        contentParts.push({
-        type: 'image_url',
-        image_url: {
-          url: imageData
+        const contentParts: ContentPart[] = [];
+
+        // Add text content if present
+        if (msg.content && msg.content.trim()) {
+          contentParts.push({
+            type: 'text',
+            text: msg.content
+          });
         }
+
+        // Add all images
+        images.forEach((imageData: string) => {
+          contentParts.push({
+            type: 'image_url',
+            image_url: {
+              url: imageData
+            }
+          });
         });
-      });
-      
-      return {
-        role: msg.role,
-        content: contentParts
-      };
+
+        return {
+          role: msg.role,
+          content: contentParts
+        };
       }
-      
+
       // Return regular messages as-is
       return msg;
     });
@@ -826,25 +799,25 @@ Want me to schedule these for you?"`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
-      
+
       if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: 'Rate limit exceeded. Please try again in a moment.' 
+        return new Response(JSON.stringify({
+          error: 'Rate limit exceeded. Please try again in a moment.'
         }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      
+
       if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: 'AI credits depleted. Please add credits to continue.' 
+        return new Response(JSON.stringify({
+          error: 'AI credits depleted. Please add credits to continue.'
         }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      
+
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
@@ -857,7 +830,7 @@ Want me to schedule these for you?"`;
       // Find all time patterns in the message (e.g., "3:07 PM", "1:56 AM")
       const timePattern = /\b\d{1,2}:\d{2}\s*[APap][Mm]\b/g;
       const timesInMessage = assistantMessage.match(timePattern) || [];
-      
+
       // Replace any time that doesn't match the correct time
       timesInMessage.forEach((foundTime: string) => {
         if (foundTime.toUpperCase() !== correctTime.toUpperCase()) {
@@ -873,7 +846,7 @@ Want me to schedule these for you?"`;
       // Find "Today is <weekday>, <Month> <D>, <YYYY>" patterns
       const datePattern = /Today is [A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/g;
       const datesInMessage = assistantMessage.match(datePattern) || [];
-      
+
       // Replace any date that doesn't match the correct date
       datesInMessage.forEach((foundDate: string) => {
         const expectedPattern = `Today is ${correctDate}`;
@@ -884,12 +857,38 @@ Want me to schedule these for you?"`;
       });
     }
 
-    // Advisory mode: strip any code fences and JSON-like action blocks; no actions returned
-    assistantMessage = assistantMessage
-      .replace(/```[\s\S]*?```/g, '')
-      .replace(/\{[^{}]*"action"[^{}]*\}/g, '')
-      .trim();
+    // Extract structured actions from the response
     const actions: any[] = [];
+
+    // Look for JSON blocks in the response
+    const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
+    let match;
+
+    while ((match = jsonBlockRegex.exec(assistantMessage)) !== null) {
+      try {
+        const jsonContent = match[1];
+        const parsed = JSON.parse(jsonContent);
+
+        // If it's a single action object
+        if (parsed.action && parsed.data) {
+          actions.push(parsed);
+        }
+        // If it's an array of actions
+        else if (Array.isArray(parsed)) {
+          parsed.forEach(item => {
+            if (item.action && item.data) {
+              actions.push(item);
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Failed to parse JSON block in AI response:', e);
+      }
+    }
+
+    // Clean up the message by removing the JSON blocks
+    // We want to keep the conversational part but remove the technical instructions
+    assistantMessage = assistantMessage.replace(jsonBlockRegex, '').trim();
 
     return new Response(JSON.stringify({
       message: assistantMessage,
@@ -900,7 +899,7 @@ Want me to schedule these for you?"`;
 
   } catch (error) {
     console.error('Error in ai-assistant function:', error);
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       error: 'An unexpected error occurred. Please try again.'
     }), {
       status: 500,
