@@ -88,6 +88,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Rate limiting: 10 requests per hour for AI generation
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: rateLimitCount } = await supabase
+      .from('rate_limits')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('action', 'generate_playbook')
+      .gte('created_at', oneHourAgo);
+
+    if ((rateLimitCount || 0) >= 10) {
+      console.log('Rate limit exceeded for user:', user.id);
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded. Please wait before generating more playbooks (max 10 per hour).'
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Record this request for rate limiting
+    await supabase.from('rate_limits').insert({ user_id: user.id, action: 'generate_playbook' });
+
     // Parse and validate input
     const body = await req.json();
     const validation = playbookSchema.safeParse(body);

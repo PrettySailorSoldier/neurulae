@@ -39,6 +39,29 @@ serve(async (req) => {
 
     console.log('Generating smart schedule for user:', user.id);
 
+    // Rate limiting: 10 requests per hour for AI generation
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: rateLimitCount } = await supabase
+      .from('rate_limits')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('action', 'generate_smart_plan')
+      .gte('created_at', oneHourAgo);
+
+    if ((rateLimitCount || 0) >= 10) {
+      console.log('Rate limit exceeded for user:', user.id);
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded. Please wait before generating more plans (max 10 per hour).',
+        plan: []
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Record this request for rate limiting
+    await supabase.from('rate_limits').insert({ user_id: user.id, action: 'generate_smart_plan' });
+
     // Validate request body
     const requestSchema = z.object({
       preferences: z.object({}).passthrough().optional(),

@@ -39,6 +39,29 @@ serve(async (req) => {
 
     console.log('Parsing schedule for user:', user.id);
 
+    // Rate limiting: 5 file uploads per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: rateLimitCount } = await supabase
+      .from('rate_limits')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('action', 'parse_schedule')
+      .gte('created_at', oneHourAgo);
+
+    if ((rateLimitCount || 0) >= 5) {
+      console.log('Rate limit exceeded for user:', user.id);
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded. Please wait before uploading more schedules (max 5 per hour).',
+        entries: []
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Record this request for rate limiting
+    await supabase.from('rate_limits').insert({ user_id: user.id, action: 'parse_schedule' });
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     
