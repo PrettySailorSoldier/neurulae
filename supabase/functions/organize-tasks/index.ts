@@ -67,7 +67,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         error: 'Rate limit exceeded. Please wait before organizing more tasks (max 10 per hour).'
       }), {
-        status: 429,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -109,11 +109,12 @@ serve(async (req) => {
     
     if (!validation.success) {
       console.error('Validation error:', validation.error.errors);
+      const errorMessage = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid request format. Please check your input and try again.'
+          error: `Invalid request format: ${errorMessage}`
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -265,14 +266,14 @@ Instructions:
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
-          status: 429,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: 'AI credits depleted. Please add credits to continue.' }), {
-          status: 402,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -297,9 +298,9 @@ Instructions:
   } catch (error) {
     console.error('Error in organize-tasks function:', error);
     return new Response(JSON.stringify({ 
-      error: 'An unexpected error occurred. Please try again.'
+      error: error.message || 'An unexpected error occurred. Please try again.'
     }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
