@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.manage-time-blocks]
 verify_jwt = true
+
+[functions.verify-admin]
+verify_jwt = true
