@@ -76,7 +76,9 @@ serve(async (req: Request) => {
 
       // Record this request (non-blocking, ignore errors)
       if (!rateLimitError) {
-        await supabase.from('rate_limits').insert({ user_id: user.id, action: 'ai_chat' }).catch(() => { });
+        try {
+          await supabase.from('rate_limits').insert({ user_id: user.id, action: 'ai_chat' });
+        } catch { /* ignore */ }
       }
     } catch (rateLimitErr) {
       // Rate limiting failed - continue without it

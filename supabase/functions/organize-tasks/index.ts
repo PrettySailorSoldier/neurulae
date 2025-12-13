@@ -55,7 +55,9 @@ serve(async (req) => {
       
       // Record this request for rate limiting (best effort)
       if (!rateLimitError && !isRateLimited) {
-        await supabase.from('rate_limits').insert({ user_id: user.id, action: 'organize_tasks' }).catch(() => {});
+        try {
+          await supabase.from('rate_limits').insert({ user_id: user.id, action: 'organize_tasks' });
+        } catch { /* ignore */ }
       }
     } catch (e) {
       // If rate_limits table doesn't exist, skip rate limiting
@@ -295,10 +297,11 @@ Instructions:
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in organize-tasks function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.';
     return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred. Please try again.'
+      error: errorMessage
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
