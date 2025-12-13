@@ -82,20 +82,20 @@ serve(async (req) => {
     const taskSchema = z.object({
       id: z.string().uuid(),
       name: z.string().min(1).max(500),
-      due_date: z.string().optional(),
-      estimated_minutes: z.number().int().positive().max(1440).optional(),
-      type: z.string().max(50).optional(),
-      status: z.string().optional(),
-      user_id: z.string().uuid().optional()
+      due_date: z.string().nullish(),
+      estimated_minutes: z.number().int().min(0).max(1440).nullish(),
+      type: z.string().max(50).nullish(),
+      status: z.string().nullish(),
+      user_id: z.string().uuid().nullish()
     });
 
     const availabilitySchema = z.object({
       day_of_week: z.number().int().min(0).max(6),
       start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
       end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-      id: z.string().uuid().optional(),
-      user_id: z.string().uuid().optional(),
-      created_at: z.string().optional()
+      id: z.string().uuid().nullish(),
+      user_id: z.string().uuid().nullish(),
+      created_at: z.string().nullish()
     });
 
     const requestSchema = z.object({
