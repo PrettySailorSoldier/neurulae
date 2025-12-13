@@ -92,10 +92,10 @@ serve(async (req: Request) => {
     const taskSchema = z.object({
       id: z.string().uuid(),
       name: z.string().min(1).max(500),
-      due_date: z.string().optional(),
-      estimated_minutes: z.number().int().positive().max(1440).optional(),
-      type: z.string().max(50).optional(),
-      status: z.string().optional()
+      due_date: z.string().nullish(),
+      estimated_minutes: z.number().int().positive().max(1440).nullish(),
+      type: z.string().max(50).nullish(),
+      status: z.string().nullish()
     });
 
     const timeBlockSchema = z.object({
@@ -104,7 +104,7 @@ serve(async (req: Request) => {
       day_of_week: z.number().int().min(0).max(6),
       start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
       end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-      category: z.string().max(50).optional()
+      category: z.string().max(50).nullish()
     });
 
     const scheduleEntrySchema = z.object({
@@ -112,8 +112,8 @@ serve(async (req: Request) => {
       title: z.string().min(1).max(200),
       start_time: z.string().datetime(),
       end_time: z.string().datetime(),
-      category: z.string().max(50).optional(),
-      description: z.string().max(1000).optional()
+      category: z.string().max(50).nullish(),
+      description: z.string().max(1000).nullish()
     });
 
     const playbookSchema = z.object({
@@ -805,7 +805,7 @@ Want me to schedule these for you?"`;
     });
 
     console.log('Sending AI request:', {
-      model: 'google/gemini-2.5-pro',
+      model: 'google/gemini-2.5-flash',
       messageCount: transformedMessages.length + 1,
       hasImages: images && images.length > 0,
       imagesCount: images?.length || 0,
@@ -818,7 +818,7 @@ Want me to schedule these for you?"`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         stream: true,
         messages: [
           { role: 'system', content: systemPrompt },
