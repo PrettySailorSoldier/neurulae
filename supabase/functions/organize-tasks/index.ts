@@ -38,16 +38,31 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting: 10 requests per hour for AI organization
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count: rateLimitCount } = await supabase
-      .from('rate_limits')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('action', 'organize_tasks')
-      .gte('created_at', oneHourAgo);
+    // Rate limiting: 10 requests per hour for AI organization (non-blocking)
+    let isRateLimited = false;
+    try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count: rateLimitCount, error: rateLimitError } = await supabase
+        .from('rate_limits')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('action', 'organize_tasks')
+        .gte('created_at', oneHourAgo);
 
-    if ((rateLimitCount || 0) >= 10) {
+      if (!rateLimitError && (rateLimitCount || 0) >= 10) {
+        isRateLimited = true;
+      }
+      
+      // Record this request for rate limiting (best effort)
+      if (!rateLimitError && !isRateLimited) {
+        await supabase.from('rate_limits').insert({ user_id: user.id, action: 'organize_tasks' }).catch(() => {});
+      }
+    } catch (e) {
+      // If rate_limits table doesn't exist, skip rate limiting
+      console.log('Rate limiting skipped (table may not exist):', e);
+    }
+
+    if (isRateLimited) {
       console.log('Rate limit exceeded for user:', user.id);
       return new Response(JSON.stringify({ 
         error: 'Rate limit exceeded. Please wait before organizing more tasks (max 10 per hour).'
@@ -57,8 +72,6 @@ serve(async (req) => {
       });
     }
 
-    // Record this request for rate limiting
-    await supabase.from('rate_limits').insert({ user_id: user.id, action: 'organize_tasks' });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {

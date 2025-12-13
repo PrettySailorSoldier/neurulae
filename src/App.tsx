@@ -7,16 +7,21 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { PremiumProvider, usePremium } from "@/contexts/PremiumContext";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { PublicOnly } from "@/components/auth/PublicOnly";
-import Index from "./pages/Index";
+import { lazy, Suspense } from "react";
+
+// Eagerly load landing and auth (critical path)
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
-import Pricing from "./pages/Pricing";
-import Settings from "./pages/Settings";
-import Success from "./pages/Success";
-import MyAvailability from "./pages/MyAvailability";
-import MyPlan from "./pages/MyPlan";
-import AdminPanel from "./pages/AdminPanel";
-import NotFound from "./pages/NotFound";
+
+// Lazy load all other pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Success = lazy(() => import("./pages/Success"));
+const MyAvailability = lazy(() => import("./pages/MyAvailability"));
+const MyPlan = lazy(() => import("./pages/MyPlan"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -39,6 +44,13 @@ function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Page loader for Suspense fallback during lazy loading
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+  </div>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -47,19 +59,21 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
-              <Route path="/app" element={<RequireAuth><Index /></RequireAuth>} />
-              <Route path="/auth" element={<PublicOnly><Auth /></PublicOnly>} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
-              <Route path="/success" element={<Success />} />
-              <Route path="/my-schedule" element={<RequireAuth><MyAvailability /></RequireAuth>} />
-              <Route path="/my-plan" element={<RequireAuth><MyPlan /></RequireAuth>} />
-              <Route path="/admin" element={<RequireAuth><ProtectedAdminRoute><AdminPanel /></ProtectedAdminRoute></RequireAuth>} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
+                <Route path="/app" element={<RequireAuth><Index /></RequireAuth>} />
+                <Route path="/auth" element={<PublicOnly><Auth /></PublicOnly>} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+                <Route path="/success" element={<Success />} />
+                <Route path="/my-schedule" element={<RequireAuth><MyAvailability /></RequireAuth>} />
+                <Route path="/my-plan" element={<RequireAuth><MyPlan /></RequireAuth>} />
+                <Route path="/admin" element={<RequireAuth><ProtectedAdminRoute><AdminPanel /></ProtectedAdminRoute></RequireAuth>} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </PremiumProvider>
