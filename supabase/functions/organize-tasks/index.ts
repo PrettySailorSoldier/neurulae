@@ -99,9 +99,9 @@ serve(async (req) => {
     });
 
     const requestSchema = z.object({
-      tasks: z.array(taskSchema).max(1000),
-      availability: z.array(availabilitySchema).max(500),
-      today: z.string().datetime()
+      tasks: z.array(taskSchema),
+      availability: z.array(availabilitySchema),
+      today: z.string() // Accept any ISO-like date string
     });
 
     const body = await req.json();
@@ -118,6 +118,17 @@ serve(async (req) => {
     }
 
     const { tasks, availability, today } = validation.data;
+
+    // Early return if no tasks to organize
+    if (tasks.length === 0) {
+      return new Response(JSON.stringify({
+        priorities: [],
+        schedule: [],
+        tips: ['Add some tasks first, then use AI to organize them!']
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     console.log('Organizing tasks:', { taskCount: tasks.length, availabilityCount: availability.length });
 
