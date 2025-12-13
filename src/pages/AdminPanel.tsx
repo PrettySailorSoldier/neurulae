@@ -82,6 +82,10 @@ export default function AdminPanel() {
   const [selectedCodeRedemptions, setSelectedCodeRedemptions] = useState<PromoRedemption[]>([]);
   const [redemptionsDialogOpen, setRedemptionsDialogOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState<PromoCode | null>(null);
+  
+  // Server-side admin verification state
+  const [serverVerified, setServerVerified] = useState(false);
+  const [verifying, setVerifying] = useState(true);
 
   // Form state
   const [newCode, setNewCode] = useState("");
@@ -89,6 +93,42 @@ export default function AdminPanel() {
   const [maxUses, setMaxUses] = useState<string>("");
   const [expiresInDays, setExpiresInDays] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
+
+  // Server-side admin verification for defense-in-depth
+  useEffect(() => {
+    const verifyAdminServer = async () => {
+      if (!user) {
+        setVerifying(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-admin');
+        
+        if (error) {
+          console.error('Server admin verification failed:', error);
+          setServerVerified(false);
+        } else if (data?.isAdmin === true) {
+          console.log('Server admin verification succeeded');
+          setServerVerified(true);
+        } else {
+          console.log('Server admin verification: not admin');
+          setServerVerified(false);
+        }
+      } catch (err) {
+        console.error('Error verifying admin status:', err);
+        setServerVerified(false);
+      } finally {
+        setVerifying(false);
+      }
+    };
+    
+    if (!loading && isAdmin) {
+      verifyAdminServer();
+    } else if (!loading) {
+      setVerifying(false);
+    }
+  }, [user, loading, isAdmin]);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -102,10 +142,10 @@ export default function AdminPanel() {
   }, [isAdmin, loading, navigate, toast]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && serverVerified) {
       loadPromoCodes();
     }
-  }, [isAdmin]);
+  }, [isAdmin, serverVerified]);
 
   const loadPromoCodes = async () => {
     setIsLoadingCodes(true);
@@ -375,15 +415,18 @@ export default function AdminPanel() {
     return <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" />Active</Badge>;
   };
 
-  if (loading) {
+  if (loading || verifying) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p>Loading...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Verifying admin access...</p>
+        </div>
       </div>
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin || !serverVerified) {
     return null;
   }
 
