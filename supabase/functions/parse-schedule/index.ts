@@ -56,7 +56,9 @@ serve(async (req) => {
 
       // Record this request for rate limiting (best effort)
       if (!rateLimitError && !isRateLimited) {
-        await supabase.from('rate_limits').insert({ user_id: user.id, action: 'parse_schedule' }).catch(() => {});
+        try {
+          await supabase.from('rate_limits').insert({ user_id: user.id, action: 'parse_schedule' });
+        } catch { /* ignore */ }
       }
     } catch (e) {
       // If rate_limits table doesn't exist, skip rate limiting
