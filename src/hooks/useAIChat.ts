@@ -378,11 +378,13 @@ export function useAIChat({
         throw new Error('Please sign in to use the AI assistant.');
       }
 
-      // Extract the Supabase URL from the client's internal properties
-      const supabaseUrl = (supabase as any).supabaseUrl || '';
-      const functionsUrl = supabaseUrl.replace('.supabase.co', '.supabase.co/functions/v1');
+      // Use the proper environment variable for the Supabase URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not configured');
+      }
 
-      const response = await fetch(`${functionsUrl}/ai-assistant`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
