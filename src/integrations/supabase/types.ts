@@ -443,9 +443,11 @@ export type Database = {
       tasks: {
         Row: {
           created_at: string | null
+          deleted_at: string | null
           due_date: string | null
           estimated_minutes: number | null
           id: string
+          is_completed: boolean | null
           name: string
           source_schedule_id: string | null
           status: string | null
@@ -455,9 +457,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          deleted_at?: string | null
           due_date?: string | null
           estimated_minutes?: number | null
           id?: string
+          is_completed?: boolean | null
           name: string
           source_schedule_id?: string | null
           status?: string | null
@@ -467,9 +471,11 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          deleted_at?: string | null
           due_date?: string | null
           estimated_minutes?: number | null
           id?: string
+          is_completed?: boolean | null
           name?: string
           source_schedule_id?: string | null
           status?: string | null
