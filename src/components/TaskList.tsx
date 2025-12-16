@@ -14,11 +14,17 @@ import { AIOrganizeDialog } from './AIOrganizeDialog';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from './premium/UpgradeModal';
 
+interface BulkTaskInput {
+  title: string;
+  estimatedMinutes?: number;
+}
+
 interface TaskListProps {
   tasks: Task[];
   timeBlocks: TimeBlock[];
   onToggleComplete: (id: string) => void;
   onAddTask: (title: string, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
+  onBulkAddTasks?: (tasks: BulkTaskInput[]) => Promise<void>;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onPrioritize: (taskIds: string[]) => void;
@@ -36,7 +42,8 @@ const TaskListComponent = ({
   tasks, 
   timeBlocks,
   onToggleComplete, 
-  onAddTask, 
+  onAddTask,
+  onBulkAddTasks,
   onUpdateTask, 
   onDeleteTask,
   onPrioritize,
@@ -111,7 +118,9 @@ const TaskListComponent = ({
     }
   };
 
-  const handleBulkAdd = () => {
+  const [bulkAddLoading, setBulkAddLoading] = useState(false);
+
+  const handleBulkAdd = async () => {
     if (!bulkText.trim()) return;
     
     // Parse and clean input
@@ -127,8 +136,8 @@ const TaskListComponent = ({
     // Remove duplicates
     const uniqueLines = Array.from(new Set(lines));
     
-    // Add all tasks
-    uniqueLines.forEach(line => {
+    // Parse all tasks with their estimates
+    const tasksToAdd: BulkTaskInput[] = uniqueLines.map(line => {
       // Parse estimate if exists: "Task title 30m" or "Task title 1h"
       const estimateMatch = line.match(/(.+?)\s+(\d+)\s*(m|min|h|hr|hour)s?$/i);
       if (estimateMatch) {
@@ -136,15 +145,32 @@ const TaskListComponent = ({
         const value = parseInt(estimateMatch[2]);
         const unit = estimateMatch[3].toLowerCase();
         const minutes = unit.startsWith('h') ? value * 60 : value;
-        onAddTask(title);
-        // Note: To preserve estimates, we'd need to modify onAddTask to accept options
+        return { title, estimatedMinutes: minutes };
       } else {
-        onAddTask(line);
+        return { title: line };
       }
     });
     
-    setBulkText('');
-    setBulkMode(false);
+    // Use bulk handler if available (waits for DB confirmation)
+    if (onBulkAddTasks) {
+      setBulkAddLoading(true);
+      try {
+        await onBulkAddTasks(tasksToAdd);
+        setBulkText('');
+        setBulkMode(false);
+      } catch (err) {
+        console.error('Failed to bulk add tasks:', err);
+      } finally {
+        setBulkAddLoading(false);
+      }
+    } else {
+      // Fallback: add one by one (no DB wait)
+      tasksToAdd.forEach(task => {
+        onAddTask(task.title, task.estimatedMinutes);
+      });
+      setBulkText('');
+      setBulkMode(false);
+    }
   };
 
   const handleAIOrganize = async () => {
@@ -228,10 +254,10 @@ const TaskListComponent = ({
                   className="min-h-[120px] resize-none"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={handleBulkAdd} className="btn-primary flex-1">
-                    Add All Tasks
+                  <Button onClick={handleBulkAdd} className="btn-primary flex-1" disabled={bulkAddLoading}>
+                    {bulkAddLoading ? 'Saving...' : 'Add All Tasks'}
                   </Button>
-                  <Button onClick={() => { setBulkText(''); setBulkMode(false); }} variant="outline">
+                  <Button onClick={() => { setBulkText(''); setBulkMode(false); }} variant="outline" disabled={bulkAddLoading}>
                     Cancel
                   </Button>
                 </div>

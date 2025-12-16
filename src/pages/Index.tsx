@@ -486,6 +486,47 @@ const Index = () => {
     }
   };
 
+  const handleBulkAddTasks = async (tasksToAdd: Array<{ title: string; estimatedMinutes?: number }>) => {
+    if (!user) {
+      console.error('Cannot bulk add tasks: user not authenticated');
+      return;
+    }
+    
+    // Prepare all tasks with IDs
+    const newTasks: Task[] = tasksToAdd.map(({ title, estimatedMinutes }) => ({
+      id: crypto.randomUUID(),
+      title,
+      completed: false,
+      recurring: 'none' as const,
+      createdAt: new Date().toISOString(),
+      ...(estimatedMinutes && { estimatedMinutes }),
+    }));
+    
+    // Insert all to database FIRST
+    const dbRows = newTasks.map(task => ({
+      id: task.id,
+      user_id: user.id,
+      name: task.title,
+      due_date: null,
+      estimated_minutes: task.estimatedMinutes || null,
+      type: 'daily',
+      status: 'pending',
+      is_completed: false,
+    }));
+    
+    const { error } = await supabase
+      .from('tasks')
+      .insert(dbRows);
+    
+    if (error) {
+      console.error('Failed to bulk insert tasks:', error);
+      throw error; // Let caller handle the error
+    }
+    
+    // Only update local state AFTER DB confirms
+    setTasks(prev => [...prev, ...newTasks]);
+  };
+
   const handlePrioritizeTasks = (taskIds: string[]) => {
     // Move top priority tasks to priorities list
     const topTasks = taskIds.slice(0, 5).map(id => tasks.find(t => t.id === id)).filter(Boolean) as Task[];
@@ -1367,6 +1408,7 @@ const Index = () => {
                     tasks={tasks}
                     timeBlocks={timeBlocks}
                     onAddTask={handleAddTask}
+                    onBulkAddTasks={handleBulkAddTasks}
                     onToggleComplete={handleToggleComplete}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
@@ -1392,6 +1434,7 @@ const Index = () => {
                   tasks={tasks}
                   timeBlocks={timeBlocks}
                   onAddTask={handleAddTask}
+                  onBulkAddTasks={handleBulkAddTasks}
                   onToggleComplete={handleToggleComplete}
                   onUpdateTask={handleUpdateTask}
                   onDeleteTask={handleDeleteTask}
