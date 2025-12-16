@@ -467,7 +467,7 @@ export type Database = {
           status?: string | null
           type?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string
         }
         Update: {
           created_at?: string | null
