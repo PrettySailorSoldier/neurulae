@@ -79,7 +79,10 @@ export function AIOrganizeDialog({
           console.error('Error fetching tasks :', tasksError);
           throw new Error('Failed to fetch tasks from database');
         }
-        tasksToProcess = dbTasks || [];
+        tasksToProcess = (dbTasks || []).map(t => ({
+          ...t,
+          type: (t.type === 'daily' || t.type === 'ongoing' ? t.type : 'daily') as 'daily' | 'ongoing'
+        }));
       }
 
       // Fetch all availability blocks directly from database
@@ -96,7 +99,7 @@ export function AIOrganizeDialog({
       }
 
       console.log('Fetched data:', { 
-        taskCount: dbTasks?.length || 0, 
+        taskCount: tasksToProcess?.length || 0, 
         availabilityCount: availabilityBlocks?.length || 0 
       });
 
