@@ -1,10 +1,16 @@
 import { TaskList } from '@/components/TaskList';
 import { Task, TimeBlock, ScheduledTask } from '@/types';
 
+interface BulkTaskInput {
+  title: string;
+  estimatedMinutes?: number;
+}
+
 interface TaskSectionProps {
   tasks: Task[];
   timeBlocks: TimeBlock[];
   onAddTask: (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
+  onBulkAddTasks?: (tasks: BulkTaskInput[]) => Promise<void>;
   onToggleComplete: (id: string) => void;
   onUpdateTask: (updatedTask: Task) => void;
   onDeleteTask: (id: string) => void;
@@ -23,6 +29,7 @@ export function TaskSection({
   tasks,
   timeBlocks,
   onAddTask,
+  onBulkAddTasks,
   onToggleComplete,
   onUpdateTask,
   onDeleteTask,
@@ -37,6 +44,7 @@ export function TaskSection({
         tasks={tasks}
         timeBlocks={timeBlocks}
         onAddTask={onAddTask}
+        onBulkAddTasks={onBulkAddTasks}
         onToggleComplete={onToggleComplete}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
