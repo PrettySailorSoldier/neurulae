@@ -266,6 +266,18 @@ const ChatPanelComponent = ({
     };
   }, [isDragging, dragOffset, isMinimized]);
 
+  // Ensure panel stays on screen on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => ({
+        x: Math.max(0, Math.min(window.innerWidth - 400, prev.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 60, prev.y))
+      }));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (!isOpen) return null;
 
   const getPinnedHeight = () => {
@@ -355,12 +367,12 @@ const ChatPanelComponent = ({
   return (
     <Card
       className={cn(
-        "fixed flex flex-col shadow-elevated z-50 transition-all duration-300",
+        "fixed flex flex-col shadow-elevated z-[100] transition-all duration-300 bg-card border",
         isPinned
           ? "bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl rounded-b-none border-t"
           : "w-[400px] rounded-lg",
         isMinimized
-          ? "h-[52px]"
+          ? "h-[65px]" /* Increased height to ensure header fits comfortably */
           : isPinned
             ? getPinnedHeight()
             : "h-[600px]",

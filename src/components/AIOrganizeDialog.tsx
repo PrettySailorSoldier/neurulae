@@ -59,16 +59,27 @@ export function AIOrganizeDialog({
       // Get the real current date
       const today = new Date().toISOString();
 
-      // Fetch all pending tasks directly from database
-      const { data: dbTasks, error: tasksError } = await supabase
-        .from('tasks')
-        .select('id, name, due_date, estimated_minutes, type')
-        .eq('user_id', session.user.id)
-        .eq('status', 'pending');
+      let tasksToProcess = tasks.filter(t => !t.completed).map(t => ({
+        id: t.id,
+        name: t.title, // Map title to name for consistency
+        due_date: t.dueDate,
+        estimated_minutes: t.estimatedMinutes,
+        type: t.type
+      }));
 
-      if (tasksError) {
-        console.error('Error fetching tasks:', tasksError);
-        throw new Error('Failed to fetch tasks from database');
+      // Fallback to DB fetch only if no tasks passed
+      if (tasksToProcess.length === 0) {
+        const { data: dbTasks, error: tasksError } = await supabase
+          .from('tasks')
+          .select('id, name, due_date, estimated_minutes, type')
+          .eq('user_id', session.user.id)
+          .eq('status', 'pending');
+
+        if (tasksError) {
+          console.error('Error fetching tasks :', tasksError);
+          throw new Error('Failed to fetch tasks from database');
+        }
+        tasksToProcess = dbTasks || [];
       }
 
       // Fetch all availability blocks directly from database
@@ -95,7 +106,7 @@ export function AIOrganizeDialog({
           Authorization: `Bearer ${session.access_token}`,
         },
         body: {
-          tasks: dbTasks || [],
+          tasks: tasksToProcess,
           availability: availabilityBlocks || [],
           today,
         },
@@ -107,7 +118,7 @@ export function AIOrganizeDialog({
       setResult(data);
       toast({
         title: "✨ AI Analysis Complete",
-        description: `Analyzed ${dbTasks?.length || 0} tasks and ${availabilityBlocks?.length || 0} availability blocks`,
+        description: `Analyzed ${tasksToProcess.length} tasks and ${availabilityBlocks?.length || 0} availability blocks`,
       });
     } catch (err: any) {
       console.error('Organization error:', err);
