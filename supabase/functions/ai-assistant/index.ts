@@ -87,7 +87,11 @@ serve(async (req: Request) => {
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+      console.error('LOVABLE_API_KEY is not configured');
+      return new Response(JSON.stringify({ error: 'AI configuration missing (API Key)' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Validate input with structured schemas
@@ -807,7 +811,7 @@ Want me to schedule these for you?"`;
     });
 
     console.log('Sending AI request:', {
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-1.5-flash',
       messageCount: transformedMessages.length + 1,
       hasImages: images && images.length > 0,
       imagesCount: images?.length || 0,
@@ -820,7 +824,7 @@ Want me to schedule these for you?"`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-1.5-flash',
         stream: true,
         messages: [
           { role: 'system', content: systemPrompt },

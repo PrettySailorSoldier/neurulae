@@ -114,7 +114,11 @@ serve(async (req) => {
     // Use Lovable AI to parse the schedule
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+      console.error('LOVABLE_API_KEY is not configured');
+      return new Response(JSON.stringify({ error: 'AI processing unavailable (no API key)', entries: [] }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     console.log('Parsing schedule PDF with AI...');
@@ -126,7 +130,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-1.5-flash',
           response_format: { type: 'json_object' },
           messages: [
             {
