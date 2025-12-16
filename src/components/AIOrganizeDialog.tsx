@@ -73,7 +73,8 @@ export function AIOrganizeDialog({
           .from('tasks')
           .select('id, name, due_date, estimated_minutes, type')
           .eq('user_id', session.user.id)
-          .eq('status', 'pending');
+          .eq('is_completed', false) // Filter out completed tasks
+          .is('deleted_at', null);   // Filter out deleted tasks
 
         if (tasksError) {
           console.error('Error fetching tasks :', tasksError);
