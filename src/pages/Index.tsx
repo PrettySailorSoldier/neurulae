@@ -375,10 +375,11 @@ const Index = () => {
   // REMOVED: Auto-sync effect that caused cascading writes
   // Theme is now only synced when user explicitly saves in CustomThemeBuilder
 
-  const handleAddTask = (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
+  const handleAddTask = async (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
+    const taskId = crypto.randomUUID();
     const newTask: Task = typeof taskOrTitle === 'string'
       ? {
-        id: crypto.randomUUID(),
+        id: taskId,
         title: taskOrTitle,
         completed: false,
         recurring: 'none',
@@ -387,20 +388,66 @@ const Index = () => {
         ...(taskType && { taskType }),
       }
       : {
-        id: crypto.randomUUID(),
+        id: taskId,
         ...taskOrTitle,
         createdAt: new Date().toISOString(),
       };
+    
+    // Update local state immediately for responsive UI
     setTasks(prev => [...prev, newTask]);
+    
+    // Also persist to Supabase 'tasks' table for AI features
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from('tasks')
+          .insert({
+            id: taskId,
+            user_id: user.id,
+            name: newTask.title,
+            due_date: newTask.dueDate || null,
+            estimated_minutes: newTask.estimatedMinutes || null,
+            type: newTask.type || 'daily',
+            status: 'pending',
+            is_completed: false,
+          });
+        
+        if (error) {
+          console.error('Failed to save task to database:', error);
+          // Task is still in local state, so UI works - just log the error
+        }
+      } catch (err) {
+        console.error('Error inserting task to database:', err);
+      }
+    }
   };
 
-  const handleToggleComplete = (id: string) => {
+  const handleToggleComplete = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    const newCompletedState = task ? !task.completed : false;
+    
     setTasks(tasks.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
+      task.id === id ? { ...task, completed: newCompletedState } : task
     ));
     setPriorities(priorities.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
+      task.id === id ? { ...task, completed: newCompletedState } : task
     ));
+    
+    // Sync to database
+    if (user) {
+      try {
+        await supabase
+          .from('tasks')
+          .update({ 
+            is_completed: newCompletedState,
+            status: newCompletedState ? 'completed' : 'pending'
+          })
+          .eq('id', id)
+          .eq('user_id', user.id);
+      } catch (err) {
+        console.error('Error updating task completion in database:', err);
+      }
+    }
   };
 
   const handleUpdateTask = (updatedTask: Task) => {
@@ -421,9 +468,22 @@ const Index = () => {
     ));
   };
 
-  const handleDeleteTask = (id: string) => {
+  const handleDeleteTask = async (id: string) => {
     setTasks(tasks.filter(task => task.id !== id));
     setPriorities(priorities.filter(task => task.id !== id));
+    
+    // Soft-delete in database (set deleted_at timestamp)
+    if (user) {
+      try {
+        await supabase
+          .from('tasks')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('user_id', user.id);
+      } catch (err) {
+        console.error('Error deleting task from database:', err);
+      }
+    }
   };
 
   const handlePrioritizeTasks = (taskIds: string[]) => {
