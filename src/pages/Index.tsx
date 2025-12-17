@@ -414,10 +414,20 @@ const Index = () => {
         
         if (error) {
           console.error('Failed to save task to database:', error);
-          // Task is still in local state, so UI works - just log the error
+          // Show user-visible error so failures aren't silent
+          toast({
+            title: "⚠️ Sync Warning",
+            description: `Task added locally but failed to sync to cloud: ${error.message}`,
+            variant: "destructive",
+          });
         }
       } catch (err) {
         console.error('Error inserting task to database:', err);
+        toast({
+          title: "⚠️ Sync Error",
+          description: "Task added locally but cloud sync failed. AI features may not see this task.",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -492,24 +502,28 @@ const Index = () => {
       return;
     }
     
-    // Prepare all tasks with IDs
+    // Prepare all tasks with IDs and proper defaults
     const newTasks: Task[] = tasksToAdd.map(({ title, estimatedMinutes }) => ({
       id: crypto.randomUUID(),
       title,
       completed: false,
       recurring: 'none' as const,
+      type: 'daily' as const, // Ensure type is set for schema consistency
       createdAt: new Date().toISOString(),
-      ...(estimatedMinutes && { estimatedMinutes }),
+      estimatedMinutes,
     }));
     
-    // Insert all to database FIRST
+    // 1. Update UI first (optimistic update for responsiveness)
+    setTasks(prev => [...prev, ...newTasks]);
+    
+    // 2. Sync to DB with schema-compliant rows
     const dbRows = newTasks.map(task => ({
       id: task.id,
       user_id: user.id,
       name: task.title,
       due_date: null,
       estimated_minutes: task.estimatedMinutes || null,
-      type: 'daily',
+      type: 'daily', // Matches DB constraint
       status: 'pending',
       is_completed: false,
     }));
@@ -520,11 +534,14 @@ const Index = () => {
     
     if (error) {
       console.error('Failed to bulk insert tasks:', error);
-      throw error; // Let caller handle the error
+      // Show user-visible error for bulk add failures
+      toast({
+        title: "⚠️ Sync Error",
+        description: "Tasks saved locally but failed to sync to cloud.",
+        variant: "destructive",
+      });
+      // Don't throw - tasks are already in local state, just log the sync failure
     }
-    
-    // Only update local state AFTER DB confirms
-    setTasks(prev => [...prev, ...newTasks]);
   };
 
   const handlePrioritizeTasks = (taskIds: string[]) => {
@@ -1407,6 +1424,7 @@ const Index = () => {
                   <TaskSection
                     tasks={tasks}
                     timeBlocks={timeBlocks}
+                    userId={user?.id}
                     onAddTask={handleAddTask}
                     onBulkAddTasks={handleBulkAddTasks}
                     onToggleComplete={handleToggleComplete}
@@ -1433,6 +1451,7 @@ const Index = () => {
                 <TaskSection
                   tasks={tasks}
                   timeBlocks={timeBlocks}
+                  userId={user?.id}
                   onAddTask={handleAddTask}
                   onBulkAddTasks={handleBulkAddTasks}
                   onToggleComplete={handleToggleComplete}

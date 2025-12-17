@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Task, TimeBlock } from '@/types';
 import { UnscheduledTaskItem } from './UnscheduledTaskItem';
 import { AIOrganizeDialog } from './AIOrganizeDialog';
+import { ForceSyncButton } from './ForceSyncButton';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from './premium/UpgradeModal';
 
@@ -22,6 +23,7 @@ interface BulkTaskInput {
 interface TaskListProps {
   tasks: Task[];
   timeBlocks: TimeBlock[];
+  userId?: string;
   onToggleComplete: (id: string) => void;
   onAddTask: (title: string, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
   onBulkAddTasks?: (tasks: BulkTaskInput[]) => Promise<void>;
@@ -41,6 +43,7 @@ interface TaskListProps {
 const TaskListComponent = ({ 
   tasks, 
   timeBlocks,
+  userId,
   onToggleComplete, 
   onAddTask,
   onBulkAddTasks,
@@ -203,15 +206,20 @@ const TaskListComponent = ({
                 All your tasks - add details, subtasks, and notes
               </p>
             </div>
-            <Button
-              onClick={handleAIOrganize}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <Sparkles className="h-4 w-4" />
-              Organize with AI
-            </Button>
+            <div className="flex gap-2">
+              {userId && (
+                <ForceSyncButton tasks={tasks} userId={userId} />
+              )}
+              <Button
+                onClick={handleAIOrganize}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Organize with AI
+              </Button>
+            </div>
           </div>
           <div className="flex gap-2 mt-4">
             <div className="relative flex-1">

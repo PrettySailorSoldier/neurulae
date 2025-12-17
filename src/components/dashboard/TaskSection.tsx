@@ -9,6 +9,7 @@ interface BulkTaskInput {
 interface TaskSectionProps {
   tasks: Task[];
   timeBlocks: TimeBlock[];
+  userId?: string;
   onAddTask: (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
   onBulkAddTasks?: (tasks: BulkTaskInput[]) => Promise<void>;
   onToggleComplete: (id: string) => void;
@@ -28,6 +29,7 @@ interface TaskSectionProps {
 export function TaskSection({
   tasks,
   timeBlocks,
+  userId,
   onAddTask,
   onBulkAddTasks,
   onToggleComplete,
@@ -43,6 +45,7 @@ export function TaskSection({
       <TaskList
         tasks={tasks}
         timeBlocks={timeBlocks}
+        userId={userId}
         onAddTask={onAddTask}
         onBulkAddTasks={onBulkAddTasks}
         onToggleComplete={onToggleComplete}

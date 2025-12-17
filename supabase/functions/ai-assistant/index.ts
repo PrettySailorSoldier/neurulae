@@ -261,18 +261,91 @@ serve(async (req: Request) => {
       ? getTimeOfDay(context.temporal.hour24)
       : 'unknown';
 
-    // All UI components
-    // - Tasks
-    // - Time blocks
-    // - Playbooks
-    // - Projects
-    // - Schedule entries
-    // - Current date
-    // - Current time
-    // - Temporal
-    // - Today schedule
-    // - Upcoming schedule
-    // - Available time windows
+    // ============================================================
+    // UNIFIED DATA CONTEXT: Fetch from DB to match scheduler data
+    // ============================================================
+    
+    // Fetch user's tasks from database (same source as organize-tasks)
+    const { data: dbTasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('id, name, due_date, estimated_minutes, type, status, is_completed')
+      .eq('user_id', user.id)
+      .eq('is_completed', false)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (tasksError) {
+      console.error('Error fetching tasks for AI context:', tasksError);
+    }
+
+    // Fetch user's availability (same source as organize-tasks)
+    const { data: dbAvailability, error: availError } = await supabase
+      .from('availability')
+      .select('id, day_of_week, start_time, end_time')
+      .eq('user_id', user.id)
+      .order('day_of_week')
+      .order('start_time');
+
+    if (availError) {
+      console.error('Error fetching availability for AI context:', availError);
+    }
+
+    // Fetch schedule_entries for today and upcoming 7 days
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: dbScheduleEntries, error: scheduleError } = await supabase
+      .from('schedule_entries')
+      .select('id, title, start_time, end_time, category, description')
+      .eq('user_id', user.id)
+      .gte('start_time', todayStart)
+      .lte('start_time', weekAhead)
+      .order('start_time');
+
+    if (scheduleError) {
+      console.error('Error fetching schedule entries for AI context:', scheduleError);
+    }
+
+    // Build unified task list (prefer DB data, fallback to frontend context)
+    const unifiedTasks = dbTasks && dbTasks.length > 0 
+      ? dbTasks.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          due_date: t.due_date,
+          estimated_minutes: t.estimated_minutes,
+          type: t.type,
+          status: t.status
+        }))
+      : context?.tasks || [];
+
+    // Build unified availability
+    const unifiedAvailability = dbAvailability && dbAvailability.length > 0
+      ? dbAvailability.map((a: any) => ({
+          day: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][a.day_of_week],
+          start: a.start_time,
+          end: a.end_time
+        }))
+      : [];
+
+    // Build unified schedule entries
+    const unifiedScheduleEntries = dbScheduleEntries && dbScheduleEntries.length > 0
+      ? dbScheduleEntries.map((s: any) => ({
+          title: s.title,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          category: s.category,
+          description: s.description
+        }))
+      : context?.scheduleEntries || [];
+
+    console.log('Unified AI context:', {
+      tasksFromDB: dbTasks?.length || 0,
+      tasksFromFrontend: context?.tasks?.length || 0,
+      availabilityBlocks: dbAvailability?.length || 0,
+      scheduleEntries: dbScheduleEntries?.length || 0
+    });
 
     // Get user profile info
     const coachingStyle = userProfile?.aiStyle || 'balanced';
@@ -527,12 +600,28 @@ ${context?.availableTimeWindows && context.availableTimeWindows.length > 0
 **Living Situation Context: ${livingAlone ? 'Lives alone' : 'Lives with others'}**
 ${!livingAlone ? '⚠️ EXTRA CONSIDERATION: Be mindful of noise levels and shared spaces when suggesting tasks.' : ''}
 
-## Current Context
-You have access to the user's:
-- **${context?.tasks?.length || 0} tasks** (some may be scheduled, others unscheduled)
-- **${context?.timeBlocks?.length || 0} time blocks** for today
+## Current Context (Unified Data from Database)
+You have access to the user's data directly from the database:
+- **${unifiedTasks.length} active tasks** in database
+- **${unifiedAvailability.length} availability blocks** (weekly recurring schedule)
+- **${unifiedScheduleEntries.length} scheduled entries** (next 7 days)
 - **${context?.playbooks?.length || 0} playbooks** (productivity templates)
 - **${context?.projects?.length || 0} projects**
+
+### User's Active Tasks:
+${unifiedTasks.length > 0
+      ? unifiedTasks.slice(0, 15).map((t: any) => `  - ${t.name}${t.due_date ? ` (Due: ${t.due_date})` : ''}${t.estimated_minutes ? ` ~${t.estimated_minutes}min` : ''}`).join('\n')
+      : '  - No tasks found in database'}
+
+### User's Weekly Availability:
+${unifiedAvailability.length > 0
+      ? unifiedAvailability.map((a: any) => `  - ${a.day}: ${a.start} to ${a.end}`).join('\n')
+      : '  - No availability set'}
+
+### Upcoming Schedule Entries (Next 7 Days):
+${unifiedScheduleEntries.length > 0
+      ? unifiedScheduleEntries.slice(0, 10).map((s: any) => `  - ${s.title} (${s.start_time} to ${s.end_time})${s.category ? ` [${s.category}]` : ''}`).join('\n')
+      : '  - No scheduled entries'}
 
 ## Your Capabilities
 
@@ -658,6 +747,11 @@ Example:
 - title (required)
 - description: string
 - category: string
+
+**get_my_schedule**: Retrieve user's schedule (already included in context above)
+- This data is already provided in the "Upcoming Schedule Entries" section above
+- Use this information to help schedule tasks around existing commitments
+- Reference specific schedule entries when suggesting time slots
 
 ## Response Style
 
