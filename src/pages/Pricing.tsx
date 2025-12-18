@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Crown, Sparkles, Zap } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Check, Crown, Sparkles, Zap, Gift, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePremium } from "@/contexts/PremiumContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,9 +46,11 @@ const features = [
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { plan, isPremium, loading } = usePremium();
+  const { plan, isPremium, loading, checkSubscription } = usePremium();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [promoCode, setPromoCode] = useState("");
+  const [isRedeeming, setIsRedeeming] = useState(false);
 
   const handleCheckout = async (priceId: string) => {
     if (!user) {
@@ -70,6 +74,49 @@ export default function Pricing() {
         description: error.message || "Failed to start checkout",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleRedeemPromo = async () => {
+    if (!promoCode.trim()) return;
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    setIsRedeeming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("redeem-promo", {
+        body: { code: promoCode.trim() },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast({
+          title: "Invalid code",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success! 🎉",
+        description: data.message || "Promo code redeemed successfully!",
+      });
+
+      setPromoCode("");
+      await checkSubscription();
+    } catch (error) {
+      console.error("Error redeeming promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to redeem promo code. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRedeeming(false);
     }
   };
 
@@ -187,6 +234,43 @@ export default function Pricing() {
             );
           })}
         </div>
+
+        {/* Promo Code Section */}
+        {!isPremium && (
+          <Card className="max-w-md mx-auto mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Gift className="h-5 w-5" />
+                Have a Promo Code?
+              </CardTitle>
+              <CardDescription>
+                Enter your code below to unlock premium features
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter promo code"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && handleRedeemPromo()}
+                  disabled={isRedeeming}
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={handleRedeemPromo} 
+                  disabled={isRedeeming || !promoCode.trim()}
+                >
+                  {isRedeeming ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Redeem"
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="text-center mt-12">
           <Button variant="ghost" onClick={() => navigate('/app')}>
