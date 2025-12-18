@@ -41,28 +41,8 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil"
-    });
-
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
-    if (customers.data.length === 0) {
-      logStep("No customer found");
-      return new Response(JSON.stringify({ 
-        subscribed: false, 
-        plan: 'free',
-        productId: null 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    const customerId = customers.data[0].id;
-    logStep("Found customer", { customerId });
-
-    // First check if user has active promo code
+    // FIRST: Check if user has active promo code (before Stripe check)
+    // This ensures users with promo codes get premium even without Stripe account
     const { data: hasPromo } = await supabaseClient
       .rpc('has_active_promo', { p_user_id: user.id });
 
@@ -86,6 +66,28 @@ serve(async (req) => {
         status: 200,
       });
     }
+
+    // THEN: Check Stripe customer and subscriptions
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+      apiVersion: "2025-08-27.basil"
+    });
+
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    
+    if (customers.data.length === 0) {
+      logStep("No customer found and no promo");
+      return new Response(JSON.stringify({ 
+        subscribed: false, 
+        plan: 'free',
+        productId: null 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    const customerId = customers.data[0].id;
+    logStep("Found customer", { customerId });
 
     // Check for active subscriptions
     const subscriptions = await stripe.subscriptions.list({

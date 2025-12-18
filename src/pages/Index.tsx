@@ -1261,6 +1261,14 @@ const Index = () => {
     setIsAIAssistantOpen(true);
   };
 
+  // Theme change handler - updates both local state AND database to prevent race condition
+  const handleThemeChange = (newTheme: Theme) => {
+    setTheme(newTheme); // 1. Update UI immediately
+    if (user) {
+      savePreferences({ theme: newTheme }); // 2. Update Database Source of Truth
+    }
+  };
+
   const handleGenerateSchedule = () => {
     setInitialAIMessage("I've uploaded my work/class schedule and added my tasks. Please generate an optimized schedule for me.");
     setIsAIAssistantOpen(true);
@@ -1304,7 +1312,7 @@ const Index = () => {
         onSetEisenhowerOpen={setEisenhowerOpen}
         onSetChatPanelOpen={setIsChatPanelOpen}
         onSetTutorialOpen={setTutorialOpen}
-        onThemeChange={setTheme}
+        onThemeChange={handleThemeChange}
         onCustomThemeClick={handleOpenCustomThemeBuilder}
         onEditCustomTheme={handleEditCustomTheme}
         onDeleteCustomTheme={handleDeleteCustomTheme}
