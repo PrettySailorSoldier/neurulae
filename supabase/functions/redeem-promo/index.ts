@@ -24,22 +24,25 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Use service role key to bypass RLS for promo code lookups and updates
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
   try {
     logStep("Function started");
 
-    // Authenticate user
+    // Authenticate user using their token
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
     
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user } } = await supabaseClient.auth.getUser(token);
-    if (!user) throw new Error("User not authenticated");
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    if (authError || !user) {
+      logStep("Auth failed", { error: authError?.message });
+      throw new Error("User not authenticated");
+    }
     logStep("User authenticated", { userId: user.id });
 
     // Validate request
@@ -56,12 +59,14 @@ serve(async (req) => {
       .single();
 
     if (findError || !promoCode) {
-      logStep("Invalid promo code", { code });
+      logStep("Invalid promo code", { code, error: findError?.message });
       return new Response(
         JSON.stringify({ error: "Invalid or expired promo code" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
+
+    logStep("Promo code found", { code, planType: promoCode.plan_type });
 
     // Check if already redeemed by this user
     const { data: existingRedemption } = await supabaseClient
@@ -98,13 +103,11 @@ serve(async (req) => {
     }
 
     // ATOMIC: Increment usage counter with optimistic locking to prevent race conditions
-    // This ensures that if two requests try to redeem the last use simultaneously,
-    // only one will succeed (the other will get 0 rows updated)
     const { data: updatedCode, error: updateError } = await supabaseClient
       .from("promo_codes")
       .update({ current_uses: promoCode.current_uses + 1 })
       .eq("id", promoCode.id)
-      .eq("current_uses", promoCode.current_uses) // Optimistic lock: only update if count hasn't changed
+      .eq("current_uses", promoCode.current_uses)
       .select()
       .single();
 
@@ -118,7 +121,7 @@ serve(async (req) => {
 
     logStep("Usage counter incremented atomically");
 
-    // Now create redemption record (after successful atomic increment)
+    // Create redemption record
     const { error: redemptionError } = await supabaseClient
       .from("promo_redemptions")
       .insert({
@@ -143,7 +146,7 @@ serve(async (req) => {
         user_id: user.id,
         role: promoCode.plan_type,
       }, {
-        onConflict: "user_id,role",
+        onConflict: "user_id",
       });
 
     if (roleError) {
@@ -153,12 +156,14 @@ serve(async (req) => {
     // Update subscription status
     const { error: subError } = await supabaseClient
       .from("subscription_status")
-      .update({
+      .upsert({
+        user_id: user.id,
         plan_type: promoCode.plan_type,
         status: 'active',
         updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
+      }, {
+        onConflict: "user_id",
+      });
 
     if (subError) {
       logStep("Failed to update subscription", { error: subError.message });
