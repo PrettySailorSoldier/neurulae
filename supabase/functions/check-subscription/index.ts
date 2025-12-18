@@ -45,8 +45,10 @@ serve(async (req) => {
 
     // FIRST: Check if user has active promo code (before Stripe check)
     // This ensures users with promo codes get premium even without Stripe account
-    const { data: hasPromo } = await supabaseClient
+    const { data: hasPromo, error: promoError } = await supabaseClient
       .rpc('has_active_promo', { p_user_id: user.id });
+
+    logStep("Promo check result", { hasPromo, promoError: promoError?.message });
 
     if (hasPromo) {
       logStep("Active promo code found");
