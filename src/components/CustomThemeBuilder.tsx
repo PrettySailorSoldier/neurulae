@@ -226,6 +226,7 @@ interface SavedPalette {
   id: string;
   name: string;
   colors: CustomTheme["colors"];
+  backgroundImage?: CustomTheme["backgroundImage"];
 }
 export function CustomThemeBuilder({
   open,
@@ -477,6 +478,7 @@ export function CustomThemeBuilder({
       ...theme,
       name: palette.name, // Ensure the name updates too!
       colors: palette.colors,
+      backgroundImage: palette.backgroundImage || theme.backgroundImage, // Restore background image
     };
     updateThemeWithHistory(newTheme);
     toast.success(`Palette "${palette.name}" loaded`);
@@ -511,6 +513,7 @@ export function CustomThemeBuilder({
       id: themeId,
       name: themeName,
       colors: { ...theme.colors },
+      backgroundImage: theme.backgroundImage, // Preserve background image
     };
 
     // If a palette with this ID already exists, update it; otherwise, append
