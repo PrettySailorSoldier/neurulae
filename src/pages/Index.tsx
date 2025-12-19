@@ -1,11 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProjectsTab } from '@/components/ProjectsTab';
-import { PlaybooksTab } from '@/components/PlaybooksTab';
-import { WidgetPanel } from '@/components/WidgetPanel';
-import { CalendarScheduler } from '@/components/CalendarScheduler';
-import { ChatPanel } from '@/components/ChatPanel';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { TaskSection } from '@/components/dashboard/TaskSection';
@@ -16,33 +11,47 @@ import { useSyncedStorage } from '@/hooks/useSyncedStorage';
 import { syncService } from '@/services/syncService';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme } from '@/types';
 import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
-import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
-import { AIAssistant } from '@/components/AIAssistant';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
-import { ReminderWidgetEditor } from '@/components/ReminderWidgetEditor';
-import { EnergyTaskWidgetEditor } from '@/components/EnergyTaskWidgetEditor';
-import { FutureSelfMessengerEditor } from '@/components/FutureSelfMessengerEditor';
-import { MoodGardenWidgetEditor } from '@/components/MoodGardenWidgetEditor';
-import { ParallelUniverseWidgetEditor } from '@/components/ParallelUniverseWidgetEditor';
-import { SoundSignatureWidgetEditor } from '@/components/SoundSignatureWidgetEditor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { CustomThemeBuilder } from '@/components/CustomThemeBuilder';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePremium } from '@/contexts/PremiumContext';
-import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
-import { ProfileSetupDialog } from '@/components/ProfileSetupDialog';
-import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { MobileTabBar, MobileTab } from '@/components/MobileTabBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
-import { FocusTimer } from '@/components/FocusTimer';
+
+// Lazy load heavy components for better code splitting
+const ProjectsTab = lazy(() => import('@/components/ProjectsTab').then(m => ({ default: m.ProjectsTab })));
+const PlaybooksTab = lazy(() => import('@/components/PlaybooksTab').then(m => ({ default: m.PlaybooksTab })));
+const WidgetPanel = lazy(() => import('@/components/WidgetPanel').then(m => ({ default: m.WidgetPanel })));
+const CalendarScheduler = lazy(() => import('@/components/CalendarScheduler').then(m => ({ default: m.CalendarScheduler })));
+const ChatPanel = lazy(() => import('@/components/ChatPanel').then(m => ({ default: m.ChatPanel })));
+const EisenhowerMatrix = lazy(() => import('@/components/EisenhowerMatrix').then(m => ({ default: m.EisenhowerMatrix })));
+const AIAssistant = lazy(() => import('@/components/AIAssistant').then(m => ({ default: m.AIAssistant })));
+const ReminderWidgetEditor = lazy(() => import('@/components/ReminderWidgetEditor').then(m => ({ default: m.ReminderWidgetEditor })));
+const EnergyTaskWidgetEditor = lazy(() => import('@/components/EnergyTaskWidgetEditor').then(m => ({ default: m.EnergyTaskWidgetEditor })));
+const FutureSelfMessengerEditor = lazy(() => import('@/components/FutureSelfMessengerEditor').then(m => ({ default: m.FutureSelfMessengerEditor })));
+const MoodGardenWidgetEditor = lazy(() => import('@/components/MoodGardenWidgetEditor').then(m => ({ default: m.MoodGardenWidgetEditor })));
+const ParallelUniverseWidgetEditor = lazy(() => import('@/components/ParallelUniverseWidgetEditor').then(m => ({ default: m.ParallelUniverseWidgetEditor })));
+const SoundSignatureWidgetEditor = lazy(() => import('@/components/SoundSignatureWidgetEditor').then(m => ({ default: m.SoundSignatureWidgetEditor })));
+const CustomThemeBuilder = lazy(() => import('@/components/CustomThemeBuilder').then(m => ({ default: m.CustomThemeBuilder })));
+const OnboardingTutorial = lazy(() => import('@/components/OnboardingTutorial').then(m => ({ default: m.OnboardingTutorial })));
+const ProfileSetupDialog = lazy(() => import('@/components/ProfileSetupDialog').then(m => ({ default: m.ProfileSetupDialog })));
+const KeyboardShortcutsDialog = lazy(() => import('@/components/KeyboardShortcutsDialog').then(m => ({ default: m.KeyboardShortcutsDialog })));
+const FocusTimer = lazy(() => import('@/components/FocusTimer').then(m => ({ default: m.FocusTimer })));
+
+// Loading fallback component
+const ComponentLoader = () => (
+  <div className="flex items-center justify-center p-4">
+    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+  </div>
+);
 
 const Index = () => {
   const { user } = useAuth();
@@ -1414,7 +1423,9 @@ const Index = () => {
               <div className="pb-20">
                 {mobileTab === 'focus' && (
                   <div className="space-y-4">
-                    <FocusTimer tasks={tasks} playbooks={playbooks} />
+                    <Suspense fallback={<ComponentLoader />}>
+                      <FocusTimer tasks={tasks} playbooks={playbooks} />
+                    </Suspense>
                   </div>
                 )}
                 {mobileTab === 'timeline' && (
@@ -1475,17 +1486,21 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectsTab projects={projects} onAddProject={handleAddProject} />
+            <Suspense fallback={<ComponentLoader />}>
+              <ProjectsTab projects={projects} onAddProject={handleAddProject} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="playbooks" data-tutorial="playbooks">
-            <PlaybooksTab
-              playbooks={playbooks}
-              onAddPlaybook={handleAddPlaybook}
-              onUpdatePlaybook={handleUpdatePlaybook}
-              onDeletePlaybook={handleDeletePlaybook}
-              onReorderPlaybooks={handleReorderPlaybooks}
-            />
+            <Suspense fallback={<ComponentLoader />}>
+              <PlaybooksTab
+                playbooks={playbooks}
+                onAddPlaybook={handleAddPlaybook}
+                onUpdatePlaybook={handleUpdatePlaybook}
+                onDeletePlaybook={handleDeletePlaybook}
+                onReorderPlaybooks={handleReorderPlaybooks}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="care">
@@ -1507,13 +1522,16 @@ const Index = () => {
       </main>
 
       {/* Onboarding Tutorial */}
-      <OnboardingTutorial
-        open={tutorialOpen}
-        onOpenChange={setTutorialOpen}
-      />
+      <Suspense fallback={null}>
+        <OnboardingTutorial
+          open={tutorialOpen}
+          onOpenChange={setTutorialOpen}
+        />
+      </Suspense>
 
       {/* Widget Panel */}
-      <WidgetPanel
+      <Suspense fallback={<ComponentLoader />}>
+        <WidgetPanel
         reminderWidgets={reminderWidgets}
         energyWidgets={energyWidgets}
         messengerWidgets={messengerWidgets}
@@ -1559,6 +1577,7 @@ const Index = () => {
         onAddSunlightAnchorWidget={handleAddSunlightAnchorWidget}
         onDeleteSunlightAnchorWidget={handleDeleteSunlightAnchorWidget}
       />
+      </Suspense>
 
       {/* New Tab Dialog */}
       <Dialog open={newTabDialogOpen} onOpenChange={setNewTabDialogOpen}>
@@ -1682,117 +1701,121 @@ const Index = () => {
       </Dialog>
 
       {/* Widget Editor Dialogs */}
-      <ReminderWidgetEditor
-        open={widgetEditorOpen}
-        onClose={() => setWidgetEditorOpen(false)}
-        widget={editingWidget}
-        onSave={handleSaveWidget}
-      />
+      <Suspense fallback={null}>
+        <ReminderWidgetEditor
+          open={widgetEditorOpen}
+          onClose={() => setWidgetEditorOpen(false)}
+          widget={editingWidget}
+          onSave={handleSaveWidget}
+        />
 
-      <EnergyTaskWidgetEditor
-        open={energyWidgetEditorOpen}
-        onClose={() => setEnergyWidgetEditorOpen(false)}
-        widget={editingEnergyWidget}
-        onSave={handleSaveEnergyWidget}
-      />
+        <EnergyTaskWidgetEditor
+          open={energyWidgetEditorOpen}
+          onClose={() => setEnergyWidgetEditorOpen(false)}
+          widget={editingEnergyWidget}
+          onSave={handleSaveEnergyWidget}
+        />
 
-      <FutureSelfMessengerEditor
-        open={messengerWidgetEditorOpen}
-        onClose={() => setMessengerWidgetEditorOpen(false)}
-        widget={editingMessengerWidget}
-        mode={messengerEditorMode}
-        onSave={handleSaveMessengerWidget}
-        onSaveMessage={handleSaveMessage}
-      />
+        <FutureSelfMessengerEditor
+          open={messengerWidgetEditorOpen}
+          onClose={() => setMessengerWidgetEditorOpen(false)}
+          widget={editingMessengerWidget}
+          mode={messengerEditorMode}
+          onSave={handleSaveMessengerWidget}
+          onSaveMessage={handleSaveMessage}
+        />
 
-      <MoodGardenWidgetEditor
-        open={moodGardenWidgetEditorOpen}
-        onOpenChange={setMoodGardenWidgetEditorOpen}
-        widget={editingMoodGardenWidget}
-        onSave={handleSaveMoodGardenWidget}
-      />
+        <MoodGardenWidgetEditor
+          open={moodGardenWidgetEditorOpen}
+          onOpenChange={setMoodGardenWidgetEditorOpen}
+          widget={editingMoodGardenWidget}
+          onSave={handleSaveMoodGardenWidget}
+        />
 
-      <ParallelUniverseWidgetEditor
-        open={parallelUniverseWidgetEditorOpen}
-        onOpenChange={setParallelUniverseWidgetEditorOpen}
-        widget={editingParallelUniverseWidget}
-        onSave={handleSaveParallelUniverseWidget}
-      />
+        <ParallelUniverseWidgetEditor
+          open={parallelUniverseWidgetEditorOpen}
+          onOpenChange={setParallelUniverseWidgetEditorOpen}
+          widget={editingParallelUniverseWidget}
+          onSave={handleSaveParallelUniverseWidget}
+        />
 
-      <SoundSignatureWidgetEditor
-        open={soundSignatureWidgetEditorOpen}
-        onOpenChange={setSoundSignatureWidgetEditorOpen}
-        widget={editingSoundSignatureWidget}
-        onSave={handleSaveSoundSignatureWidget}
-      />
+        <SoundSignatureWidgetEditor
+          open={soundSignatureWidgetEditorOpen}
+          onOpenChange={setSoundSignatureWidgetEditorOpen}
+          widget={editingSoundSignatureWidget}
+          onSave={handleSaveSoundSignatureWidget}
+        />
 
-      <CustomThemeBuilder
-        open={customThemeBuilderOpen}
-        onOpenChange={setCustomThemeBuilderOpen}
-        onSave={handleSaveCustomTheme}
-        existingTheme={theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined}
-        templateTheme={templateTheme}
-      />
+        <CustomThemeBuilder
+          open={customThemeBuilderOpen}
+          onOpenChange={setCustomThemeBuilderOpen}
+          onSave={handleSaveCustomTheme}
+          existingTheme={theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined}
+          templateTheme={templateTheme}
+        />
 
-      <CalendarScheduler
-        open={schedulerOpen}
-        onOpenChange={setSchedulerOpen}
-        tasks={tasks}
-        scheduledTasks={scheduledTasks}
-        timeBlocks={timeBlocks}
-        onScheduleTask={handleScheduleTask}
-      />
+        <CalendarScheduler
+          open={schedulerOpen}
+          onOpenChange={setSchedulerOpen}
+          tasks={tasks}
+          scheduledTasks={scheduledTasks}
+          timeBlocks={timeBlocks}
+          onScheduleTask={handleScheduleTask}
+        />
 
-      <EisenhowerMatrix
-        open={eisenhowerOpen}
-        onOpenChange={setEisenhowerOpen}
-        tasks={[...tasks, ...priorities]}
-        onUpdateTask={handleUpdateTaskById}
-      />
+        <EisenhowerMatrix
+          open={eisenhowerOpen}
+          onOpenChange={setEisenhowerOpen}
+          tasks={[...tasks, ...priorities]}
+          onUpdateTask={handleUpdateTaskById}
+        />
 
-      {showAI && (
-        <AIAssistant
-          open={isAIAssistantOpen}
-          onOpenChange={setIsAIAssistantOpen}
+        {showAI && (
+          <AIAssistant
+            open={isAIAssistantOpen}
+            onOpenChange={setIsAIAssistantOpen}
+            onUpdateTask={handleUpdateTaskById}
+            onUpdateTimeBlock={handleUpdateTimeBlock}
+            onAddTimeBlock={handleAddTimeBlock}
+            onAddTask={handleAddTask}
+            tasks={[...tasks, ...priorities]}
+            timeBlocks={timeBlocks}
+            playbooks={playbooks}
+            onAddPlaybook={handleAddPlaybook}
+            onUpdatePlaybook={handleUpdatePlaybook}
+            initialMessage={initialAIMessage}
+          />
+        )}
+
+        <KeyboardShortcutsDialog
+          open={keyboardShortcutsOpen}
+          onOpenChange={setKeyboardShortcutsOpen}
+        />
+
+        <ProfileSetupDialog
+          open={profileSetupOpen}
+          onOpenChange={(open) => {
+            setProfileSetupOpen(open);
+            if (!open) setHasProfile(true);
+          }}
+        />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <ChatPanel
+          isOpen={isChatPanelOpen}
+          onClose={() => setIsChatPanelOpen(false)}
+          tasks={tasks}
+          timeBlocks={timeBlocks}
+          playbooks={playbooks}
           onUpdateTask={handleUpdateTaskById}
           onUpdateTimeBlock={handleUpdateTimeBlock}
           onAddTimeBlock={handleAddTimeBlock}
           onAddTask={handleAddTask}
-          tasks={[...tasks, ...priorities]}
-          timeBlocks={timeBlocks}
-          playbooks={playbooks}
           onAddPlaybook={handleAddPlaybook}
           onUpdatePlaybook={handleUpdatePlaybook}
-          initialMessage={initialAIMessage}
         />
-      )}
-
-      <KeyboardShortcutsDialog
-        open={keyboardShortcutsOpen}
-        onOpenChange={setKeyboardShortcutsOpen}
-      />
-
-      <ProfileSetupDialog
-        open={profileSetupOpen}
-        onOpenChange={(open) => {
-          setProfileSetupOpen(open);
-          if (!open) setHasProfile(true);
-        }}
-      />
-
-      <ChatPanel
-        isOpen={isChatPanelOpen}
-        onClose={() => setIsChatPanelOpen(false)}
-        tasks={tasks}
-        timeBlocks={timeBlocks}
-        playbooks={playbooks}
-        onUpdateTask={handleUpdateTaskById}
-        onUpdateTimeBlock={handleUpdateTimeBlock}
-        onAddTimeBlock={handleAddTimeBlock}
-        onAddTask={handleAddTask}
-        onAddPlaybook={handleAddPlaybook}
-        onUpdatePlaybook={handleUpdatePlaybook}
-      />
+      </Suspense>
 
       {isMobile && <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />}
     </div>
