@@ -266,46 +266,76 @@ serve(async (req: Request) => {
     // ============================================================
     
     // Fetch user's tasks from database (same source as organize-tasks)
-    const { data: dbTasks, error: tasksError } = await supabase
-      .from('tasks')
-      .select('id, name, due_date, estimated_minutes, type, status, is_completed')
-      .eq('user_id', user.id)
-      .eq('is_completed', false)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(100);
+    // Note: is_completed and deleted_at columns may not exist in all deployments
+    let dbTasks: any[] | null = null;
+    let tasksError: any = null;
+
+    try {
+      // Try with full schema first (newer deployments)
+      const result = await supabase
+        .from('tasks')
+        .select('id, name, due_date, estimated_minutes, type, status')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      dbTasks = result.data;
+      tasksError = result.error;
+
+      // Filter out completed tasks client-side if status exists
+      if (dbTasks) {
+        dbTasks = dbTasks.filter((t: any) => t.status !== 'completed');
+      }
+    } catch (e) {
+      console.error('Error fetching tasks for AI context:', e);
+      tasksError = e;
+    }
 
     if (tasksError) {
       console.error('Error fetching tasks for AI context:', tasksError);
     }
 
     // Fetch user's availability (same source as organize-tasks)
-    const { data: dbAvailability, error: availError } = await supabase
-      .from('availability')
-      .select('id, day_of_week, start_time, end_time')
-      .eq('user_id', user.id)
-      .order('day_of_week')
-      .order('start_time');
+    // Note: availability table may not exist in all deployments
+    let dbAvailability: any[] | null = null;
+    try {
+      const result = await supabase
+        .from('availability')
+        .select('id, day_of_week, start_time, end_time')
+        .eq('user_id', user.id)
+        .order('day_of_week')
+        .order('start_time');
 
-    if (availError) {
-      console.error('Error fetching availability for AI context:', availError);
+      dbAvailability = result.data;
+      if (result.error) {
+        console.error('Error fetching availability for AI context:', result.error);
+      }
+    } catch (e) {
+      console.log('Availability table not available, using frontend context');
     }
 
     // Fetch schedule_entries for today and upcoming 7 days
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    // Note: schedule_entries table may not exist in all deployments
+    let dbScheduleEntries: any[] | null = null;
+    try {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: dbScheduleEntries, error: scheduleError } = await supabase
-      .from('schedule_entries')
-      .select('id, title, start_time, end_time, category, description')
-      .eq('user_id', user.id)
-      .gte('start_time', todayStart)
-      .lte('start_time', weekAhead)
-      .order('start_time');
+      const result = await supabase
+        .from('schedule_entries')
+        .select('id, title, start_time, end_time, category, description')
+        .eq('user_id', user.id)
+        .gte('start_time', todayStart)
+        .lte('start_time', weekAhead)
+        .order('start_time');
 
-    if (scheduleError) {
-      console.error('Error fetching schedule entries for AI context:', scheduleError);
+      dbScheduleEntries = result.data;
+      if (result.error) {
+        console.error('Error fetching schedule entries for AI context:', result.error);
+      }
+    } catch (e) {
+      console.log('Schedule entries table not available, using frontend context');
     }
 
     // Build unified task list (prefer DB data, fallback to frontend context)
