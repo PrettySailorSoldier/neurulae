@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Task, TimeBlock } from '@/types';
 import { UnscheduledTaskItem } from './UnscheduledTaskItem';
 import { AIOrganizeDialog } from './AIOrganizeDialog';
-import { ForceSyncButton } from './ForceSyncButton';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from './premium/UpgradeModal';
 
@@ -144,9 +143,9 @@ const TaskListComponent = ({
     const uniqueLines = Array.from(new Set(lines));
     
     // Parse all tasks with their estimates
-    const tasksToAdd: BulkTaskInput[] = uniqueLines.map(line => {
+    const tasksToAdd: BulkTaskInput[] = uniqueLines.map((line: string) => {
       // Parse estimate if exists: "Task title 30m" or "Task title 1h"
-      const estimateMatch = line.match(/(.+?)\s+(\d+)\s*(m|min|h|hr|hour)s?$/i);
+      const estimateMatch = line.match(/(.+?)\s+(\d+)\s*(m|min|h|hr|hour)s?$/i) as RegExpMatchArray | null;
       if (estimateMatch) {
         const title = estimateMatch[1].trim();
         const value = parseInt(estimateMatch[2]);
@@ -211,9 +210,6 @@ const TaskListComponent = ({
               </p>
             </div>
             <div className="flex gap-2">
-              {userId && (
-                <ForceSyncButton tasks={tasks} userId={userId} />
-              )}
               {onToggleTimeConstraintView && (
                 <Button
                   onClick={onToggleTimeConstraintView}

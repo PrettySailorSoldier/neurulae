@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Task } from '@/types';
@@ -15,6 +16,7 @@ interface TimeConstraintTaskViewProps {
   onDeleteTask: (id: string) => void;
   onAskAI?: (message: string) => void;
   showQuickActions?: boolean;
+  onBack?: () => void;
 }
 
 interface TaskCategory {
@@ -34,6 +36,7 @@ export function TimeConstraintTaskView({
   onDeleteTask,
   onAskAI,
   showQuickActions = true,
+  onBack,
 }: TimeConstraintTaskViewProps) {
   const now = new Date();
   const currentHour = now.getHours();
@@ -182,11 +185,23 @@ export function TimeConstraintTaskView({
 
   return (
     <Card className="card-elevated h-full flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          What Can I Do Now?
-        </CardTitle>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between mb-2">
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            What Can I Do Now?
+          </CardTitle>
+          {onBack && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Back to List
+            </Button>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">
           Tasks organized by when you can do them • {format(now, 'h:mm a')}
         </p>
@@ -216,9 +231,6 @@ export function TimeConstraintTaskView({
                       <span className="text-xs text-muted-foreground">
                         ({category.tasks.length})
                       </span>
-                      <Badge variant="outline" className="text-xs">
-                        {category.description}
-                      </Badge>
                     </div>
 
                     <div className="space-y-2 pl-6 border-l-2 border-muted">
@@ -261,9 +273,6 @@ export function TimeConstraintTaskView({
                       <span className="text-xs text-muted-foreground">
                         ({category.tasks.length})
                       </span>
-                      <Badge variant="outline" className="text-xs">
-                        {category.description}
-                      </Badge>
                     </div>
 
                     <div className="space-y-1 pl-6">
