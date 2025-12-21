@@ -1626,7 +1626,7 @@ const Index = () => {
                         size="sm"
                         className="justify-start"
                         onClick={() => {
-                          handleUpdatePlaybook(playbook.id, {
+                          const updates: Partial<Playbook> = {
                             isRoutine: true,
                             routineType: 'custom',
                             streakData: {
@@ -1634,7 +1634,8 @@ const Index = () => {
                               longestStreak: 0,
                               completionHistory: []
                             }
-                          });
+                          };
+                          handleUpdatePlaybook(playbook.id, updates);
                           toast({
                             title: '✨ Converted to Routine',
                             description: `${playbook.title} is now a tracked routine!`,
