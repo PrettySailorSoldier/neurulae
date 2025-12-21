@@ -272,22 +272,40 @@ export default function AdminPanel() {
 
   const handleViewRedemptions = async (codeId: string) => {
     try {
-      const { data, error } = await supabase
+      // First get redemptions without email (profiles table no longer has email)
+      const { data: redemptions, error } = await supabase
         .from("promo_redemptions")
         .select(`
           id,
           user_id,
-          redeemed_at,
-          profiles:user_id (
-            email
-          )
+          redeemed_at
         `)
         .eq("promo_code_id", codeId)
         .order("redeemed_at", { ascending: false });
 
       if (error) throw error;
 
-      setSelectedCodeRedemptions(data as any || []);
+      // Fetch emails securely via the admin function
+      const redemptionsWithEmail = await Promise.all(
+        (redemptions || []).map(async (redemption) => {
+          try {
+            const { data: email } = await supabase.rpc('get_user_email_for_admin', {
+              target_user_id: redemption.user_id
+            });
+            return {
+              ...redemption,
+              profiles: { email: email || 'Unknown' }
+            };
+          } catch {
+            return {
+              ...redemption,
+              profiles: { email: 'Unknown' }
+            };
+          }
+        })
+      );
+
+      setSelectedCodeRedemptions(redemptionsWithEmail as any || []);
       setRedemptionsDialogOpen(true);
     } catch (error) {
       console.error("Error loading redemptions:", error);
