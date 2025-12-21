@@ -24,6 +24,8 @@ interface TaskSectionProps {
   }>) => void;
   onAskAI?: (message: string) => void;
   showQuickActions: boolean;
+  onToggleTimeConstraintView?: () => void;
+  showTimeConstraintView?: boolean;
 }
 
 export function TaskSection({
@@ -39,6 +41,8 @@ export function TaskSection({
   onScheduleTasks,
   onAskAI,
   showQuickActions,
+  onToggleTimeConstraintView,
+  showTimeConstraintView,
 }: TaskSectionProps) {
   return (
     <div className="lg:col-span-2" data-tutorial="tasks">
@@ -55,6 +59,8 @@ export function TaskSection({
         onScheduleTasks={onScheduleTasks}
         onAskAI={showQuickActions ? onAskAI : undefined}
         showQuickActions={showQuickActions}
+        onToggleTimeConstraintView={onToggleTimeConstraintView}
+        showTimeConstraintView={showTimeConstraintView}
       />
     </div>
   );
