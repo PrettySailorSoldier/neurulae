@@ -22,6 +22,13 @@ export interface Task {
   course?: string;
   type?: 'daily' | 'ongoing';
   taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other';
+  // Time constraint fields
+  timeConstraint?: 'business-hours' | 'anytime' | 'morning' | 'evening' | 'custom';
+  customTimeWindow?: {
+    startTime: string; // HH:MM format
+    endTime: string;   // HH:MM format
+  };
+  energyLevel?: 'high' | 'medium' | 'low'; // Energy required for this task
 }
 
 export interface Project {
@@ -126,6 +133,13 @@ export interface PlaybookStep {
   completed: boolean;
   order: number;
   tips?: string[];
+  // Routine-specific fields
+  flexibility?: 'essential' | 'recommended' | 'optional'; // How flexible is this step?
+  habitStack?: {
+    before?: string; // Habit to do before this step
+    after?: string;  // Habit to do after this step
+  };
+  timerEnabled?: boolean; // Whether to auto-start timer for this step
 }
 
 export interface Playbook {
@@ -139,6 +153,15 @@ export interface Playbook {
   resetOnRecurrence: boolean;
   createdAt: string;
   order?: number;
+  // Routine-specific fields
+  isRoutine?: boolean; // Is this a routine template?
+  routineType?: 'morning' | 'evening' | 'work-start' | 'work-end' | 'custom';
+  streakData?: {
+    currentStreak: number;
+    longestStreak: number;
+    lastCompletedDate?: string;
+    completionHistory: { date: string; completed: boolean; skippedOptional: number }[];
+  };
 }
 
 export interface ReminderWidget {

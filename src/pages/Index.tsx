@@ -10,7 +10,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSyncedStorage } from '@/hooks/useSyncedStorage';
 import { syncService } from '@/services/syncService';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme } from '@/types';
-import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
+import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil, Flame } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -45,6 +45,8 @@ const OnboardingTutorial = lazy(() => import('@/components/OnboardingTutorial').
 const ProfileSetupDialog = lazy(() => import('@/components/ProfileSetupDialog').then(m => ({ default: m.ProfileSetupDialog })));
 const KeyboardShortcutsDialog = lazy(() => import('@/components/KeyboardShortcutsDialog').then(m => ({ default: m.KeyboardShortcutsDialog })));
 const FocusTimer = lazy(() => import('@/components/FocusTimer').then(m => ({ default: m.FocusTimer })));
+const TimeConstraintTaskView = lazy(() => import('@/components/TimeConstraintTaskView').then(m => ({ default: m.TimeConstraintTaskView })));
+const RoutineTemplate = lazy(() => import('@/components/RoutineTemplate').then(m => ({ default: m.RoutineTemplate })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -130,6 +132,13 @@ const Index = () => {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [initialAIMessage, setInitialAIMessage] = useState<string | undefined>();
   const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
+
+  // Time Constraint View
+  const [showTimeConstraintView, setShowTimeConstraintView] = useLocalStorage('neurulae-show-time-constraint-view', false);
+
+  // Routine Template Viewer
+  const [selectedRoutine, setSelectedRoutine] = useState<Playbook | null>(null);
+  const [routineViewerOpen, setRoutineViewerOpen] = useState(false);
 
   // AI Preferences
   const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
@@ -1440,20 +1449,35 @@ const Index = () => {
                   />
                 )}
                 {mobileTab === 'tasks' && (
-                  <TaskSection
-                    tasks={tasks}
-                    timeBlocks={timeBlocks}
-                    userId={user?.id}
-                    onAddTask={handleAddTask}
-                    onBulkAddTasks={handleBulkAddTasks}
-                    onToggleComplete={handleToggleComplete}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    onPrioritize={handlePrioritizeTasks}
-                    onScheduleTasks={handleScheduleTasks}
-                    onAskAI={handleAskAI}
-                    showQuickActions={showQuickActions}
-                  />
+                  showTimeConstraintView ? (
+                    <Suspense fallback={<ComponentLoader />}>
+                      <TimeConstraintTaskView
+                        tasks={tasks}
+                        onToggleComplete={handleToggleComplete}
+                        onUpdateTask={handleUpdateTask}
+                        onDeleteTask={handleDeleteTask}
+                        onAskAI={handleAskAI}
+                        showQuickActions={showQuickActions}
+                      />
+                    </Suspense>
+                  ) : (
+                    <TaskSection
+                      tasks={tasks}
+                      timeBlocks={timeBlocks}
+                      userId={user?.id}
+                      onAddTask={handleAddTask}
+                      onBulkAddTasks={handleBulkAddTasks}
+                      onToggleComplete={handleToggleComplete}
+                      onUpdateTask={handleUpdateTask}
+                      onDeleteTask={handleDeleteTask}
+                      onPrioritize={handlePrioritizeTasks}
+                      onScheduleTasks={handleScheduleTasks}
+                      onAskAI={handleAskAI}
+                      showQuickActions={showQuickActions}
+                      onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
+                      showTimeConstraintView={showTimeConstraintView}
+                    />
+                  )
                 )}
               </div>
             ) : (
@@ -1467,20 +1491,37 @@ const Index = () => {
                   onDeleteTimeBlock={handleDeleteTimeBlock}
                   onAddTask={handleAddTask}
                 />
-                <TaskSection
-                  tasks={tasks}
-                  timeBlocks={timeBlocks}
-                  userId={user?.id}
-                  onAddTask={handleAddTask}
-                  onBulkAddTasks={handleBulkAddTasks}
-                  onToggleComplete={handleToggleComplete}
-                  onUpdateTask={handleUpdateTask}
-                  onDeleteTask={handleDeleteTask}
-                  onPrioritize={handlePrioritizeTasks}
-                  onScheduleTasks={handleScheduleTasks}
-                  onAskAI={handleAskAI}
-                  showQuickActions={showQuickActions}
-                />
+                {showTimeConstraintView ? (
+                  <div className="lg:col-span-2">
+                    <Suspense fallback={<ComponentLoader />}>
+                      <TimeConstraintTaskView
+                        tasks={tasks}
+                        onToggleComplete={handleToggleComplete}
+                        onUpdateTask={handleUpdateTask}
+                        onDeleteTask={handleDeleteTask}
+                        onAskAI={handleAskAI}
+                        showQuickActions={showQuickActions}
+                      />
+                    </Suspense>
+                  </div>
+                ) : (
+                  <TaskSection
+                    tasks={tasks}
+                    timeBlocks={timeBlocks}
+                    userId={user?.id}
+                    onAddTask={handleAddTask}
+                    onBulkAddTasks={handleBulkAddTasks}
+                    onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onPrioritize={handlePrioritizeTasks}
+                    onScheduleTasks={handleScheduleTasks}
+                    onAskAI={handleAskAI}
+                    showQuickActions={showQuickActions}
+                    onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
+                    showTimeConstraintView={showTimeConstraintView}
+                  />
+                )}
               </div>
             )}
           </TabsContent>
@@ -1504,9 +1545,124 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="care">
-            <div className="text-center py-12 bg-card rounded-lg border-2 border-border">
-              <h3 className="text-xl font-semibold mb-2">Care Checklist</h3>
-              <p className="text-muted-foreground">Daily care routines coming soon</p>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Daily Routines</h2>
+                  <p className="text-sm text-muted-foreground">Build consistency with structured routines</p>
+                </div>
+                <Button onClick={() => {
+                  const newRoutine: Playbook = {
+                    id: crypto.randomUUID(),
+                    title: 'New Routine',
+                    description: 'A daily routine to help you stay organized',
+                    category: 'productivity',
+                    steps: [],
+                    isTemplate: false,
+                    linkedTaskIds: [],
+                    resetOnRecurrence: false,
+                    createdAt: new Date().toISOString(),
+                    isRoutine: true,
+                    routineType: 'custom',
+                    streakData: {
+                      currentStreak: 0,
+                      longestStreak: 0,
+                      completionHistory: []
+                    }
+                  };
+                  handleAddPlaybook(newRoutine);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Routine
+                </Button>
+              </div>
+
+              {/* Routine Categories */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {['morning', 'evening', 'work-start', 'work-end', 'custom'].map(type => {
+                  const routinesOfType = playbooks.filter(p => p.isRoutine && p.routineType === type);
+
+                  const typeInfo = {
+                    morning: { title: '🌅 Morning Routines', desc: 'Start your day right' },
+                    evening: { title: '🌙 Evening Routines', desc: 'Wind down and prepare' },
+                    'work-start': { title: '💼 Work Start', desc: 'Get ready to focus' },
+                    'work-end': { title: '🏠 Work End', desc: 'Transition from work' },
+                    custom: { title: '✨ Custom Routines', desc: 'Your personalized flows' }
+                  }[type] || { title: type, desc: '' };
+
+                  return (
+                    <div key={type} className="space-y-2">
+                      <div>
+                        <h3 className="font-semibold text-sm">{typeInfo.title}</h3>
+                        <p className="text-xs text-muted-foreground">{typeInfo.desc}</p>
+                      </div>
+
+                      {routinesOfType.length === 0 ? (
+                        <div className="text-xs text-muted-foreground italic p-4 border border-dashed rounded-lg">
+                          No routines yet
+                        </div>
+                      ) : (
+                        routinesOfType.map(routine => (
+                          <Button
+                            key={routine.id}
+                            variant="outline"
+                            className="w-full justify-between"
+                            onClick={() => {
+                              setSelectedRoutine(routine);
+                              setRoutineViewerOpen(true);
+                            }}
+                          >
+                            <span className="truncate">{routine.title}</span>
+                            {routine.streakData && routine.streakData.currentStreak > 0 && (
+                              <span className="ml-2 text-xs text-orange-600 flex items-center gap-1">
+                                <Flame className="h-3 w-3" />
+                                {routine.streakData.currentStreak}
+                              </span>
+                            )}
+                          </Button>
+                        ))
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* All Non-Routine Playbooks as Potential Routines */}
+              {playbooks.filter(p => !p.isRoutine).length > 0 && (
+                <div className="border-t pt-6 mt-6">
+                  <h3 className="font-semibold mb-2">Convert Playbooks to Routines</h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    These playbooks can be converted to routines with streak tracking
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {playbooks.filter(p => !p.isRoutine).slice(0, 6).map(playbook => (
+                      <Button
+                        key={playbook.id}
+                        variant="ghost"
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => {
+                          handleUpdatePlaybook(playbook.id, {
+                            isRoutine: true,
+                            routineType: 'custom',
+                            streakData: {
+                              currentStreak: 0,
+                              longestStreak: 0,
+                              completionHistory: []
+                            }
+                          });
+                          toast({
+                            title: '✨ Converted to Routine',
+                            description: `${playbook.title} is now a tracked routine!`,
+                          });
+                        }}
+                      >
+                        {playbook.title}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -1818,6 +1974,21 @@ const Index = () => {
       </Suspense>
 
       {isMobile && <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} />}
+
+      {/* Routine Template Viewer */}
+      {selectedRoutine && (
+        <Suspense fallback={null}>
+          <RoutineTemplate
+            open={routineViewerOpen}
+            onOpenChange={setRoutineViewerOpen}
+            playbook={selectedRoutine}
+            onUpdatePlaybook={(updated) => {
+              handleUpdatePlaybook(updated.id, updated);
+              setSelectedRoutine(updated);
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

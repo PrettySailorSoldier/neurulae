@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Plus, Search, Filter, Sparkles } from 'lucide-react';
+import { Plus, Search, Filter, Sparkles, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,8 @@ interface TaskListProps {
   }>) => void;
   onAskAI?: (message: string) => void;
   showQuickActions?: boolean;
+  onToggleTimeConstraintView?: () => void;
+  showTimeConstraintView?: boolean;
 }
 
 const TaskListComponent = ({ 
@@ -53,6 +55,8 @@ const TaskListComponent = ({
   onScheduleTasks,
   onAskAI,
   showQuickActions = true,
+  onToggleTimeConstraintView,
+  showTimeConstraintView = false,
 }: TaskListProps) => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -209,6 +213,18 @@ const TaskListComponent = ({
             <div className="flex gap-2">
               {userId && (
                 <ForceSyncButton tasks={tasks} userId={userId} />
+              )}
+              {onToggleTimeConstraintView && (
+                <Button
+                  onClick={onToggleTimeConstraintView}
+                  variant={showTimeConstraintView ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                  title="Toggle time-based task view"
+                >
+                  <Clock className="h-4 w-4" />
+                  {showTimeConstraintView ? 'List View' : 'Time View'}
+                </Button>
               )}
               <Button
                 onClick={handleAIOrganize}
