@@ -98,8 +98,8 @@ const Index = () => {
   const [potionInventoryWidgets, setPotionInventoryWidgets] = useLocalStorage<PotionInventoryWidget[]>('neurulae-potion-inventory-widgets', []);
   const [sunlightAnchorWidgets, setSunlightAnchorWidgets] = useLocalStorage<SunlightAnchorWidget[]>('neurulae-sunlight-anchor-widgets', []);
 
-  // Custom theme - use localStorage only (customTheme not in database enum yet)
-  const [customTheme, setCustomTheme] = useLocalStorage<CustomTheme | null>('neurulae-custom-theme', null);
+  // Custom theme - now syncs via user_data table (customTheme added to database enum)
+  const [customTheme, setCustomTheme] = useSyncedStorage<CustomTheme | null>('neurulae-customTheme', null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
 
@@ -183,6 +183,9 @@ const Index = () => {
         }
         if (cloudData.playbooks && Array.isArray(cloudData.playbooks) && cloudData.playbooks.length > 0) {
           setPlaybooks(cloudData.playbooks);
+        }
+        if (cloudData.customTheme) {
+          setCustomTheme(cloudData.customTheme);
         }
 
         toast({
@@ -1199,13 +1202,13 @@ const Index = () => {
   };
 
   const handleSaveCustomTheme = (newTheme: CustomTheme) => {
-    setCustomTheme(newTheme); // Saves to localStorage only
+    setCustomTheme(newTheme); // Automatically syncs via useSyncedStorage
     setTheme('custom');
     setTemplateTheme(undefined);
 
     toast({
       title: "✨ Custom theme saved",
-      description: `${newTheme.name} saved locally`
+      description: `${newTheme.name} will sync across all devices`
     });
   };
 
