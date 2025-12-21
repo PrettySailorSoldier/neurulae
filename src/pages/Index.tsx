@@ -98,9 +98,8 @@ const Index = () => {
   const [potionInventoryWidgets, setPotionInventoryWidgets] = useLocalStorage<PotionInventoryWidget[]>('neurulae-potion-inventory-widgets', []);
   const [sunlightAnchorWidgets, setSunlightAnchorWidgets] = useLocalStorage<SunlightAnchorWidget[]>('neurulae-sunlight-anchor-widgets', []);
 
-  // Use database-backed preferences for custom theme with localStorage as fallback
-  const [localCustomTheme, setLocalCustomTheme] = useLocalStorage<CustomTheme | null>('neurulae-custom-theme', null);
-  const [customTheme, setCustomTheme] = useState<CustomTheme | null>(null);
+  // Custom theme - now uses user_data table for reliable syncing
+  const [customTheme, setCustomTheme] = useSyncedStorage<CustomTheme | null>('neurulae-customTheme', null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
 
@@ -185,6 +184,9 @@ const Index = () => {
         if (cloudData.playbooks && Array.isArray(cloudData.playbooks) && cloudData.playbooks.length > 0) {
           setPlaybooks(cloudData.playbooks);
         }
+        if (cloudData.customTheme) {
+          setCustomTheme(cloudData.customTheme);
+        }
 
         toast({
           title: "☁️ Synced",
@@ -197,16 +199,7 @@ const Index = () => {
     loadCloudData();
   }, [user]);
 
-  // Load custom theme from database preferences on mount
-  useEffect(() => {
-    if (!prefsLoading && preferences.customTheme !== undefined) {
-      setCustomTheme(preferences.customTheme);
-      setLocalCustomTheme(preferences.customTheme); // Keep localStorage in sync
-    } else if (!prefsLoading && !user && localCustomTheme) {
-      // If not logged in, use localStorage
-      setCustomTheme(localCustomTheme);
-    }
-  }, [preferences.customTheme, prefsLoading, user, localCustomTheme]);
+  // Custom theme now syncs automatically via useSyncedStorage - no manual sync needed
 
   // Load theme from database preferences
   useEffect(() => {
@@ -1209,19 +1202,13 @@ const Index = () => {
   };
 
   const handleSaveCustomTheme = (newTheme: CustomTheme) => {
-    setCustomTheme(newTheme);
-    setLocalCustomTheme(newTheme); // Keep localStorage in sync
+    setCustomTheme(newTheme); // Automatically syncs via useSyncedStorage
     setTheme('custom');
     setTemplateTheme(undefined);
 
-    // Sync to database
-    if (user) {
-      savePreferences({ customTheme: newTheme, theme: 'custom' });
-    }
-
     toast({
-      title: "Custom theme saved",
-      description: `${newTheme.name} has been synced across all devices`
+      title: "✨ Custom theme saved",
+      description: `${newTheme.name} will sync across devices`
     });
   };
 

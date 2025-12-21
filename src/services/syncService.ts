@@ -1,12 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId } from './deviceManager';
 
-export type DataType = 
-  | 'tasks' | 'projects' | 'priorities' | 'timeblocks' 
+export type DataType =
+  | 'tasks' | 'projects' | 'priorities' | 'timeblocks'
   | 'scheduledTasks' | 'playbooks' | 'reminderWidgets'
   | 'energyWidgets' | 'messengerWidgets' | 'moodGardenWidgets'
   | 'parallelUniverseWidgets' | 'soundSignatureWidgets'
-  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions';
+  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions'
+  | 'scheduled-tasks'; // Add hyphenated version for compatibility
 
 interface SyncResult {
   success: boolean;
