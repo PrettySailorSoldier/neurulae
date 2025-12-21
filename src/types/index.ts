@@ -29,6 +29,7 @@ export interface Task {
     endTime: string;   // HH:MM format
   };
   energyLevel?: 'high' | 'medium' | 'low'; // Energy required for this task
+  noiseLevel?: 'quiet' | 'normal' | 'noisy'; // Noise level of this task (for quiet hours filtering)
 }
 
 export interface Project {
@@ -340,4 +341,32 @@ export interface SunlightAnchorWidget {
   id: string;
   type: 'sunlight-anchor';
   title: string;
+}
+
+// Time Zone Settings - for Daily Flow Timeline
+export interface TimeZone {
+  id: string;
+  name: string;
+  startTime: string; // HH:MM format
+  endTime: string;   // HH:MM format
+  color: string;     // CSS color value
+  icon?: string;     // Lucide icon name
+  allowedTaskTypes?: Array<'school' | 'work' | 'home' | 'appointment' | 'call' | 'other'>;
+  allowedNoiseLevels?: Array<'quiet' | 'normal' | 'noisy'>;
+  isBuiltIn?: boolean; // True for system zones like quiet hours, business hours
+}
+
+export interface TimeZoneSettings {
+  quietHours: {
+    enabled: boolean;
+    startTime: string; // HH:MM format (e.g., "22:00")
+    endTime: string;   // HH:MM format (e.g., "07:00")
+  };
+  businessHours: {
+    enabled: boolean;
+    startTime: string; // HH:MM format (e.g., "08:00")
+    endTime: string;   // HH:MM format (e.g., "17:00")
+    weekdaysOnly: boolean;
+  };
+  customZones: TimeZone[];
 }

@@ -6,8 +6,7 @@ export type DataType =
   | 'scheduledTasks' | 'playbooks' | 'reminderWidgets'
   | 'energyWidgets' | 'messengerWidgets' | 'moodGardenWidgets'
   | 'parallelUniverseWidgets' | 'soundSignatureWidgets'
-  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions'
-  | 'scheduled-tasks'; // Add hyphenated version for compatibility
+  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions';
 
 interface SyncResult {
   success: boolean;

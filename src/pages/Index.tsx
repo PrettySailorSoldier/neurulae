@@ -646,7 +646,7 @@ const Index = () => {
     setPlaybooks([...playbooks, newPlaybook]);
   };
 
-  const handleUpdatePlaybook = (id: string, playbookData: Omit<Playbook, 'id' | 'createdAt'>) => {
+  const handleUpdatePlaybook = (id: string, playbookData: Partial<Playbook>) => {
     setPlaybooks(playbooks.map(p => p.id === id ? { ...p, ...playbookData } : p));
   };
 
