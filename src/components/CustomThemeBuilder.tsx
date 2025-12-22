@@ -228,6 +228,10 @@ interface SavedPalette {
   colors: CustomTheme["colors"];
   backgroundImage?: CustomTheme["backgroundImage"];
 }
+// Storage keys - IMPORTANT: These are separate!
+const PALETTES_STORAGE_KEY = "saved_color_palettes"; // Internal palettes for the builder
+const THEMES_STORAGE_KEY = "saved_custom_palettes"; // Full themes shown in ThemeSwitcher dropdown
+
 export function CustomThemeBuilder({
   open,
   onOpenChange,
@@ -239,7 +243,8 @@ export function CustomThemeBuilder({
   const [theme, setTheme] = useState<CustomTheme>(existingTheme || defaultTheme);
   const [previewMode, setPreviewMode] = useState(false);
   const [showHarmonyGenerator, setShowHarmonyGenerator] = useState(false);
-  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
+  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]); // Internal palettes
+  const [savedThemes, setSavedThemes] = useState<SavedPalette[]>([]); // Full themes for dropdown
   const [themeHistory, setThemeHistory] = useState<CustomTheme[]>([existingTheme || defaultTheme]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -282,16 +287,27 @@ export function CustomThemeBuilder({
     loadThemeFromDatabase();
   }, [open, user, existingTheme]);
 
-  // Load saved palettes from localStorage when sheet opens
+  // Load saved palettes (internal) and themes (for dropdown) from localStorage when sheet opens
   useEffect(() => {
     if (!open) return;
 
-    const stored = localStorage.getItem("saved_custom_palettes");
-    if (stored) {
+    // Load internal color palettes
+    const storedPalettes = localStorage.getItem(PALETTES_STORAGE_KEY);
+    if (storedPalettes) {
       try {
-        setSavedPalettes(JSON.parse(stored));
+        setSavedPalettes(JSON.parse(storedPalettes));
       } catch (e) {
         console.error("Failed to load saved palettes:", e);
+      }
+    }
+
+    // Load saved themes (for the dropdown)
+    const storedThemes = localStorage.getItem(THEMES_STORAGE_KEY);
+    if (storedThemes) {
+      try {
+        setSavedThemes(JSON.parse(storedThemes));
+      } catch (e) {
+        console.error("Failed to load saved themes:", e);
       }
     }
   }, [open]);
@@ -468,8 +484,8 @@ export function CustomThemeBuilder({
 
     const updated = [...savedPalettes, newPalette];
     setSavedPalettes(updated);
-    localStorage.setItem("saved_custom_palettes", JSON.stringify(updated));
-    window.dispatchEvent(new Event("theme-saved"));
+    // Save to INTERNAL palettes storage (NOT the themes dropdown)
+    localStorage.setItem(PALETTES_STORAGE_KEY, JSON.stringify(updated));
     toast.success(`Palette "${paletteName}" saved!`);
   };
 
@@ -487,8 +503,8 @@ export function CustomThemeBuilder({
   const handleDeletePalette = (paletteId: string) => {
     const updated = savedPalettes.filter((p) => p.id !== paletteId);
     setSavedPalettes(updated);
-    localStorage.setItem("saved_custom_palettes", JSON.stringify(updated));
-    window.dispatchEvent(new Event("theme-saved"));
+    // Delete from INTERNAL palettes storage
+    localStorage.setItem(PALETTES_STORAGE_KEY, JSON.stringify(updated));
     toast.success("Palette deleted");
   };
 
@@ -496,78 +512,78 @@ export function CustomThemeBuilder({
     // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
     const themeName = theme.name?.trim() || "Untitled Theme";
 
-    // Check if we're editing an existing theme by looking for matching ID in state
-    // We track this by checking if the current theme name matches a saved palette
+    // Check if we're editing an existing theme by looking for matching name in savedThemes
     // AND we came from editing (existingTheme prop was provided)
-    const editingExistingTheme = existingTheme && savedPalettes.some(
-      (p) => p.name === existingTheme.name
+    const editingExistingTheme = existingTheme && savedThemes.some(
+      (t) => t.name === existingTheme.name
     );
 
-    // Find the palette we're editing (if any) - match by the ORIGINAL name from existingTheme
-    const existingPalette = editingExistingTheme
-      ? savedPalettes.find((p) => p.name === existingTheme.name)
+    // Find the theme we're editing (if any) - match by the ORIGINAL name from existingTheme
+    const existingThemeEntry = editingExistingTheme
+      ? savedThemes.find((t) => t.name === existingTheme.name)
       : null;
 
-    const isNewTheme = !existingPalette;
+    const isNewTheme = !existingThemeEntry;
 
     // FREE TIER LIMIT: Max 3 custom themes for free users
-    if (!isPremium && isNewTheme && savedPalettes.length >= 3) {
+    if (!isPremium && isNewTheme && savedThemes.length >= 3) {
       toast.error("Free tier limit reached! Upgrade to Premium for unlimited themes.");
       return;
     }
 
     // For new themes, check if a theme with the same name already exists
+    let finalName = themeName;
     if (isNewTheme) {
-      const nameConflict = savedPalettes.find((p) => p.name === themeName);
+      const nameConflict = savedThemes.find((t) => t.name === themeName);
       if (nameConflict) {
         // Append a number to make it unique
         let counter = 2;
         let uniqueName = `${themeName} (${counter})`;
-        while (savedPalettes.find((p) => p.name === uniqueName)) {
+        while (savedThemes.find((t) => t.name === uniqueName)) {
           counter++;
           uniqueName = `${themeName} (${counter})`;
         }
-        theme.name = uniqueName;
+        finalName = uniqueName;
       }
     }
 
     // Generate a unique ID for NEW themes using timestamp
-    // Only reuse an existing ID if we're explicitly editing a saved palette
-    const themeId = existingPalette?.id || Date.now().toString();
-    const finalThemeName = theme.name?.trim() || "Untitled Theme";
+    // Only reuse an existing ID if we're explicitly editing a saved theme
+    const themeId = existingThemeEntry?.id || Date.now().toString();
 
-    const savedTheme: SavedPalette = {
+    const savedThemeEntry: SavedPalette = {
       id: themeId,
-      name: finalThemeName,
+      name: finalName,
       colors: { ...theme.colors },
       backgroundImage: theme.backgroundImage, // Preserve background image
     };
 
-    // If editing an existing palette (matched by ID), update it; otherwise, append
-    const existingIndex = existingPalette
-      ? savedPalettes.findIndex((p) => p.id === existingPalette.id)
+    // If editing an existing theme (matched by ID), update it; otherwise, append
+    const existingIndex = existingThemeEntry
+      ? savedThemes.findIndex((t) => t.id === existingThemeEntry.id)
       : -1;
-    let updatedPalettes: SavedPalette[];
+    let updatedThemes: SavedPalette[];
 
     if (existingIndex !== -1) {
-      // Update existing palette
-      updatedPalettes = [...savedPalettes];
-      updatedPalettes[existingIndex] = savedTheme;
+      // Update existing theme
+      updatedThemes = [...savedThemes];
+      updatedThemes[existingIndex] = savedThemeEntry;
     } else {
-      // Append new palette
-      updatedPalettes = [...savedPalettes, savedTheme];
+      // Append new theme
+      updatedThemes = [...savedThemes, savedThemeEntry];
     }
 
-    // 1. Save to Disk (Browser)
-    localStorage.setItem("saved_custom_palettes", JSON.stringify(updatedPalettes));
-    setSavedPalettes(updatedPalettes);
+    // 1. Save to THEMES storage (for the ThemeSwitcher dropdown)
+    localStorage.setItem(THEMES_STORAGE_KEY, JSON.stringify(updatedThemes));
+    setSavedThemes(updatedThemes);
 
     // Notify ThemeSwitcher component to reload saved themes
     window.dispatchEvent(new Event("theme-saved"));
 
-    // 2. Notify User & Close UI (Don't wait for cloud)
-    onSave(theme);
-    toast.success("Theme saved!");
+    // 2. Update theme with final name and notify parent
+    const finalTheme = { ...theme, name: finalName };
+    onSave(finalTheme);
+    toast.success(`Theme "${finalName}" saved!`);
     removeThemePreview();
     setPreviewMode(false);
     onOpenChange(false);
@@ -582,7 +598,7 @@ export function CustomThemeBuilder({
           await supabase
             .from("profiles")
             .update({
-              preferences: { ...currentPreferences, customTheme: theme },
+              preferences: { ...currentPreferences, customTheme: finalTheme },
             })
             .eq("id", user.id);
         },
