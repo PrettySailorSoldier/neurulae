@@ -275,8 +275,25 @@ export function AIAssistant({
         { role: userMessage.role, content: userMessage.content }
       ];
 
-      const { data: functionData, error: functionError } = await supabase.functions.invoke('ai-assistant', {
-        body: {
+      // Get the current session for auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Please sign in to use the AI assistant.');
+      }
+
+      // Use fetch with streaming instead of supabase.functions.invoke
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not configured');
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           messages: messagesForAI,
           context: {
             tasks,
@@ -312,29 +329,101 @@ export function AIAssistant({
             workSchedule: profileData.work_schedule || [],
           } : null,
           mode: stuckMode ? 'stuck_interview' : undefined,
-        },
+        }),
       });
 
-      if (functionError) {
-        // Extract specific error message from backend if available
-        const errorMsg = functionData?.error || functionError.message || 'Failed to get AI response';
-        throw new Error(errorMsg);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorMsg = errorData?.error || `Request failed: ${response.status}`;
+
+        if (errorMsg.includes('Auth session missing')) {
+          throw new Error('Please sign in to use the AI assistant.');
+        } else if (response.status === 429 || errorMsg.includes('rate limit')) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        } else if (response.status === 402) {
+          throw new Error('AI credits depleted. Please add credits to continue.');
+        } else {
+          throw new Error(`AI error: ${errorMsg}`);
+        }
       }
 
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream available');
+      }
+
+      // Create an assistant message placeholder that we'll update as chunks arrive
       const assistantMessage: Message = {
         role: 'assistant',
-        content: functionData.message,
+        content: '',
         timestamp: new Date().toISOString(),
       };
 
+      // Add the empty message to the list - it will be updated as chunks arrive
       setMessages(prev => [...prev, assistantMessage]);
 
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
+      let extractedActions: any[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+
+              if (parsed.text) {
+                fullContent += parsed.text;
+                // Update the assistant message with accumulated content
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+                    updated[lastIdx] = { ...updated[lastIdx], content: fullContent };
+                  }
+                  return updated;
+                });
+              }
+
+              if (parsed.actions) {
+                extractedActions = parsed.actions;
+              }
+
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+            } catch (e) {
+              // Skip malformed SSE data (but throw if it's a real error)
+              if (e instanceof Error && !e.message.includes('Unexpected token')) {
+                console.debug('SSE parse skip:', e);
+              }
+            }
+          }
+        }
+      }
+
       // Save assistant message to database
-      if (convId) {
+      if (convId && fullContent) {
         await supabase.from('chat_messages').insert({
           conversation_id: convId,
           role: 'assistant',
-          content: assistantMessage.content
+          content: fullContent
         });
       }
 
@@ -346,9 +435,28 @@ export function AIAssistant({
           .eq('id', convId);
       }
 
-      // Handle any AI-suggested actions
-      if (functionData.actions) {
-        handleAIActions(functionData.actions);
+      // Handle any AI-suggested actions from the stream
+      if (extractedActions.length > 0) {
+        handleAIActions(extractedActions);
+      }
+
+      // Also try to extract actions from the full content (JSON blocks)
+      const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
+      let match;
+      while ((match = jsonBlockRegex.exec(fullContent)) !== null) {
+        try {
+          const parsed = JSON.parse(match[1]);
+          if (parsed.action && parsed.data) {
+            handleAIActions([parsed]);
+          } else if (Array.isArray(parsed)) {
+            const validActions = parsed.filter((item: any) => item.action && item.data);
+            if (validActions.length > 0) {
+              handleAIActions(validActions);
+            }
+          }
+        } catch (e) {
+          console.debug('Failed to parse JSON block in AI response:', e);
+        }
       }
     } catch (error) {
       console.error('Error in AI assistant:', error);
@@ -357,6 +465,15 @@ export function AIAssistant({
         title: 'Error',
         description: msg.includes('Auth session missing') ? 'Please sign in to use the AI assistant.' : msg,
         variant: 'destructive',
+      });
+
+      // Remove the incomplete assistant message on error
+      setMessages(prev => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg?.role === 'assistant' && lastMsg.content === '') {
+          return prev.slice(0, -1);
+        }
+        return prev;
       });
     } finally {
       setIsLoading(false);
