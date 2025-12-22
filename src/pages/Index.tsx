@@ -102,6 +102,7 @@ const Index = () => {
   const [customTheme, setCustomTheme] = useSyncedStorage<CustomTheme | null>('neurulae-customTheme', null);
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
+  const [themeToEdit, setThemeToEdit] = useState<CustomTheme | undefined>(undefined);
 
   // Custom Tabs
   const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neurulae-custom-tabs', []);
@@ -1188,11 +1189,13 @@ const Index = () => {
   // Custom Theme handlers
   const handleOpenCustomThemeBuilder = () => {
     setTemplateTheme(undefined);
+    setThemeToEdit(undefined); // Clear any existing theme to edit - we're creating new
     setCustomThemeBuilderOpen(true);
   };
 
-  const handleEditCustomTheme = () => {
+  const handleEditCustomTheme = (themeToEditParam?: CustomTheme) => {
     setTemplateTheme(undefined);
+    setThemeToEdit(themeToEditParam); // Set the specific theme being edited
     setCustomThemeBuilderOpen(true);
   };
 
@@ -1892,9 +1895,12 @@ const Index = () => {
 
         <CustomThemeBuilder
           open={customThemeBuilderOpen}
-          onOpenChange={setCustomThemeBuilderOpen}
+          onOpenChange={(open) => {
+            setCustomThemeBuilderOpen(open);
+            if (!open) setThemeToEdit(undefined); // Clear theme to edit when closing
+          }}
           onSave={handleSaveCustomTheme}
-          existingTheme={theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined}
+          existingTheme={themeToEdit || (theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined)}
           templateTheme={templateTheme}
         />
 

@@ -493,31 +493,60 @@ export function CustomThemeBuilder({
   };
 
   const handleSave = async () => {
-    // FREE TIER LIMIT: Max 3 custom themes for free users
-    const existingPalette = savedPalettes.find((p) => p.name === (theme.name || "Untitled Theme"));
+    // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
+    const themeName = theme.name?.trim() || "Untitled Theme";
+
+    // Check if we're editing an existing theme by looking for matching ID in state
+    // We track this by checking if the current theme name matches a saved palette
+    // AND we came from editing (existingTheme prop was provided)
+    const editingExistingTheme = existingTheme && savedPalettes.some(
+      (p) => p.name === existingTheme.name
+    );
+
+    // Find the palette we're editing (if any) - match by the ORIGINAL name from existingTheme
+    const existingPalette = editingExistingTheme
+      ? savedPalettes.find((p) => p.name === existingTheme.name)
+      : null;
+
     const isNewTheme = !existingPalette;
 
+    // FREE TIER LIMIT: Max 3 custom themes for free users
     if (!isPremium && isNewTheme && savedPalettes.length >= 3) {
       toast.error("Free tier limit reached! Upgrade to Premium for unlimited themes.");
       return;
     }
 
-    // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
-    const themeName = theme.name || "Untitled Theme";
+    // For new themes, check if a theme with the same name already exists
+    if (isNewTheme) {
+      const nameConflict = savedPalettes.find((p) => p.name === themeName);
+      if (nameConflict) {
+        // Append a number to make it unique
+        let counter = 2;
+        let uniqueName = `${themeName} (${counter})`;
+        while (savedPalettes.find((p) => p.name === uniqueName)) {
+          counter++;
+          uniqueName = `${themeName} (${counter})`;
+        }
+        theme.name = uniqueName;
+      }
+    }
 
     // Generate a unique ID for NEW themes using timestamp
-    // Only reuse an existing ID if we're explicitly editing a saved palette (existingPalette already set above)
+    // Only reuse an existing ID if we're explicitly editing a saved palette
     const themeId = existingPalette?.id || Date.now().toString();
+    const finalThemeName = theme.name?.trim() || "Untitled Theme";
 
     const savedTheme: SavedPalette = {
       id: themeId,
-      name: themeName,
+      name: finalThemeName,
       colors: { ...theme.colors },
       backgroundImage: theme.backgroundImage, // Preserve background image
     };
 
-    // If a palette with this ID already exists, update it; otherwise, append
-    const existingIndex = savedPalettes.findIndex((p) => p.id === themeId);
+    // If editing an existing palette (matched by ID), update it; otherwise, append
+    const existingIndex = existingPalette
+      ? savedPalettes.findIndex((p) => p.id === existingPalette.id)
+      : -1;
     let updatedPalettes: SavedPalette[];
 
     if (existingIndex !== -1) {

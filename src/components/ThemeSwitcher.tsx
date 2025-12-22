@@ -31,7 +31,7 @@ interface ThemeSwitcherProps {
   currentTheme: Theme;
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick?: () => void;
-  onEditCustomTheme?: (theme: CustomTheme) => void;
+  onEditCustomTheme?: (theme?: CustomTheme) => void;
   onDeleteCustomTheme?: () => void;
   onUseAsTemplate?: (
     theme: "orchid" | "jellyfish" | "sunset" | "bluebonnet" | "ocean" | "forest" | "midnight" | "candy",
@@ -42,6 +42,7 @@ interface SavedPalette {
   id: string;
   name: string;
   colors: CustomTheme["colors"];
+  backgroundImage?: CustomTheme["backgroundImage"];
 }
 
 export function ThemeSwitcher({
@@ -188,22 +189,23 @@ export function ThemeSwitcher({
                       className="h-6 w-6 p-0 hover:text-primary"
                       onClick={(e) => {
                         e.stopPropagation(); // Stop it from Applying
-                        // Construct theme for editor
+                        // Construct theme for editor - use saved backgroundImage if available
+                        const defaultBgImage = {
+                          url: "",
+                          size: "cover" as const,
+                          position: "center" as const,
+                          repeat: "no-repeat" as const,
+                          attachment: "scroll" as const,
+                          opacity: 100,
+                          blur: 0,
+                          overlayColor: "0 0% 0%",
+                          overlayOpacity: 0,
+                          filter: { grayscale: 0, sepia: 0, brightness: 100, contrast: 100, saturate: 100 },
+                        };
                         const fullTheme: CustomTheme = {
                           name: savedTheme.name,
                           colors: savedTheme.colors,
-                          backgroundImage: {
-                            url: "",
-                            size: "cover",
-                            position: "center",
-                            repeat: "no-repeat",
-                            attachment: "scroll",
-                            opacity: 100,
-                            blur: 0,
-                            overlayColor: "0 0% 0%",
-                            overlayOpacity: 0,
-                            filter: { grayscale: 0, sepia: 0, brightness: 100, contrast: 100, saturate: 100 },
-                          },
+                          backgroundImage: savedTheme.backgroundImage || defaultBgImage,
                         };
                         onEditCustomTheme(fullTheme);
                       }}

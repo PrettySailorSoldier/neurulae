@@ -21,7 +21,7 @@ interface DashboardHeaderProps {
   onSetTutorialOpen: (open: boolean) => void;
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick: () => void;
-  onEditCustomTheme: () => void;
+  onEditCustomTheme: (theme?: CustomTheme) => void;
   onDeleteCustomTheme: () => void;
   onUseAsTemplate: (preset: 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy') => void;
 }
