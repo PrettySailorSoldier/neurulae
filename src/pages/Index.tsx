@@ -103,6 +103,7 @@ const Index = () => {
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
   const [themeToEdit, setThemeToEdit] = useState<CustomTheme | undefined>(undefined);
+  const [isCreatingNewTheme, setIsCreatingNewTheme] = useState(false); // Track if explicitly creating new
 
   // Custom Tabs
   const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neurulae-custom-tabs', []);
@@ -1190,12 +1191,14 @@ const Index = () => {
   const handleOpenCustomThemeBuilder = () => {
     setTemplateTheme(undefined);
     setThemeToEdit(undefined); // Clear any existing theme to edit - we're creating new
+    setIsCreatingNewTheme(true); // Mark that we're creating a new theme
     setCustomThemeBuilderOpen(true);
   };
 
   const handleEditCustomTheme = (themeToEditParam?: CustomTheme) => {
     setTemplateTheme(undefined);
     setThemeToEdit(themeToEditParam); // Set the specific theme being edited
+    setIsCreatingNewTheme(false); // We're editing, not creating new
     setCustomThemeBuilderOpen(true);
   };
 
@@ -1897,10 +1900,17 @@ const Index = () => {
           open={customThemeBuilderOpen}
           onOpenChange={(open) => {
             setCustomThemeBuilderOpen(open);
-            if (!open) setThemeToEdit(undefined); // Clear theme to edit when closing
+            if (!open) {
+              setThemeToEdit(undefined); // Clear theme to edit when closing
+              setIsCreatingNewTheme(false); // Reset creating new flag
+            }
           }}
           onSave={handleSaveCustomTheme}
-          existingTheme={themeToEdit || (theme === 'custom' && !templateTheme ? (customTheme || undefined) : undefined)}
+          existingTheme={
+            // Only pass existingTheme when EDITING (not creating new)
+            // themeToEdit is set when clicking Edit button on a saved theme
+            isCreatingNewTheme ? undefined : themeToEdit
+          }
           templateTheme={templateTheme}
         />
 
