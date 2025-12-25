@@ -285,27 +285,13 @@ export default function AdminPanel() {
 
       if (error) throw error;
 
-      // Fetch emails securely via the admin function
-      const redemptionsWithEmail = await Promise.all(
-        (redemptions || []).map(async (redemption) => {
-          try {
-            const { data: email } = await supabase.rpc('get_user_email_for_admin', {
-              target_user_id: redemption.user_id
-            });
-            return {
-              ...redemption,
-              profiles: { email: email || 'Unknown' }
-            };
-          } catch {
-            return {
-              ...redemption,
-              profiles: { email: 'Unknown' }
-            };
-          }
-        })
-      );
+      // Map redemptions with user_id display (email lookup not available)
+      const redemptionsWithDisplay = (redemptions || []).map((redemption) => ({
+        ...redemption,
+        profiles: { email: redemption.user_id.slice(0, 8) + '...' }
+      }));
 
-      setSelectedCodeRedemptions(redemptionsWithEmail as any || []);
+      setSelectedCodeRedemptions(redemptionsWithDisplay as any || []);
       setRedemptionsDialogOpen(true);
     } catch (error) {
       console.error("Error loading redemptions:", error);
