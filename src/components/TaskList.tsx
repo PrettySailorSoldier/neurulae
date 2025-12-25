@@ -36,23 +36,27 @@ interface TaskListProps {
     order?: number;
   }>) => void;
   onAskAI?: (message: string) => void;
+  onStartIntention?: (task: Task) => void;
+  activeIntentionId?: string | null;
   showQuickActions?: boolean;
   onToggleTimeConstraintView?: () => void;
   showTimeConstraintView?: boolean;
 }
 
-const TaskListComponent = ({ 
-  tasks, 
+const TaskListComponent = ({
+  tasks,
   timeBlocks,
   userId,
-  onToggleComplete, 
+  onToggleComplete,
   onAddTask,
   onBulkAddTasks,
-  onUpdateTask, 
+  onUpdateTask,
   onDeleteTask,
   onPrioritize,
   onScheduleTasks,
   onAskAI,
+  onStartIntention,
+  activeIntentionId,
   showQuickActions = true,
   onToggleTimeConstraintView,
   showTimeConstraintView = false,
@@ -312,6 +316,8 @@ const TaskListComponent = ({
                           onUpdateTask={onUpdateTask}
                           onDeleteTask={onDeleteTask}
                           onAskAI={onAskAI}
+                          onStartIntention={onStartIntention}
+                          isActiveIntention={activeIntentionId === task.id}
                           showQuickActions={showQuickActions}
                         />
                       ))}
@@ -332,6 +338,8 @@ const TaskListComponent = ({
                           onUpdateTask={onUpdateTask}
                           onDeleteTask={onDeleteTask}
                           onAskAI={onAskAI}
+                          onStartIntention={onStartIntention}
+                          isActiveIntention={activeIntentionId === task.id}
                           showQuickActions={showQuickActions}
                         />
                       ))}

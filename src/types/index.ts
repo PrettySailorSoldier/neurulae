@@ -343,6 +343,23 @@ export interface SunlightAnchorWidget {
   title: string;
 }
 
+// Active Intention Banner - for focus tracking and intention hijacking prevention
+export interface IntentionInterruption {
+  id: string;
+  note: string;
+  timestamp: string;
+}
+
+export interface ActiveIntention {
+  taskId: string;
+  taskName: string;
+  startedAt: string; // ISO timestamp
+  isPaused: boolean;
+  pausedAt: string | null; // ISO timestamp when paused
+  totalPausedTime: number; // Total milliseconds spent paused
+  interruptions: IntentionInterruption[];
+}
+
 // Time Zone Settings - for Daily Flow Timeline
 export interface TimeZone {
   id: string;

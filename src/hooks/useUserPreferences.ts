@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 interface UserPreferences {
   customTheme?: CustomTheme | null;
   theme?: string;
+  enableActiveIntentionBanner?: boolean; // Default: true - shows persistent banner for current active task
 }
 
 export function useUserPreferences() {

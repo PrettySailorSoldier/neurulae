@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { PromoCodeInput } from "@/components/PromoCodeInput";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -36,6 +37,10 @@ export default function Settings() {
   const [showAI, setShowAI] = useLocalStorage('neurulae-ai-enabled', true);
   const [aiFirstMode, setAiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
   const [showQuickActions, setShowQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
+
+  // User Preferences (synced via Supabase)
+  const { preferences, savePreferences } = useUserPreferences();
+  const showIntentionBanner = preferences.enableActiveIntentionBanner !== false;
 
   // Collapsible sections
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -272,6 +277,17 @@ export default function Settings() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="quick-actions" className="cursor-pointer">Quick Actions</Label>
                 <Switch id="quick-actions" checked={showQuickActions} onCheckedChange={setShowQuickActions} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="intention-banner" className="cursor-pointer">Active Intention Banner</Label>
+                  <p className="text-xs text-muted-foreground">Show a persistent banner when working on a task</p>
+                </div>
+                <Switch
+                  id="intention-banner"
+                  checked={showIntentionBanner}
+                  onCheckedChange={(checked) => savePreferences({ enableActiveIntentionBanner: checked })}
+                />
               </div>
             </div>
 

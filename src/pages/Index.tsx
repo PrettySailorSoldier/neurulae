@@ -25,6 +25,8 @@ import { MobileTabBar, MobileTab } from '@/components/MobileTabBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { useActiveIntention } from '@/hooks/useActiveIntention';
+import { ActiveIntentionBanner } from '@/components/ActiveIntentionBanner';
 
 // Lazy load heavy components for better code splitting
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab').then(m => ({ default: m.ProjectsTab })));
@@ -147,6 +149,36 @@ const Index = () => {
   const [showQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
 
   const { toast } = useToast();
+
+  // Active Intention Banner - for focus tracking
+  const allTasks = [...tasks, ...priorities];
+  const handleCompleteIntentionTask = (taskId: string) => {
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: true } : t));
+    setPriorities(priorities.map(t => t.id === taskId ? { ...t, completed: true } : t));
+    toast({
+      title: "Task Completed!",
+      description: "Great work staying focused!",
+    });
+  };
+
+  const {
+    activeIntention,
+    currentTask: activeIntentionTask,
+    startIntention,
+    pauseIntention,
+    resumeIntention,
+    completeIntention,
+    clearIntention,
+    getElapsedTime,
+    formatElapsedTime,
+    isPaused: isIntentionPaused,
+  } = useActiveIntention({
+    tasks: allTasks,
+    onTaskComplete: handleCompleteIntentionTask,
+  });
+
+  // Check if banner should be shown (default: true)
+  const showIntentionBanner = preferences.enableActiveIntentionBanner !== false;
 
   // Show tutorial on first visit
   useEffect(() => {
@@ -1348,6 +1380,21 @@ const Index = () => {
         onUseAsTemplate={handleUseThemeAsTemplate}
       />
 
+      {/* Active Intention Banner - persistent focus tracker */}
+      {showIntentionBanner && activeIntention && (
+        <ActiveIntentionBanner
+          activeIntention={activeIntention}
+          currentTask={activeIntentionTask}
+          isPaused={isIntentionPaused}
+          onComplete={completeIntention}
+          onPause={pauseIntention}
+          onResume={resumeIntention}
+          onClear={clearIntention}
+          getElapsedTime={getElapsedTime}
+          formatElapsedTime={formatElapsedTime}
+        />
+      )}
+
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6" role="main">
         <StatsOverview
@@ -1484,6 +1531,8 @@ const Index = () => {
                       onPrioritize={handlePrioritizeTasks}
                       onScheduleTasks={handleScheduleTasks}
                       onAskAI={handleAskAI}
+                      onStartIntention={startIntention}
+                      activeIntentionId={activeIntention?.taskId}
                       showQuickActions={showQuickActions}
                       onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
                       showTimeConstraintView={showTimeConstraintView}
@@ -1528,6 +1577,8 @@ const Index = () => {
                     onPrioritize={handlePrioritizeTasks}
                     onScheduleTasks={handleScheduleTasks}
                     onAskAI={handleAskAI}
+                    onStartIntention={startIntention}
+                    activeIntentionId={activeIntention?.taskId}
                     showQuickActions={showQuickActions}
                     onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
                     showTimeConstraintView={showTimeConstraintView}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText, Target } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,15 +13,19 @@ interface UnscheduledTaskItemProps {
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onAskAI?: (message: string) => void;
+  onStartIntention?: (task: Task) => void;
+  isActiveIntention?: boolean;
   showQuickActions?: boolean;
 }
 
-export function UnscheduledTaskItem({ 
-  task, 
-  onToggleComplete, 
+export function UnscheduledTaskItem({
+  task,
+  onToggleComplete,
   onUpdateTask,
   onDeleteTask,
   onAskAI,
+  onStartIntention,
+  isActiveIntention = false,
   showQuickActions = true
 }: UnscheduledTaskItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -83,7 +87,11 @@ export function UnscheduledTaskItem({
   };
 
   return (
-    <div className="border border-border rounded-md bg-card hover:bg-card/80 transition-colors">
+    <div className={`border rounded-md bg-card hover:bg-card/80 transition-colors ${
+      isActiveIntention
+        ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
+        : 'border-border'
+    }`}>
       {/* Main row - always visible */}
       <div className="flex items-center gap-2 p-2 group">
         {hasDetails && (
@@ -123,6 +131,26 @@ export function UnscheduledTaskItem({
           <span className="text-xs text-muted-foreground">
             {task.focusTimeMinutes}m
           </span>
+        )}
+
+        {showQuickActions && onStartIntention && !task.completed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartIntention(task);
+            }}
+            className={`h-6 w-6 p-0 transition-opacity ${
+              isActiveIntention
+                ? 'opacity-100 text-primary'
+                : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary'
+            }`}
+            title={isActiveIntention ? "Currently working on this" : "Start working on this task"}
+            aria-label="Start intention"
+          >
+            <Target className="h-3.5 w-3.5" />
+          </Button>
         )}
 
         {showQuickActions && onAskAI && (

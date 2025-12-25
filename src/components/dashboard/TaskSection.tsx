@@ -23,6 +23,8 @@ interface TaskSectionProps {
     order?: number;
   }>) => void;
   onAskAI?: (message: string) => void;
+  onStartIntention?: (task: Task) => void;
+  activeIntentionId?: string | null;
   showQuickActions: boolean;
   onToggleTimeConstraintView?: () => void;
   showTimeConstraintView?: boolean;
@@ -40,6 +42,8 @@ export function TaskSection({
   onPrioritize,
   onScheduleTasks,
   onAskAI,
+  onStartIntention,
+  activeIntentionId,
   showQuickActions,
   onToggleTimeConstraintView,
   showTimeConstraintView,
@@ -58,6 +62,8 @@ export function TaskSection({
         onPrioritize={onPrioritize}
         onScheduleTasks={onScheduleTasks}
         onAskAI={showQuickActions ? onAskAI : undefined}
+        onStartIntention={onStartIntention}
+        activeIntentionId={activeIntentionId}
         showQuickActions={showQuickActions}
         onToggleTimeConstraintView={onToggleTimeConstraintView}
         showTimeConstraintView={showTimeConstraintView}
