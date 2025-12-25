@@ -187,6 +187,11 @@ const Index = () => {
           setPlaybooks(cloudData.playbooks);
         }
         if (cloudData.customTheme) {
+          // Ensure backgroundImage is properly loaded from cloud
+          console.log('[Theme] Loading customTheme from cloud:', {
+            name: cloudData.customTheme.name,
+            hasBackgroundImage: !!cloudData.customTheme.backgroundImage?.url,
+          });
           setCustomTheme(cloudData.customTheme);
         }
 
@@ -202,6 +207,19 @@ const Index = () => {
   }, [user]);
 
   // Custom theme now syncs automatically via useSyncedStorage - no manual sync needed
+
+  // Debug: Log custom theme state changes
+  useEffect(() => {
+    if (customTheme) {
+      console.log('[Theme] customTheme state updated:', {
+        name: customTheme.name,
+        hasBackgroundImage: !!customTheme.backgroundImage?.url,
+        backgroundImageUrl: customTheme.backgroundImage?.url?.substring(0, 100),
+        blur: customTheme.backgroundImage?.blur,
+        opacity: customTheme.backgroundImage?.opacity,
+      });
+    }
+  }, [customTheme]);
 
   // Load theme from database preferences
   useEffect(() => {

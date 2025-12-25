@@ -512,6 +512,21 @@ export function CustomThemeBuilder({
     // OPTIMISTIC SAVE: Save to LocalStorage IMMEDIATELY
     const themeName = theme.name?.trim() || "Untitled Theme";
 
+    // Validate base64 image size (warn if > 1MB, which could cause localStorage issues)
+    const bgImageUrl = theme.backgroundImage?.url || "";
+    if (bgImageUrl.startsWith("data:image")) {
+      const base64Size = Math.ceil((bgImageUrl.length * 3) / 4); // Approximate byte size
+      const sizeMB = base64Size / (1024 * 1024);
+      console.log(`[Theme] Background image size: ${sizeMB.toFixed(2)}MB`);
+      
+      if (sizeMB > 4) {
+        toast.error("Background image is too large (>4MB). Please use a smaller image or an external URL.");
+        return;
+      } else if (sizeMB > 1) {
+        toast.warning(`Large image (${sizeMB.toFixed(1)}MB) may cause sync issues. Consider using an external URL.`);
+      }
+    }
+
     // Check if we're editing an existing theme by looking for matching name in savedThemes
     // AND we came from editing (existingTheme prop was provided)
     const editingExistingTheme = existingTheme && savedThemes.some(
@@ -558,6 +573,15 @@ export function CustomThemeBuilder({
       backgroundImage: theme.backgroundImage, // Preserve background image
     };
 
+    // Debug: Log what we're saving
+    console.log("[Theme] Saving theme:", {
+      name: finalName,
+      hasBackgroundImage: !!theme.backgroundImage?.url,
+      backgroundImageUrlPreview: theme.backgroundImage?.url?.substring(0, 80),
+      blur: theme.backgroundImage?.blur,
+      opacity: theme.backgroundImage?.opacity,
+    });
+
     // If editing an existing theme (matched by ID), update it; otherwise, append
     const existingIndex = existingThemeEntry
       ? savedThemes.findIndex((t) => t.id === existingThemeEntry.id)
@@ -574,8 +598,14 @@ export function CustomThemeBuilder({
     }
 
     // 1. Save to THEMES storage (for the ThemeSwitcher dropdown)
-    localStorage.setItem(THEMES_STORAGE_KEY, JSON.stringify(updatedThemes));
-    setSavedThemes(updatedThemes);
+    try {
+      localStorage.setItem(THEMES_STORAGE_KEY, JSON.stringify(updatedThemes));
+      setSavedThemes(updatedThemes);
+    } catch (storageError) {
+      console.error("[Theme] Failed to save to localStorage:", storageError);
+      toast.error("Failed to save theme - storage may be full. Try using an external image URL instead.");
+      return;
+    }
 
     // Notify ThemeSwitcher component to reload saved themes
     window.dispatchEvent(new Event("theme-saved"));
@@ -603,10 +633,11 @@ export function CustomThemeBuilder({
             .eq("id", user.id);
         },
         () => {
-          console.log("Theme synced to cloud successfully");
+          console.log("[Theme] Synced to cloud successfully");
         },
         (error) => {
-          console.error("Failed to sync to cloud:", error);
+          console.error("[Theme] Failed to sync to cloud:", error);
+          toast.error("Theme saved locally but cloud sync failed. It will retry on next save.");
         },
       );
     }

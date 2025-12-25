@@ -33,6 +33,7 @@ interface ThemeSwitcherProps {
   onCustomThemeClick?: () => void;
   onEditCustomTheme?: (theme?: CustomTheme) => void;
   onDeleteCustomTheme?: () => void;
+  onApplyCustomTheme?: (theme: CustomTheme) => void; // Apply a saved theme to local state
   onUseAsTemplate?: (
     theme: "orchid" | "jellyfish" | "sunset" | "bluebonnet" | "ocean" | "forest" | "midnight" | "candy",
   ) => void;
@@ -50,6 +51,7 @@ export function ThemeSwitcher({
   onThemeChange,
   onCustomThemeClick,
   onEditCustomTheme,
+  onApplyCustomTheme,
   onUseAsTemplate,
 }: ThemeSwitcherProps) {
   const [savedThemes, setSavedThemes] = useState<SavedPalette[]>([]);
@@ -90,33 +92,40 @@ export function ThemeSwitcher({
 
   // The logic to APPLY a theme directly from the list
   const handleApplySavedTheme = async (savedTheme: SavedPalette) => {
-    // 1. Switch UI immediately (Optimistic)
-    onThemeChange("custom");
-    toast.info(`Applying ${savedTheme.name}...`);
+    // Reconstruct full theme object (SavedPalette may have backgroundImage)
+    const defaultBgImage = {
+      url: "",
+      size: "cover" as const,
+      position: "center" as const,
+      repeat: "no-repeat" as const,
+      attachment: "scroll" as const,
+      opacity: 100,
+      blur: 0,
+      overlayColor: "0 0% 0%",
+      overlayOpacity: 0,
+      filter: { grayscale: 0, sepia: 0, brightness: 100, contrast: 100, saturate: 100 },
+    };
 
-    // 2. Update Database using the Bouncer (Safe Write)
+    const fullTheme: CustomTheme = {
+      name: savedTheme.name,
+      colors: savedTheme.colors,
+      backgroundImage: savedTheme.backgroundImage || defaultBgImage,
+    };
+
+    // 1. Apply theme to LOCAL state immediately (this actually changes the UI!)
+    if (onApplyCustomTheme) {
+      onApplyCustomTheme(fullTheme);
+    }
+
+    // 2. Switch to custom theme mode
+    onThemeChange("custom");
+    toast.success(`${savedTheme.name} applied!`);
+
+    // 3. Sync to database in background
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
-
-    // Reconstruct full theme object (SavedPalette only has colors)
-    const fullTheme: CustomTheme = {
-      name: savedTheme.name,
-      colors: savedTheme.colors,
-      backgroundImage: {
-        url: "",
-        size: "cover",
-        position: "center",
-        repeat: "no-repeat",
-        attachment: "scroll",
-        opacity: 100,
-        blur: 0,
-        overlayColor: "0 0% 0%",
-        overlayOpacity: 0,
-        filter: { grayscale: 0, sepia: 0, brightness: 100, contrast: 100, saturate: 100 },
-      },
-    };
 
     executeWrite(
       async () => {
@@ -130,10 +139,9 @@ export function ThemeSwitcher({
           })
           .eq("id", user.id);
       },
-      () => toast.success(`${savedTheme.name} active!`),
+      () => console.log("Theme synced to cloud"),
       (error) => {
         console.error("Failed to sync applied theme", error);
-        // Bouncer handles the generic offline toast
       },
     );
   };
