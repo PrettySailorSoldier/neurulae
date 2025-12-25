@@ -4,6 +4,15 @@ export interface SubTask {
   completed: boolean;
 }
 
+// Time estimation tracking for training estimation skills
+export interface EstimationRecord {
+  id: string;
+  estimatedMinutes: number;
+  actualMinutes: number;
+  completedAt: string; // ISO timestamp
+  difference: number; // actualMinutes - estimatedMinutes (positive = over, negative = under)
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -30,6 +39,9 @@ export interface Task {
   };
   energyLevel?: 'high' | 'medium' | 'low'; // Energy required for this task
   noiseLevel?: 'quiet' | 'normal' | 'noisy'; // Noise level of this task (for quiet hours filtering)
+  // Time estimation tracking
+  actualMinutes?: number; // Actual time spent (recorded after timer completion)
+  estimationHistory?: EstimationRecord[]; // History of estimate vs actual for this task
 }
 
 export interface Project {

@@ -1,16 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { TimedTask } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Play, Pause, SkipForward, Trash2, Plus, GripVertical, Coffee } from 'lucide-react';
+import { Play, Pause, SkipForward, Trash2, Plus, GripVertical, Coffee, Clock, PlusCircle, CheckCircle } from 'lucide-react';
 import { formatDuration } from '@/lib/timeUtils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
-import { Progress } from '@/components/ui/progress';
+import { CircularTimer } from '@/components/CircularTimer';
+import { EstimationComparisonCard } from '@/components/EstimationComparisonCard';
+import { cn } from '@/lib/utils';
 
 interface TaskSequencerProps {
   onSaveSession: (taskId: string | undefined, minutes: number) => void;
+}
+
+interface CompletedTaskInfo {
+  title: string;
+  estimatedMinutes: number;
+  actualMinutes: number;
+  taskId?: string;
 }
 
 export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
@@ -22,11 +31,38 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
   const [breakMinutes, setBreakMinutes] = useLocalStorage('neurulae-break-minutes', 5);
   const [onBreak, setOnBreak] = useState(false);
 
+  // Track elapsed time for actual duration calculation
+  const [taskStartTime, setTaskStartTime] = useState<number | null>(null);
+  const [elapsedBeforePause, setElapsedBeforePause] = useState(0);
+
+  // Completed task info for estimation comparison card
+  const [completedTaskInfo, setCompletedTaskInfo] = useState<CompletedTaskInfo | null>(null);
+
+  // Calculate totals
   const totalMinutes = tasks.reduce((sum, task) => sum + task.estimatedMinutes, 0);
   const completedMinutes = tasks
     .slice(0, currentTaskIndex)
     .reduce((sum, task) => sum + task.estimatedMinutes, 0);
+  const remainingMinutes = totalMinutes - completedMinutes;
 
+  // Tasks with vs without estimates
+  const unestimatedTaskCount = tasks.filter(t => !t.completed && t.estimatedMinutes === 0).length;
+
+  // Calculate "Done By" time
+  const doneByTime = useMemo(() => {
+    if (tasks.length === 0 || remainingMinutes <= 0) return null;
+
+    const now = new Date();
+    const doneBy = new Date(now.getTime() + remainingMinutes * 60 * 1000);
+
+    return doneBy.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }, [tasks.length, remainingMinutes]);
+
+  // Timer tick effect
   useEffect(() => {
     if (!isRunning) return;
 
@@ -43,46 +79,78 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
     return () => clearInterval(interval);
   }, [isRunning, currentTaskIndex, onBreak]);
 
+  // Calculate actual time spent on current task
+  const getActualMinutes = () => {
+    if (!taskStartTime) return 0;
+    const totalElapsed = elapsedBeforePause + (isRunning ? Date.now() - taskStartTime : 0);
+    return Math.ceil(totalElapsed / 60000); // Convert to minutes, round up
+  };
+
   const handleTaskComplete = () => {
     const currentTask = tasks[currentTaskIndex];
-    
+
     if (onBreak) {
-      toast.success('Break complete! Back to work 💪');
+      toast.success('Break complete! Back to work', { icon: '💪' });
       setOnBreak(false);
       if (currentTaskIndex + 1 < tasks.length) {
         setCurrentTaskIndex(prev => prev + 1);
-        setTimeRemaining(tasks[currentTaskIndex + 1].estimatedMinutes * 60);
+        const nextTask = tasks[currentTaskIndex + 1];
+        setTimeRemaining(nextTask.estimatedMinutes * 60);
+        // Reset time tracking for new task
+        setTaskStartTime(Date.now());
+        setElapsedBeforePause(0);
       } else {
-        toast.success('🎉 All tasks complete! Amazing work!', {
-          description: `You completed ${tasks.length} tasks!`
-        });
-        setIsRunning(false);
-        setTimeRemaining(0);
+        handleAllComplete();
       }
     } else {
       if (currentTask) {
-        onSaveSession(currentTask.linkedTaskId, currentTask.estimatedMinutes);
-        setTasks(prev => prev.map((t, i) => 
+        const actualMinutes = getActualMinutes();
+        onSaveSession(currentTask.linkedTaskId, actualMinutes);
+
+        // Show estimation comparison card
+        setCompletedTaskInfo({
+          title: currentTask.title,
+          estimatedMinutes: currentTask.estimatedMinutes,
+          actualMinutes: actualMinutes,
+          taskId: currentTask.linkedTaskId,
+        });
+
+        setTasks(prev => prev.map((t, i) =>
           i === currentTaskIndex ? { ...t, completed: true } : t
         ));
-        toast.success(`✅ "${currentTask.title}" complete!`);
       }
 
       if (pauseBetweenTasks && currentTaskIndex + 1 < tasks.length) {
         setOnBreak(true);
         setTimeRemaining(breakMinutes * 60);
-        toast.success('☕ Break time! Relax and recharge');
+        toast.success('Break time! Relax and recharge', { icon: '☕' });
       } else if (currentTaskIndex + 1 < tasks.length) {
-        setCurrentTaskIndex(prev => prev + 1);
-        setTimeRemaining(tasks[currentTaskIndex + 1].estimatedMinutes * 60);
+        advanceToNextTask();
       } else {
-        toast.success('🎉 All tasks complete! Amazing work!', {
-          description: `You completed ${tasks.length} tasks!`
-        });
-        setIsRunning(false);
-        setTimeRemaining(0);
+        handleAllComplete();
       }
     }
+  };
+
+  const advanceToNextTask = () => {
+    setCurrentTaskIndex(prev => prev + 1);
+    const nextTask = tasks[currentTaskIndex + 1];
+    if (nextTask) {
+      setTimeRemaining(nextTask.estimatedMinutes * 60);
+      setTaskStartTime(Date.now());
+      setElapsedBeforePause(0);
+    }
+  };
+
+  const handleAllComplete = () => {
+    toast.success('All tasks complete! Amazing work!', {
+      icon: '🎉',
+      description: `You completed ${tasks.length} tasks!`
+    });
+    setIsRunning(false);
+    setTimeRemaining(0);
+    setTaskStartTime(null);
+    setElapsedBeforePause(0);
   };
 
   const handleAddTask = () => {
@@ -106,12 +174,33 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
 
   const handleStart = () => {
     if (tasks.length === 0) return;
-    
+
     if (!isRunning && timeRemaining === 0) {
       const firstTask = tasks[currentTaskIndex];
       setTimeRemaining(firstTask.estimatedMinutes * 60);
+      setTaskStartTime(Date.now());
+      setElapsedBeforePause(0);
+    } else if (!isRunning) {
+      // Resuming from pause
+      setTaskStartTime(Date.now());
     }
     setIsRunning(true);
+  };
+
+  const handlePause = () => {
+    if (isRunning && taskStartTime) {
+      // Save elapsed time before pause
+      setElapsedBeforePause(prev => prev + (Date.now() - taskStartTime));
+    }
+    setIsRunning(false);
+  };
+
+  const handleToggle = () => {
+    if (isRunning) {
+      handlePause();
+    } else {
+      handleStart();
+    }
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -130,65 +219,114 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
       setCurrentTaskIndex(prev => prev + 1);
       setTimeRemaining(nextTask.estimatedMinutes * 60);
       setOnBreak(false);
+      setTaskStartTime(Date.now());
+      setElapsedBeforePause(0);
+    }
+  };
+
+  const handleAddTime = (extraMinutes: number) => {
+    setTimeRemaining(prev => prev + extraMinutes * 60);
+    toast.success(`+${extraMinutes} minutes added`);
+  };
+
+  const handleDoneEarly = () => {
+    if (!tasks[currentTaskIndex]) return;
+    handleTaskComplete();
+  };
+
+  const handleDismissComparison = () => {
+    setCompletedTaskInfo(null);
+  };
+
+  const handleStartNextFromComparison = () => {
+    setCompletedTaskInfo(null);
+    if (currentTaskIndex + 1 < tasks.length && !isRunning) {
+      handleStart();
     }
   };
 
   const currentTask = tasks[currentTaskIndex];
-  const minutes = Math.floor(timeRemaining / 60);
-  const seconds = timeRemaining % 60;
+  const nextTask = currentTaskIndex + 1 < tasks.length ? tasks[currentTaskIndex + 1] : null;
   const overallProgress = ((completedMinutes / totalMinutes) * 100) || 0;
-  const currentTaskProgress = currentTask && !onBreak
-    ? ((1 - (timeRemaining / (currentTask.estimatedMinutes * 60))) * 100) 
-    : 0;
 
   return (
     <div className="space-y-6">
+      {/* Estimation Comparison Card Overlay */}
+      {completedTaskInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <EstimationComparisonCard
+            taskTitle={completedTaskInfo.title}
+            estimatedMinutes={completedTaskInfo.estimatedMinutes}
+            actualMinutes={completedTaskInfo.actualMinutes}
+            onDismiss={handleDismissComparison}
+            onStartNext={nextTask ? handleStartNextFromComparison : undefined}
+            nextTaskTitle={nextTask?.title}
+          />
+        </div>
+      )}
+
       {/* Main Timer Display */}
-      <div className={`border-2 rounded-lg p-6 text-center transition-all ${
-        onBreak 
-          ? 'bg-gradient-to-br from-accent/20 to-accent/5 border-accent' 
+      <div className={cn(
+        'border-2 rounded-xl p-6 text-center transition-all',
+        onBreak
+          ? 'bg-gradient-to-br from-accent/20 to-accent/5 border-accent'
           : 'bg-gradient-to-br from-primary/10 to-card border-primary/30'
-      }`}>
-        <div className="text-sm font-semibold mb-2 flex items-center justify-center gap-2">
+      )}>
+        {/* Current Task Label */}
+        <div className="text-sm font-semibold mb-4 flex items-center justify-center gap-2">
           {onBreak ? (
             <>
-              <Coffee className="h-4 w-4" />
+              <Coffee className="h-4 w-4 text-accent" />
               <span className="text-accent">Break Time</span>
             </>
           ) : currentTask ? (
-            <>
-              <span className="text-primary">Current: {currentTask.title}</span>
-            </>
+            <span className="text-primary truncate max-w-xs">{currentTask.title}</span>
           ) : (
-            'No tasks queued'
+            <span className="text-muted-foreground">No tasks queued</span>
           )}
         </div>
-        <div className="text-6xl font-bold mb-4 tabular-nums">
-          {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+
+        {/* Circular Timer */}
+        <div className="flex justify-center mb-4">
+          <CircularTimer
+            timeRemaining={timeRemaining}
+            totalTime={currentTask ? currentTask.estimatedMinutes * 60 : breakMinutes * 60}
+            size="xl"
+            isPaused={!isRunning}
+          />
         </div>
-        
-        {/* Current Task Progress */}
-        {currentTask && !onBreak && (
-          <div className="max-w-md mx-auto mb-4">
-            <Progress value={currentTaskProgress} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-1">
-              {Math.round(currentTaskProgress)}% of current task
-            </p>
+
+        {/* Done By Time */}
+        {doneByTime && !onBreak && (
+          <div className="flex items-center justify-center gap-2 mb-4 text-sm">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Done by:</span>
+            <span className="font-semibold text-primary">{doneByTime}</span>
+            {unestimatedTaskCount > 0 && (
+              <span className="text-xs text-muted-foreground ml-2">
+                ({unestimatedTaskCount} task{unestimatedTaskCount !== 1 ? 's' : ''} unestimated)
+              </span>
+            )}
           </div>
         )}
 
         {/* Overall Stats */}
-        <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground flex-wrap">
           <div>Total: {formatDuration(totalMinutes)}</div>
-          <div>•</div>
-          <div className="text-primary font-medium">Done: {formatDuration(completedMinutes)}</div>
-          <div>•</div>
-          <div>Left: {formatDuration(totalMinutes - completedMinutes)}</div>
+          <div className="text-primary/50">•</div>
+          <div className="text-green-500 font-medium">Done: {formatDuration(completedMinutes)}</div>
+          <div className="text-primary/50">•</div>
+          <div>Left: {formatDuration(remainingMinutes)}</div>
         </div>
-        
+
         {/* Overall Progress Bar */}
         <div className="max-w-lg mx-auto mt-4">
-          <Progress value={overallProgress} className="h-3" />
+          <div className="h-3 bg-muted/30 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-500 rounded-full"
+              style={{ width: `${overallProgress}%` }}
+            />
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
             {tasks.filter(t => t.completed).length} of {tasks.length} tasks complete
           </p>
@@ -196,15 +334,40 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-3 flex-wrap">
         <Button
-          onClick={() => setIsRunning(!isRunning)}
+          onClick={handleToggle}
           size="lg"
           className="bg-primary hover:bg-primary/90"
+          disabled={tasks.length === 0}
         >
           {isRunning ? <Pause className="h-5 w-5 mr-2" /> : <Play className="h-5 w-5 mr-2" />}
           {isRunning ? 'Pause' : 'Start'}
         </Button>
+
+        {isRunning && (
+          <>
+            <Button
+              onClick={() => handleAddTime(5)}
+              variant="outline"
+              size="lg"
+              className="gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              +5 min
+            </Button>
+            <Button
+              onClick={handleDoneEarly}
+              variant="outline"
+              size="lg"
+              className="gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Done Early
+            </Button>
+          </>
+        )}
+
         <Button
           onClick={handleSkip}
           variant="outline"
@@ -217,13 +380,13 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
       </div>
 
       {/* Settings */}
-      <div className="flex items-center gap-4 justify-center">
-        <label className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-4 justify-center flex-wrap">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input
             type="checkbox"
             checked={pauseBetweenTasks}
             onChange={(e) => setPauseBetweenTasks(e.target.checked)}
-            className="rounded border-border"
+            className="rounded border-border accent-primary"
           />
           Pause between tasks
         </label>
@@ -234,7 +397,7 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
               type="number"
               value={breakMinutes}
               onChange={(e) => setBreakMinutes(Math.max(1, parseInt(e.target.value) || 5))}
-              className="w-20 bg-input border-border"
+              className="w-16 bg-input border-border text-center"
               min="1"
             />
             <span className="text-sm text-muted-foreground">min</span>
@@ -264,9 +427,10 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
                 <div
                   {...provided.droppableProps}
                   ref={provided.innerRef}
-                  className={`space-y-2 transition-colors ${
-                    snapshot.isDraggingOver ? 'bg-primary/5 rounded-lg p-2' : ''
-                  }`}
+                  className={cn(
+                    'space-y-2 transition-colors rounded-lg',
+                    snapshot.isDraggingOver && 'bg-primary/5 p-2'
+                  )}
                 >
                   {tasks.map((task, index) => (
                     <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={isRunning || task.completed}>
@@ -274,57 +438,65 @@ export function TaskSequencer({ onSaveSession }: TaskSequencerProps) {
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${
-                            index === currentTaskIndex && !onBreak
-                              ? 'bg-primary/20 border-primary shadow-md scale-[1.02]'
+                          className={cn(
+                            'relative flex items-center gap-2 p-3 rounded-lg border transition-all',
+                            index === currentTaskIndex && !onBreak && !task.completed
+                              ? 'bg-primary/20 border-primary shadow-md ring-1 ring-primary/30'
                               : task.completed
-                              ? 'bg-muted/50 border-muted opacity-60'
-                              : 'bg-card border-border hover:border-primary/50'
-                          } ${snapshot.isDragging ? 'shadow-lg rotate-2' : ''}`}
+                              ? 'bg-muted/30 border-muted/50 opacity-60'
+                              : 'bg-card border-border hover:border-primary/50',
+                            snapshot.isDragging && 'shadow-lg rotate-1 scale-105'
+                          )}
                         >
                           <div {...provided.dragHandleProps}>
-                            <GripVertical className={`h-5 w-5 ${isRunning || task.completed ? 'text-muted-foreground/30' : 'text-muted-foreground cursor-grab active:cursor-grabbing'}`} />
+                            <GripVertical className={cn(
+                              'h-5 w-5',
+                              isRunning || task.completed
+                                ? 'text-muted-foreground/30'
+                                : 'text-muted-foreground cursor-grab active:cursor-grabbing'
+                            )} />
                           </div>
-                          
-                          <div className="flex-1 flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                              {index + 1}
+
+                          <div className="flex-1 flex items-center gap-2 min-w-0">
+                            <div className={cn(
+                              'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0',
+                              task.completed
+                                ? 'bg-green-500/20 text-green-500'
+                                : index === currentTaskIndex && !onBreak
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-primary/10 text-primary'
+                            )}>
+                              {task.completed ? '✓' : index + 1}
                             </div>
                             <Input
                               value={task.title}
                               onChange={(e) => handleUpdateTask(task.id, 'title', e.target.value)}
-                              className="flex-1 bg-transparent border-0 focus-visible:ring-0 font-medium"
+                              className="flex-1 bg-transparent border-0 focus-visible:ring-0 font-medium truncate"
                               disabled={task.completed || isRunning}
                             />
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             <Input
                               type="number"
                               value={task.estimatedMinutes}
                               onChange={(e) => handleUpdateTask(task.id, 'estimatedMinutes', parseInt(e.target.value) || 0)}
-                              className="w-16 text-center bg-input"
+                              className="w-14 text-center bg-input text-sm"
                               min="1"
                               disabled={task.completed || isRunning}
                             />
-                            <span className="text-sm text-muted-foreground w-8">min</span>
+                            <span className="text-xs text-muted-foreground w-6">min</span>
                           </div>
 
                           <Button
                             onClick={() => handleDeleteTask(task.id)}
                             variant="ghost"
                             size="icon"
-                            className="hover:bg-destructive/20 hover:text-destructive"
+                            className="hover:bg-destructive/20 hover:text-destructive h-8 w-8"
                             disabled={task.completed || isRunning}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
-
-                          {task.completed && (
-                            <div className="absolute right-2 top-2">
-                              <span className="text-2xl">✅</span>
-                            </div>
-                          )}
                         </div>
                       )}
                     </Draggable>
