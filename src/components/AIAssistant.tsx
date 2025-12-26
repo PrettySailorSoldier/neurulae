@@ -633,8 +633,8 @@ export function AIAssistant({
       const formData = new FormData();
       formData.append('file', file);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
           title: 'Authentication Required',
           description: 'Please sign in to upload schedules.',
@@ -649,7 +649,7 @@ export function AIAssistant({
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: formData,
         }
@@ -676,7 +676,7 @@ export function AIAssistant({
         .from('schedule_entries')
         .insert(
           entries.map((entry: any) => ({
-            user_id: user.id,
+            user_id: session.user.id,
             title: entry.title,
             description: entry.description,
             start_time: entry.startTime,
