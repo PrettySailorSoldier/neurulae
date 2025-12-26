@@ -20,13 +20,23 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const { user, session } = useAuth();
 
   const checkSubscription = async () => {
-    if (!user || !session) {
+    if (!user || !session?.access_token) {
       setPlan('free');
       setLoading(false);
       return;
     }
 
     try {
+      // Verify session is still valid before making requests
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !currentSession?.access_token) {
+        console.log('No valid session available');
+        setPlan('free');
+        setLoading(false);
+        return;
+      }
+
       // Check for roles first (admin, creator, premium, lifetime)
       const { data: roles } = await supabase
         .from('user_roles')
@@ -52,18 +62,19 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      // Check subscription status via edge function - explicitly pass the access token
+      
+      // Check subscription status via edge function - use fresh session token
       let { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
-          Authorization: `Bearer ${session.access_token}`
+          Authorization: `Bearer ${currentSession.access_token}`
         }
       });
 
       // If auth error, refresh session and retry once
-      if (error && (error.message?.includes('Auth') || error.message?.includes('401'))) {
+      if (error && (error.message?.includes('Auth') || error.message?.includes('401') || error.message?.includes('Invalid JWT'))) {
         console.log('Auth error detected, refreshing session...');
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (!refreshError && refreshData.session) {
+        if (!refreshError && refreshData.session?.access_token) {
           const retry = await supabase.functions.invoke('check-subscription', {
             headers: {
               Authorization: `Bearer ${refreshData.session.access_token}`
@@ -71,6 +82,12 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
           });
           data = retry.data;
           error = retry.error;
+        } else {
+          // Session refresh failed, user needs to re-login
+          console.log('Session refresh failed');
+          setPlan('free');
+          setLoading(false);
+          return;
         }
       }
 
