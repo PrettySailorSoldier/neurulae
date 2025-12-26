@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(grep -h \"import.*from.*components/ui\" \"c:\\\\Users\\\\xfore\\\\OneDrive\\\\Desktop\\\\SERRUH\\\\ex.ipseity\\\\neurulae\\\\src\"/**/*.tsx)",
+      "Bash(xargs:*)"
     ]
   }
 }
