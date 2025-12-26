@@ -627,6 +627,7 @@ export function CustomThemeBuilder({
     onOpenChange(false);
 
     // 3. Sync to Cloud using the "Bouncer" (Safe Write)
+    // This syncs both the active theme AND the saved themes library
     if (user) {
       executeWrite(
         async () => {
@@ -636,12 +637,16 @@ export function CustomThemeBuilder({
           await supabase
             .from("profiles")
             .update({
-              preferences: { ...currentPreferences, customTheme: finalTheme },
+              preferences: {
+                ...currentPreferences,
+                customTheme: finalTheme,
+                savedCustomThemes: updatedThemes, // Sync the entire themes library
+              },
             })
             .eq("id", user.id);
         },
         () => {
-          console.log("[Theme] Synced to cloud successfully");
+          console.log("[Theme] Synced to cloud successfully (active theme + library)");
         },
         (error) => {
           console.error("[Theme] Failed to sync to cloud:", error);

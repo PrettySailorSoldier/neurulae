@@ -67,11 +67,39 @@ export function ThemeSwitcher({
     return savedTheme.name === currentCustomTheme.name;
   };
 
-  const loadSavedThemes = () => {
+  // Load saved themes from localStorage, falling back to cloud if empty
+  const loadSavedThemes = async () => {
     try {
       const stored = localStorage.getItem("saved_custom_palettes");
       if (stored) {
-        setSavedThemes(JSON.parse(stored));
+        const localThemes = JSON.parse(stored);
+        if (localThemes.length > 0) {
+          setSavedThemes(localThemes);
+          return;
+        }
+      }
+
+      // No local themes - try to restore from cloud
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("preferences")
+        .eq("id", user.id)
+        .single();
+
+      if (error || !data?.preferences) return;
+
+      const preferences = data.preferences as any;
+      if (preferences?.savedCustomThemes && Array.isArray(preferences.savedCustomThemes)) {
+        // Restore from cloud
+        const cloudThemes = preferences.savedCustomThemes as SavedPalette[];
+        if (cloudThemes.length > 0) {
+          localStorage.setItem("saved_custom_palettes", JSON.stringify(cloudThemes));
+          setSavedThemes(cloudThemes);
+          console.log("[ThemeSwitcher] Restored", cloudThemes.length, "custom themes from cloud");
+        }
       }
     } catch (e) {
       console.error("Failed to load saved themes", e);
@@ -89,13 +117,32 @@ export function ThemeSwitcher({
     };
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("Delete this theme?")) {
       const newThemes = savedThemes.filter((t) => t.id !== id);
       localStorage.setItem("saved_custom_palettes", JSON.stringify(newThemes));
       setSavedThemes(newThemes);
       toast.success("Theme deleted from library");
+
+      // Sync deletion to cloud
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      executeWrite(
+        async () => {
+          const { data } = await supabase.from("profiles").select("preferences").eq("id", user.id).single();
+          const currentPreferences = (data?.preferences as any) || {};
+          await supabase
+            .from("profiles")
+            .update({
+              preferences: { ...currentPreferences, savedCustomThemes: newThemes },
+            })
+            .eq("id", user.id);
+        },
+        () => console.log("[ThemeSwitcher] Theme deletion synced to cloud"),
+        (error) => console.error("[ThemeSwitcher] Failed to sync theme deletion:", error),
+      );
     }
   };
 

@@ -94,46 +94,61 @@ serve(async (req: Request) => {
       });
     }
 
-    // Validate input with structured schemas
+    // Validate input with flexible schemas (the frontend sends various formats)
     const taskSchema = z.object({
-      id: z.string().uuid(),
-      name: z.string().min(1).max(500),
+      id: z.string(), // Allow any string ID (not just UUIDs)
+      name: z.string().max(500).optional(),
+      title: z.string().max(500).optional(), // Frontend uses 'title'
       due_date: z.string().nullish(),
+      dueDate: z.string().nullish(), // Frontend camelCase
       estimated_minutes: z.number().int().positive().max(1440).nullish(),
+      estimatedMinutes: z.number().nullish(), // Frontend camelCase
+      focusTimeMinutes: z.number().nullish(), // Frontend alternative
       type: z.string().max(50).nullish(),
-      status: z.string().nullish()
-    });
+      taskType: z.string().nullish(), // Frontend alternative
+      status: z.string().nullish(),
+      completed: z.boolean().nullish() // Frontend uses boolean
+    }).passthrough();
 
     const timeBlockSchema = z.object({
-      id: z.string().uuid(),
-      title: z.string().min(1).max(200),
-      day_of_week: z.number().int().min(0).max(6),
-      start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-      end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-      category: z.string().max(50).nullish()
-    });
-
-    const scheduleEntrySchema = z.object({
-      id: z.string().uuid(),
-      title: z.string().min(1).max(200),
-      start_time: z.string().datetime(),
-      end_time: z.string().datetime(),
+      id: z.string(),
+      title: z.string().max(200).optional(),
+      name: z.string().max(200).optional(),
+      day_of_week: z.number().int().min(0).max(6).optional(),
+      dayOfWeek: z.number().optional(), // Frontend camelCase
+      start_time: z.string().optional(),
+      startTime: z.string().optional(), // Frontend camelCase
+      end_time: z.string().optional(),
+      endTime: z.string().optional(), // Frontend camelCase
       category: z.string().max(50).nullish(),
-      description: z.string().max(1000).nullish()
-    });
+      type: z.string().nullish()
+    }).passthrough();
+
+    // Flexible schema for schedule entries from frontend (formatted times like "2:30 PM")
+    const displayScheduleSchema = z.object({
+      title: z.string().max(200),
+      startTime: z.string().optional(),
+      endTime: z.string().optional(),
+      start_time: z.string().optional(),
+      end_time: z.string().optional(),
+      duration: z.string().optional(),
+      category: z.string().max(50).nullish(),
+      description: z.string().max(1000).nullish(),
+      location: z.string().nullish()
+    }).passthrough();
 
     const playbookSchema = z.object({
-      id: z.string().uuid(),
-      title: z.string().min(1).max(200),
+      id: z.string(),
+      title: z.string().max(200),
       description: z.string().max(1000).optional(),
       steps: z.array(z.any()).optional()
-    });
+    }).passthrough();
 
     const projectSchema = z.object({
-      id: z.string().uuid(),
-      name: z.string().min(1).max(200),
+      id: z.string(),
+      name: z.string().max(200),
       description: z.string().max(1000).optional()
-    });
+    }).passthrough();
 
     const requestSchema = z.object({
       messages: z.array(z.object({
@@ -146,30 +161,35 @@ serve(async (req: Request) => {
         timeBlocks: z.array(timeBlockSchema).max(500).optional(),
         playbooks: z.array(playbookSchema).max(100).optional(),
         projects: z.array(projectSchema).max(100).optional(),
-        scheduleEntries: z.array(scheduleEntrySchema).max(500).optional(),
+        scheduleEntries: z.array(displayScheduleSchema).max(500).optional(),
         currentDate: z.string().optional(),
         currentTime: z.string().optional(),
         temporal: z.object({
           hour24: z.number().int().min(0).max(23).optional(),
           dayOfWeek: z.number().int().min(0).max(6).optional(),
           date: z.string().optional(),
-          localTime: z.string().optional()
+          localDate: z.string().optional(),
+          localTime: z.string().optional(),
+          dayName: z.string().optional(),
+          timezone: z.string().optional(),
+          timestamp: z.string().optional(),
+          minute: z.number().optional()
         }).passthrough().optional(),
-        todaySchedule: z.array(scheduleEntrySchema).optional(),
-        upcomingSchedule: z.array(scheduleEntrySchema).optional(),
+        todaySchedule: z.array(displayScheduleSchema).max(100).optional(),
+        upcomingSchedule: z.array(displayScheduleSchema).max(100).optional(),
         availableTimeWindows: z.array(z.object({
           start: z.string(),
           end: z.string(),
           duration: z.string().optional()
         })).optional()
-      }).optional(),
+      }).passthrough().optional(),
       mode: z.enum(['direct', 'stuck_interview']).optional(),
       userProfile: z.object({}).passthrough().optional()
     });
 
     const raw = await req.json();
 
-    // Normalize incoming payload to match schema expectations and prevent validation failures
+    // Normalize incoming payload - be permissive since schemas are now flexible
     const normalized = (() => {
       try {
         const rawMessages = Array.isArray(raw?.messages) ? raw.messages : [];
@@ -180,46 +200,27 @@ serve(async (req: Request) => {
 
         const ctx = raw?.context ?? {};
 
+        // Normalize tasks - ensure each has an id and a name/title
         const tasks = Array.isArray(ctx?.tasks)
-          ? ctx.tasks.map((t: any) => ({
-            id: String(t.id),
-            name: String(t.name ?? t.title ?? '').slice(0, 500),
-            due_date: t.due_date ?? t.dueDate ?? undefined,
-            estimated_minutes:
-              typeof t.estimated_minutes === 'number'
-                ? t.estimated_minutes
-                : typeof t.estimatedMinutes === 'number'
-                  ? t.estimatedMinutes
-                  : typeof t.focusTimeMinutes === 'number'
-                    ? t.focusTimeMinutes
-                    : undefined,
-            type: t.type ?? t.taskType ?? undefined,
-            status:
-              typeof t.completed === 'boolean'
-                ? t.completed
-                  ? 'completed'
-                  : 'pending'
-                : t.status,
-          }))
+          ? ctx.tasks
+            .filter((t: any) => t && (t.id || t.title || t.name)) // Skip empty/invalid tasks
+            .map((t: any) => ({
+              ...t, // Keep all original fields
+              id: String(t.id ?? crypto.randomUUID()),
+              // Ensure at least one name field exists
+              title: t.title ?? t.name ?? 'Untitled Task',
+            }))
           : undefined;
 
+        // Normalize time blocks - keep original structure, just ensure id exists
         const timeBlocks = Array.isArray(ctx?.timeBlocks)
           ? ctx.timeBlocks
-            .map((b: any) => {
-              const day = b.day_of_week ?? b.dayOfWeek;
-              const start = b.start_time ?? b.startTime;
-              const end = b.end_time ?? b.endTime;
-              if (day === undefined || !start || !end) return null; // skip blocks we can't normalize
-              return {
-                id: String(b.id ?? crypto.randomUUID()),
-                title: String(b.title ?? b.name ?? 'Block').slice(0, 200),
-                day_of_week: Number(day),
-                start_time: String(start),
-                end_time: String(end),
-                category: b.category ?? b.type ?? undefined,
-              };
-            })
-            .filter(Boolean)
+            .filter((b: any) => b && (b.title || b.name))
+            .map((b: any) => ({
+              ...b, // Keep all original fields (startTime, endTime, etc.)
+              id: String(b.id ?? crypto.randomUUID()),
+              title: b.title ?? b.name ?? 'Time Block',
+            }))
           : undefined;
 
         const normalizedContext = {
@@ -935,7 +936,7 @@ Want me to schedule these for you?"`;
     });
 
     console.log('Sending AI request:', {
-      model: 'google/gemini-1.5-flash',
+      model: 'google/gemini-2.5-pro',
       messageCount: transformedMessages.length + 1,
       hasImages: images && images.length > 0,
       imagesCount: images?.length || 0,
@@ -948,7 +949,7 @@ Want me to schedule these for you?"`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-1.5-flash',
+        model: 'google/gemini-2.5-pro',
         stream: true,
         messages: [
           { role: 'system', content: systemPrompt },
