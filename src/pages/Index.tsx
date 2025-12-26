@@ -105,6 +105,7 @@ const Index = () => {
   const [customThemeBuilderOpen, setCustomThemeBuilderOpen] = useState(false);
   const [templateTheme, setTemplateTheme] = useState<'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | undefined>(undefined);
   const [themeToEdit, setThemeToEdit] = useState<CustomTheme | undefined>(undefined);
+  const [editingThemeId, setEditingThemeId] = useState<string | undefined>(undefined); // Track the ID of the theme being edited
   const [isCreatingNewTheme, setIsCreatingNewTheme] = useState(false); // Track if explicitly creating new
 
   // Custom Tabs
@@ -1241,13 +1242,15 @@ const Index = () => {
   const handleOpenCustomThemeBuilder = () => {
     setTemplateTheme(undefined);
     setThemeToEdit(undefined); // Clear any existing theme to edit - we're creating new
+    setEditingThemeId(undefined); // Clear any existing theme ID
     setIsCreatingNewTheme(true); // Mark that we're creating a new theme
     setCustomThemeBuilderOpen(true);
   };
 
-  const handleEditCustomTheme = (themeToEditParam?: CustomTheme) => {
+  const handleEditCustomTheme = (themeToEditParam?: CustomTheme, themeId?: string) => {
     setTemplateTheme(undefined);
     setThemeToEdit(themeToEditParam); // Set the specific theme being edited
+    setEditingThemeId(themeId); // Store the ID for proper update matching
     setIsCreatingNewTheme(false); // We're editing, not creating new
     setCustomThemeBuilderOpen(true);
   };
@@ -1368,6 +1371,7 @@ const Index = () => {
         isAdmin={isAdmin}
         plan={plan}
         theme={theme}
+        customTheme={customTheme}
         showSyncBanner={showSyncBanner}
         onSetSyncBanner={setShowSyncBanner}
         onSetEisenhowerOpen={setEisenhowerOpen}
@@ -1971,6 +1975,7 @@ const Index = () => {
             setCustomThemeBuilderOpen(open);
             if (!open) {
               setThemeToEdit(undefined); // Clear theme to edit when closing
+              setEditingThemeId(undefined); // Clear theme ID when closing
               setIsCreatingNewTheme(false); // Reset creating new flag
             }
           }}
@@ -1980,6 +1985,7 @@ const Index = () => {
             // themeToEdit is set when clicking Edit button on a saved theme
             isCreatingNewTheme ? undefined : themeToEdit
           }
+          existingThemeId={isCreatingNewTheme ? undefined : editingThemeId}
           templateTheme={templateTheme}
         />
 

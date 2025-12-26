@@ -25,6 +25,7 @@ interface CustomThemeBuilderProps {
   onOpenChange: (open: boolean) => void;
   onSave: (theme: CustomTheme) => void;
   existingTheme?: CustomTheme;
+  existingThemeId?: string; // Pass the ID when editing to ensure we update the correct theme
   templateTheme?: "orchid" | "jellyfish" | "sunset" | "bluebonnet" | "ocean" | "forest" | "midnight" | "candy";
 }
 
@@ -228,6 +229,11 @@ interface SavedPalette {
   colors: CustomTheme["colors"];
   backgroundImage?: CustomTheme["backgroundImage"];
 }
+
+// Generate a unique ID that won't collide even with rapid saves
+const generateUniqueId = (): string => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
 // Storage keys - IMPORTANT: These are separate!
 const PALETTES_STORAGE_KEY = "saved_color_palettes"; // Internal palettes for the builder
 const THEMES_STORAGE_KEY = "saved_custom_palettes"; // Full themes shown in ThemeSwitcher dropdown
@@ -237,6 +243,7 @@ export function CustomThemeBuilder({
   onOpenChange,
   onSave,
   existingTheme,
+  existingThemeId,
   templateTheme,
 }: CustomThemeBuilderProps) {
   const { user } = useAuth();
@@ -527,16 +534,17 @@ export function CustomThemeBuilder({
       }
     }
 
-    // Check if we're editing an existing theme by looking for matching name in savedThemes
-    // AND we came from editing (existingTheme prop was provided)
-    const editingExistingTheme = existingTheme && savedThemes.some(
-      (t) => t.name === existingTheme.name
-    );
+    // Check if we're editing an existing theme by ID (most reliable) or by name fallback
+    // Priority: 1) existingThemeId prop, 2) match by existingTheme.name
+    let existingThemeEntry: SavedPalette | null = null;
 
-    // Find the theme we're editing (if any) - match by the ORIGINAL name from existingTheme
-    const existingThemeEntry = editingExistingTheme
-      ? savedThemes.find((t) => t.name === existingTheme.name)
-      : null;
+    if (existingThemeId) {
+      // Best case: we have the exact ID to match
+      existingThemeEntry = savedThemes.find((t) => t.id === existingThemeId) || null;
+    } else if (existingTheme) {
+      // Fallback: match by original name (for backwards compatibility)
+      existingThemeEntry = savedThemes.find((t) => t.name === existingTheme.name) || null;
+    }
 
     const isNewTheme = !existingThemeEntry;
 
@@ -562,9 +570,9 @@ export function CustomThemeBuilder({
       }
     }
 
-    // Generate a unique ID for NEW themes using timestamp
+    // Generate a unique ID for NEW themes using timestamp + random suffix
     // Only reuse an existing ID if we're explicitly editing a saved theme
-    const themeId = existingThemeEntry?.id || Date.now().toString();
+    const themeId = existingThemeEntry?.id || generateUniqueId();
 
     const savedThemeEntry: SavedPalette = {
       id: themeId,

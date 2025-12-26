@@ -29,9 +29,10 @@ const themes: { value: Theme; label: string; colors: string }[] = [
 
 interface ThemeSwitcherProps {
   currentTheme: Theme;
+  currentCustomTheme?: CustomTheme | null; // The currently active custom theme (for showing checkmark)
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick?: () => void;
-  onEditCustomTheme?: (theme?: CustomTheme) => void;
+  onEditCustomTheme?: (theme?: CustomTheme, themeId?: string) => void; // Now includes ID for proper editing
   onDeleteCustomTheme?: () => void;
   onApplyCustomTheme?: (theme: CustomTheme) => void; // Apply a saved theme to local state
   onUseAsTemplate?: (
@@ -48,6 +49,7 @@ interface SavedPalette {
 
 export function ThemeSwitcher({
   currentTheme,
+  currentCustomTheme,
   onThemeChange,
   onCustomThemeClick,
   onEditCustomTheme,
@@ -57,6 +59,13 @@ export function ThemeSwitcher({
   const [savedThemes, setSavedThemes] = useState<SavedPalette[]>([]);
   // Initialize the Bouncer hook
   const { executeWrite } = useDatabaseWrite();
+
+  // Check if a saved theme is the currently active one
+  const isThemeActive = (savedTheme: SavedPalette): boolean => {
+    if (currentTheme !== 'custom' || !currentCustomTheme) return false;
+    // Match by name since the active theme doesn't carry an ID
+    return savedTheme.name === currentCustomTheme.name;
+  };
 
   const loadSavedThemes = () => {
     try {
@@ -173,67 +182,74 @@ export function ThemeSwitcher({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>My Custom Themes</DropdownMenuLabel>
-            {savedThemes.map((savedTheme) => (
-              <DropdownMenuItem
-                key={savedTheme.id}
-                className="flex items-center justify-between cursor-pointer group"
-                // CLICKING THE ROW NOW APPLIES THE THEME
-                onClick={() => handleApplySavedTheme(savedTheme)}
-              >
-                <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                  <div
-                    className="w-8 h-8 rounded border shrink-0"
-                    style={{ background: `hsl(${savedTheme.colors.primary})` }}
-                  />
-                  <span className="truncate">{savedTheme.name}</span>
-                </div>
+            {savedThemes.map((savedTheme) => {
+              const isActive = isThemeActive(savedTheme);
+              return (
+                <DropdownMenuItem
+                  key={savedTheme.id}
+                  className="flex items-center justify-between cursor-pointer group"
+                  // CLICKING THE ROW NOW APPLIES THE THEME
+                  onClick={() => handleApplySavedTheme(savedTheme)}
+                >
+                  <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                    <div
+                      className="w-8 h-8 rounded border shrink-0"
+                      style={{ background: `hsl(${savedTheme.colors.primary})` }}
+                    />
+                    <span className={`truncate ${isActive ? "font-semibold" : ""}`}>{savedTheme.name}</span>
+                  </div>
 
-                {/* ACTION BUTTONS */}
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-popover pl-2">
-                  {onEditCustomTheme && (
+                  {/* Show checkmark if this is the active theme */}
+                  {isActive && <Check className="w-4 h-4 text-primary shrink-0 mr-1" />}
+
+                  {/* ACTION BUTTONS */}
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-popover pl-2">
+                    {onEditCustomTheme && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Stop it from Applying
+                          // Construct theme for editor - use saved backgroundImage if available
+                          const defaultBgImage = {
+                            url: "",
+                            size: "cover" as const,
+                            position: "center" as const,
+                            repeat: "no-repeat" as const,
+                            attachment: "scroll" as const,
+                            opacity: 100,
+                            blur: 0,
+                            overlayColor: "0 0% 0%",
+                            overlayOpacity: 0,
+                            filter: { grayscale: 0, sepia: 0, brightness: 100, contrast: 100, saturate: 100 },
+                          };
+                          const fullTheme: CustomTheme = {
+                            name: savedTheme.name,
+                            colors: savedTheme.colors,
+                            backgroundImage: savedTheme.backgroundImage || defaultBgImage,
+                          };
+                          // Pass both the theme AND its ID for proper editing
+                          onEditCustomTheme(fullTheme, savedTheme.id);
+                        }}
+                        title="Edit"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 w-6 p-0 hover:text-primary"
-                      onClick={(e) => {
-                        e.stopPropagation(); // Stop it from Applying
-                        // Construct theme for editor - use saved backgroundImage if available
-                        const defaultBgImage = {
-                          url: "",
-                          size: "cover" as const,
-                          position: "center" as const,
-                          repeat: "no-repeat" as const,
-                          attachment: "scroll" as const,
-                          opacity: 100,
-                          blur: 0,
-                          overlayColor: "0 0% 0%",
-                          overlayOpacity: 0,
-                          filter: { grayscale: 0, sepia: 0, brightness: 100, contrast: 100, saturate: 100 },
-                        };
-                        const fullTheme: CustomTheme = {
-                          name: savedTheme.name,
-                          colors: savedTheme.colors,
-                          backgroundImage: savedTheme.backgroundImage || defaultBgImage,
-                        };
-                        onEditCustomTheme(fullTheme);
-                      }}
-                      title="Edit"
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => handleDelete(savedTheme.id, e)}
+                      title="Delete"
                     >
-                      <Edit className="w-3 h-3" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={(e) => handleDelete(savedTheme.id, e)}
-                    title="Delete"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </DropdownMenuItem>
-            ))}
+                  </div>
+                </DropdownMenuItem>
+              );
+            })}
           </>
         )}
 

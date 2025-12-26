@@ -14,6 +14,7 @@ interface DashboardHeaderProps {
   isAdmin: boolean;
   plan: string;
   theme: Theme;
+  customTheme?: CustomTheme | null;
   showSyncBanner: boolean;
   onSetSyncBanner: (show: boolean) => void;
   onSetEisenhowerOpen: (open: boolean) => void;
@@ -21,7 +22,7 @@ interface DashboardHeaderProps {
   onSetTutorialOpen: (open: boolean) => void;
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick: () => void;
-  onEditCustomTheme: (theme?: CustomTheme) => void;
+  onEditCustomTheme: (theme?: CustomTheme, themeId?: string) => void;
   onDeleteCustomTheme: () => void;
   onUseAsTemplate: (preset: 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy') => void;
 }
@@ -32,6 +33,7 @@ export function DashboardHeader({
   isAdmin,
   plan,
   theme,
+  customTheme,
   showSyncBanner,
   onSetSyncBanner,
   onSetEisenhowerOpen,
@@ -163,7 +165,8 @@ export function DashboardHeader({
                 </Button>
               )}
               <ThemeSwitcher
-                currentTheme={theme} 
+                currentTheme={theme}
+                currentCustomTheme={customTheme}
                 onThemeChange={onThemeChange}
                 onCustomThemeClick={onCustomThemeClick}
                 onEditCustomTheme={onEditCustomTheme}
