@@ -84,10 +84,10 @@ serve(async (req) => {
       throw new Error('No file provided');
     }
 
-    // Validate file size (20MB max)
-    const MAX_FILE_SIZE = 20 * 1024 * 1024;
+    // Validate file size (10MB max - reduced for security/memory reasons)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error('File too large. Maximum 20MB allowed.');
+      throw new Error('File too large. Maximum 10MB allowed.');
     }
 
     // Validate file type (support missing/incorrect mime types by falling back to extension)
