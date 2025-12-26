@@ -194,6 +194,8 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    /* Smooth background transitions when switching custom themes */
+    transition: background-image 0.15s ease-in-out, background-position 0.15s ease-in-out;
   }
 
   /* Ensure app content sits above the overlay */

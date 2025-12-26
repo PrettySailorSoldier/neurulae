@@ -1280,6 +1280,12 @@ const Index = () => {
     });
   };
 
+  // Handler for applying a saved custom theme from the dropdown
+  const handleApplyCustomTheme = (themeToApply: CustomTheme) => {
+    setCustomTheme(themeToApply); // Update the active custom theme state
+    // Note: ThemeSwitcher already calls onThemeChange('custom') after this
+  };
+
   const handleAddCustomTab = () => {
     if (newTabName.trim()) {
       const newTab = {
@@ -1380,6 +1386,7 @@ const Index = () => {
         onThemeChange={handleThemeChange}
         onCustomThemeClick={handleOpenCustomThemeBuilder}
         onEditCustomTheme={handleEditCustomTheme}
+        onApplyCustomTheme={handleApplyCustomTheme}
         onDeleteCustomTheme={handleDeleteCustomTheme}
         onUseAsTemplate={handleUseThemeAsTemplate}
       />

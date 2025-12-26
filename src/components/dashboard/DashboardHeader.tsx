@@ -23,6 +23,7 @@ interface DashboardHeaderProps {
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick: () => void;
   onEditCustomTheme: (theme?: CustomTheme, themeId?: string) => void;
+  onApplyCustomTheme: (theme: CustomTheme) => void;
   onDeleteCustomTheme: () => void;
   onUseAsTemplate: (preset: 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy') => void;
 }
@@ -42,6 +43,7 @@ export function DashboardHeader({
   onThemeChange,
   onCustomThemeClick,
   onEditCustomTheme,
+  onApplyCustomTheme,
   onDeleteCustomTheme,
   onUseAsTemplate,
 }: DashboardHeaderProps) {
@@ -170,6 +172,7 @@ export function DashboardHeader({
                 onThemeChange={onThemeChange}
                 onCustomThemeClick={onCustomThemeClick}
                 onEditCustomTheme={onEditCustomTheme}
+                onApplyCustomTheme={onApplyCustomTheme}
                 onDeleteCustomTheme={onDeleteCustomTheme}
                 onUseAsTemplate={onUseAsTemplate}
               />
