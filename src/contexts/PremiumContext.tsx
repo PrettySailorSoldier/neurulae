@@ -20,28 +20,38 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const { user, session } = useAuth();
 
   const checkSubscription = async () => {
-    if (!user || !session?.access_token) {
+    // Don't check if no user
+    if (!user) {
       setPlan('free');
       setLoading(false);
       return;
     }
 
     try {
-      // Verify session is still valid before making requests
+      // Get fresh session directly from Supabase
       const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !currentSession?.access_token) {
-        console.log('No valid session available');
-        setPlan('free');
-        setLoading(false);
-        return;
+        console.log('No valid session available, trying refresh...');
+        // Try to refresh the session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session?.access_token) {
+          console.log('Session refresh failed, setting free plan');
+          setPlan('free');
+          setLoading(false);
+          return;
+        }
       }
 
       // Check for roles first (admin, creator, premium, lifetime)
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id);
+
+      if (rolesError) {
+        console.log('Error fetching roles:', rolesError.message);
+      }
 
       if (roles?.some((r: any) => r.role === 'admin')) {
         setPlan('admin');
@@ -49,72 +59,82 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Treat both 'creator' and 'premium' roles as premium access
       if (roles?.some((r: any) => r.role === 'creator' || r.role === 'premium')) {
         setPlan('premium');
         setLoading(false);
         return;
       }
 
-      // Lifetime role (if used) maps to lifetime plan
       if (roles?.some((r: any) => r.role === 'lifetime')) {
         setPlan('lifetime');
         setLoading(false);
         return;
       }
       
-      // Check subscription status via edge function - use fresh session token
-      let { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${currentSession.access_token}`
-        }
-      });
+      // Check subscription status via edge function
+      // Let the SDK handle auth automatically - don't pass custom headers
+      const { data, error } = await supabase.functions.invoke('check-subscription');
 
-      // If auth error, refresh session and retry once
-      if (error && (error.message?.includes('Auth') || error.message?.includes('401') || error.message?.includes('Invalid JWT'))) {
-        console.log('Auth error detected, refreshing session...');
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (!refreshError && refreshData.session?.access_token) {
-          const retry = await supabase.functions.invoke('check-subscription', {
-            headers: {
-              Authorization: `Bearer ${refreshData.session.access_token}`
+      if (error) {
+        // If 401 error, try refreshing session and retry
+        if (error.message?.includes('401') || error.message?.includes('Invalid JWT')) {
+          console.log('JWT error, refreshing session and retrying...');
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          
+          if (!refreshError) {
+            // Wait a moment for session to propagate
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const retry = await supabase.functions.invoke('check-subscription');
+            
+            if (!retry.error && retry.data) {
+              if (retry.data.plan) {
+                setPlan(retry.data.plan);
+              } else if (retry.data.subscribed === true) {
+                setPlan('premium');
+              }
+              setLoading(false);
+              return;
             }
-          });
-          data = retry.data;
-          error = retry.error;
-        } else {
-          // Session refresh failed, user needs to re-login
-          console.log('Session refresh failed');
-          setPlan('free');
-          setLoading(false);
-          return;
+          }
         }
+        throw error;
       }
-
-      if (error) throw error;
       
       if (data?.plan) {
         setPlan(data.plan);
       } else if (data?.subscribed === true) {
-        // If subscribed flag is returned without a plan, treat as premium
         setPlan('premium');
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
-      setPlan('free');
+      // Don't change plan on error - keep current state
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    checkSubscription();
+    // Only check subscription when we have a user
+    if (user) {
+      // Small delay to ensure session is fully established
+      const timeoutId = setTimeout(() => {
+        checkSubscription();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    } else {
+      setPlan('free');
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Set up periodic refresh only when user is logged in
+  useEffect(() => {
+    if (!user) return;
     
-    // Refresh subscription status periodically
-    const interval = setInterval(checkSubscription, 60000); // Every minute
-    
+    const interval = setInterval(checkSubscription, 60000);
     return () => clearInterval(interval);
-  }, [user, session]);
+  }, [user]);
 
   const isPremium = plan === 'premium' || plan === 'lifetime' || plan === 'admin';
   const isAdmin = plan === 'admin';
