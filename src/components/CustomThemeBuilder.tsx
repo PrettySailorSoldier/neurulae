@@ -12,7 +12,7 @@ import { Image as ImageIcon, Palette, ChevronDown, Wand2, Upload, Save, X, Undo2
 import { ColorPicker } from "@/components/ColorPicker";
 import { ColorHarmonyGenerator } from "@/components/ColorHarmonyGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { autoOptimizeThemeColors, extractColorsFromImage } from "@/lib/colorUtils";
+import { autoOptimizeThemeColors, extractColorsFromImage, generateThemeFromImageColors } from "@/lib/colorUtils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -445,34 +445,62 @@ export function CustomThemeBuilder({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    toast.info("Extracting colors from image...");
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        // Scale down large images for faster processing
+        const maxSize = 400;
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const dominantColors = extractColorsFromImage(imageData, 4);
+        
+        // Extract 6 colors for better variety
+        const dominantColors = extractColorsFromImage(imageData, 6);
 
         if (dominantColors.length >= 4) {
-          const newTheme = {
-            ...theme,
-            colors: {
-              ...theme.colors,
-              primary: dominantColors[0],
-              secondary: dominantColors[1],
-              accent: dominantColors[2],
-              background: dominantColors[3],
-            },
-          };
-          updateThemeWithHistory(newTheme);
-          toast.success("Colors extracted from image!");
+          // Generate a complete, optimized theme from the colors
+          const generatedColors = generateThemeFromImageColors(dominantColors);
+          
+          if (Object.keys(generatedColors).length > 0) {
+            const newTheme = {
+              ...theme,
+              colors: {
+                ...theme.colors,
+                ...generatedColors,
+              } as typeof theme.colors,
+            };
+            updateThemeWithHistory(newTheme);
+            toast.success(`Generated theme with ${dominantColors.length} colors!`);
+          } else {
+            // Fallback to simple color assignment
+            const newTheme = {
+              ...theme,
+              colors: {
+                ...theme.colors,
+                primary: dominantColors[0],
+                secondary: dominantColors[1],
+                accent: dominantColors[2],
+                background: dominantColors[dominantColors.length - 1],
+              },
+            };
+            updateThemeWithHistory(newTheme);
+            toast.success("Colors extracted from image!");
+          }
+        } else {
+          toast.error("Could not extract enough colors from the image");
         }
+      };
+      img.onerror = () => {
+        toast.error("Failed to load image");
       };
       img.src = event.target?.result as string;
     };
