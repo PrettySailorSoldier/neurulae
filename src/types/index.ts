@@ -564,4 +564,17 @@ export const ROUTINE_STORAGE_KEYS = {
   DAY_TEMPLATES: 'neurulae-day-templates',
   ROUTINE_HISTORY: 'neurulae-routine-history',
   ROUTINE_PRESETS: 'neurulae-routine-presets',
+  NOTIFICATION_STATE: 'neurulae-routine-notification-state',
+  SETTINGS: 'neurulae-routine-settings',
 } as const;
+
+// Routine settings interface
+export interface RoutineSettings {
+  enableNotifications: boolean;
+  reminderMinutesBefore: number;
+  showOverdueReminders: boolean;
+  autoStartOnTime: boolean;
+  defaultBufferMinutes: number;
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+}
