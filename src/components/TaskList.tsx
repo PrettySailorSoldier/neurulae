@@ -36,6 +36,7 @@ interface TaskListProps {
     order?: number;
   }>) => void;
   onAskAI?: (message: string) => void;
+  onOpenAIChat?: (context: string) => void;
   onStartIntention?: (task: Task) => void;
   activeIntentionId?: string | null;
   showQuickActions?: boolean;
@@ -55,6 +56,7 @@ const TaskListComponent = ({
   onPrioritize,
   onScheduleTasks,
   onAskAI,
+  onOpenAIChat,
   onStartIntention,
   activeIntentionId,
   showQuickActions = true,
@@ -419,6 +421,7 @@ const TaskListComponent = ({
         tasks={tasks}
         timeBlocks={timeBlocks}
         onApply={handleApplyAIResult}
+        onOpenChat={onOpenAIChat}
       />
 
       <UpgradeModal

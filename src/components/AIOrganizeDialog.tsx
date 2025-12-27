@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Sparkles, Loader2, MoveVertical, Calendar } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Sparkles, Loader2, MoveVertical, Calendar, MessageCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -30,10 +30,13 @@ export function AIOrganizeDialog({
   tasks,
   timeBlocks,
   onApply,
-}: AIOrganizeDialogProps) {
+  onOpenChat,
+}: AIOrganizeDialogProps & { onOpenChat?: (context: string) => void }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   // Automatically trigger organization when dialog opens
@@ -42,6 +45,26 @@ export function AIOrganizeDialog({
       handleOrganize();
     }
   }, [open]);
+
+  // Timer for elapsed time during loading
+  useEffect(() => {
+    if (loading) {
+      setElapsedSeconds(0);
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [loading]);
 
   const handleOrganize = async () => {
     setLoading(true);
@@ -169,6 +192,16 @@ export function AIOrganizeDialog({
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Analyzing tasks and creating your schedule...</p>
+            <p className="text-xs text-muted-foreground/70">
+              {elapsedSeconds < 60
+                ? `${elapsedSeconds}s elapsed`
+                : `${Math.floor(elapsedSeconds / 60)}m ${elapsedSeconds % 60}s elapsed`}
+            </p>
+            {elapsedSeconds > 30 && (
+              <p className="text-xs text-muted-foreground/50 text-center max-w-xs">
+                AI is analyzing your schedule and availability. This may take up to a minute for complex schedules.
+              </p>
+            )}
           </div>
         )}
 
@@ -246,10 +279,33 @@ export function AIOrganizeDialog({
         )}
 
         {result && (
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
+            {onOpenChat && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const scheduleSummary = result.schedule
+                    .map((item: any) => {
+                      const task = getTaskById(item.taskId);
+                      const block = getBlockById(item.blockId);
+                      return task && block ? `- ${task.title} during ${block.title} (${block.startTime}-${block.endTime})` : null;
+                    })
+                    .filter(Boolean)
+                    .join('\n');
+
+                  const context = `I just received an AI-generated schedule. Here's what was suggested:\n\n${scheduleSummary}\n\nI'd like to discuss or adjust this schedule.`;
+                  onOpenChat(context);
+                  onOpenChange(false);
+                }}
+                className="gap-2"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Discuss with AI
+              </Button>
+            )}
             <Button onClick={handleApply}>
               Apply Schedule
             </Button>

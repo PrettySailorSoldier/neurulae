@@ -399,3 +399,169 @@ export interface TimeZoneSettings {
   };
   customZones: TimeZone[];
 }
+
+// ============ ROUTINE TYPES ============
+
+// A single step within a routine
+export interface RoutineStep {
+  id: string;
+  name: string;
+  estimatedMinutes: number;
+  actualMinutes?: number; // filled in after completion
+  notes?: string; // optional instructions or reminders
+  isFlexible: boolean; // can this step be reordered by user?
+  order: number; // position in sequence
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+}
+
+// A routine template (reusable)
+export interface Routine {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string; // emoji or icon name
+  color?: string; // for visual distinction on timeline
+
+  // Timing
+  totalEstimatedMinutes: number; // calculated from steps
+  anchorType: 'fixed_start' | 'flexible' | 'end_by';
+  anchorTime?: string; // HH:MM format, e.g., "07:00"
+
+  // Recurrence
+  repeatSchedule?: {
+    type: 'daily' | 'weekdays' | 'weekends' | 'specific_days' | 'none';
+    days?: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
+  };
+
+  // Content
+  steps: RoutineStep[];
+
+  // Metadata
+  isTemplate: boolean; // true = reusable template, false = one-time routine
+  category?: 'morning' | 'work' | 'evening' | 'errand' | 'self_care' | 'custom';
+  createdAt: string; // ISO timestamp
+  updatedAt: string;
+  lastUsedAt?: string;
+  timesCompleted: number;
+
+  // Settings
+  autoAdvance: boolean; // automatically start next step when timer ends
+  showNotifications: boolean;
+  allowSkipping: boolean;
+}
+
+// An instance of a routine placed on a specific day's schedule
+export interface ScheduledRoutine {
+  id: string;
+  routineId: string; // references the Routine template
+  date: string; // YYYY-MM-DD
+  scheduledStartTime: string; // HH:MM
+  actualStartTime?: string;
+  actualEndTime?: string;
+
+  // Override the template's steps for this instance
+  steps: RoutineStep[]; // copy of steps with instance-specific status/actualMinutes
+
+  status: 'scheduled' | 'in_progress' | 'completed' | 'partially_completed' | 'skipped';
+
+  // Execution tracking
+  currentStepIndex: number;
+  pausedAt?: string; // if routine was paused mid-execution
+
+  // Post-completion
+  totalActualMinutes?: number;
+  notes?: string; // user can add notes after completing
+}
+
+// For tracking routine execution in real-time
+export interface ActiveRoutineState {
+  scheduledRoutineId: string;
+  routineName: string;
+  currentStep: RoutineStep;
+  currentStepIndex: number;
+  totalSteps: number;
+  stepStartedAt: string; // ISO timestamp
+  stepElapsedSeconds: number;
+  isPaused: boolean;
+  completedSteps: number;
+  skippedSteps: number;
+}
+
+// Day template (save entire day's schedule)
+export interface DayTemplate {
+  id: string;
+  name: string;
+  description?: string;
+
+  // What's in this template
+  timeBlocks: {
+    startTime: string; // HH:MM
+    endTime: string;
+    type: 'routine' | 'time_block' | 'task_block';
+    routineId?: string; // if type is 'routine'
+    blockName?: string; // if type is 'time_block', e.g., "Deep Work"
+    color?: string;
+  }[];
+
+  // When to suggest this template
+  suggestedFor?: 'weekday' | 'weekend' | 'any';
+
+  createdAt: string;
+  updatedAt: string;
+  timesUsed: number;
+}
+
+// ============ ROUTINE PRESETS (for AI/templates) ============
+
+export interface RoutinePreset {
+  id: string;
+  name: string;
+  description: string;
+  category: Routine['category'];
+  estimatedMinutes: number;
+  steps: Omit<RoutineStep, 'id' | 'status' | 'actualMinutes'>[]; // template steps without runtime fields
+  tags: string[];
+}
+
+// For the routine builder form
+export interface RoutineFormData {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  anchorType: Routine['anchorType'];
+  anchorTime: string;
+  repeatSchedule: Routine['repeatSchedule'];
+  steps: Omit<RoutineStep, 'status' | 'actualMinutes'>[];
+  autoAdvance: boolean;
+  showNotifications: boolean;
+  allowSkipping: boolean;
+  category: Routine['category'];
+}
+
+// For time estimation history
+export interface RoutineCompletionRecord {
+  id: string;
+  routineId: string;
+  date: string;
+  estimatedMinutes: number;
+  actualMinutes: number;
+  stepsCompleted: number;
+  stepsSkipped: number;
+  stepBreakdown: {
+    stepName: string;
+    estimated: number;
+    actual: number;
+    wasSkipped: boolean;
+  }[];
+}
+
+// Storage keys for localStorage
+export const ROUTINE_STORAGE_KEYS = {
+  ROUTINES: 'neurulae-routines',
+  SCHEDULED_ROUTINES: 'neurulae-scheduled-routines',
+  ACTIVE_ROUTINE: 'neurulae-active-routine',
+  DAY_TEMPLATES: 'neurulae-day-templates',
+  ROUTINE_HISTORY: 'neurulae-routine-history',
+  ROUTINE_PRESETS: 'neurulae-routine-presets',
+} as const;

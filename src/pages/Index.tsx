@@ -1331,6 +1331,11 @@ const Index = () => {
     setIsAIAssistantOpen(true);
   };
 
+  const handleOpenAIChat = (context: string) => {
+    setInitialAIMessage(context);
+    setIsAIAssistantOpen(true);
+  };
+
   // Theme change handler - updates both local state AND database to prevent race condition
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme); // 1. Update UI immediately
@@ -1542,6 +1547,7 @@ const Index = () => {
                       onPrioritize={handlePrioritizeTasks}
                       onScheduleTasks={handleScheduleTasks}
                       onAskAI={handleAskAI}
+                      onOpenAIChat={handleOpenAIChat}
                       onStartIntention={startIntention}
                       activeIntentionId={activeIntention?.taskId}
                       showQuickActions={showQuickActions}
@@ -1588,6 +1594,7 @@ const Index = () => {
                     onPrioritize={handlePrioritizeTasks}
                     onScheduleTasks={handleScheduleTasks}
                     onAskAI={handleAskAI}
+                    onOpenAIChat={handleOpenAIChat}
                     onStartIntention={startIntention}
                     activeIntentionId={activeIntention?.taskId}
                     showQuickActions={showQuickActions}

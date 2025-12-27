@@ -23,6 +23,7 @@ interface TaskSectionProps {
     order?: number;
   }>) => void;
   onAskAI?: (message: string) => void;
+  onOpenAIChat?: (context: string) => void;
   onStartIntention?: (task: Task) => void;
   activeIntentionId?: string | null;
   showQuickActions: boolean;
@@ -42,6 +43,7 @@ export function TaskSection({
   onPrioritize,
   onScheduleTasks,
   onAskAI,
+  onOpenAIChat,
   onStartIntention,
   activeIntentionId,
   showQuickActions,
@@ -62,6 +64,7 @@ export function TaskSection({
         onPrioritize={onPrioritize}
         onScheduleTasks={onScheduleTasks}
         onAskAI={showQuickActions ? onAskAI : undefined}
+        onOpenAIChat={onOpenAIChat}
         onStartIntention={onStartIntention}
         activeIntentionId={activeIntentionId}
         showQuickActions={showQuickActions}
