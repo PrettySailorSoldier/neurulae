@@ -9,8 +9,8 @@ import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSyncedStorage } from '@/hooks/useSyncedStorage';
 import { syncService } from '@/services/syncService';
-import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme } from '@/types';
-import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil, Flame } from 'lucide-react';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme, DashboardTab } from '@/types';
+import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil, Flame, Trash2, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -108,7 +108,14 @@ const Index = () => {
   const [editingThemeId, setEditingThemeId] = useState<string | undefined>(undefined); // Track the ID of the theme being edited
   const [isCreatingNewTheme, setIsCreatingNewTheme] = useState(false); // Track if explicitly creating new
 
-  // Custom Tabs
+  // Dashboard Tabs - includes both built-in and custom tabs
+  const DEFAULT_DASHBOARD_TABS: DashboardTab[] = [
+    { id: 'dashboard', key: 'dashboard', name: 'Dashboard', isBuiltIn: true, isVisible: true, order: 0 },
+    { id: 'projects', key: 'projects', name: 'Projects', isBuiltIn: false, isVisible: true, order: 1 },
+    { id: 'playbooks', key: 'playbooks', name: 'Playbooks', isBuiltIn: false, isVisible: true, order: 2 },
+    { id: 'care', key: 'care', name: 'Care', isBuiltIn: false, isVisible: true, order: 3 },
+  ];
+  const [dashboardTabs, setDashboardTabs] = useLocalStorage<DashboardTab[]>('neurulae-dashboard-tabs', DEFAULT_DASHBOARD_TABS);
   const [customTabs, setCustomTabs] = useLocalStorage<{ id: string; name: string }[]>('neurulae-custom-tabs', []);
   const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
   const [newTabName, setNewTabName] = useState('');
@@ -1326,6 +1333,82 @@ const Index = () => {
     setCustomTabs(newTabs);
   };
 
+  // Dashboard Tab Handlers (for built-in tabs like Projects, Playbooks, Care)
+  const handleRenameDashboardTab = (tabId: string, newName: string) => {
+    if (!newName.trim()) return;
+    setDashboardTabs(dashboardTabs.map(tab =>
+      tab.id === tabId ? { ...tab, name: newName.trim() } : tab
+    ));
+    toast({ title: "Tab renamed" });
+  };
+
+  const handleToggleDashboardTabVisibility = (tabId: string) => {
+    const tab = dashboardTabs.find(t => t.id === tabId);
+    if (!tab || tab.isBuiltIn) return; // Can't hide Dashboard tab
+    setDashboardTabs(dashboardTabs.map(t =>
+      t.id === tabId ? { ...t, isVisible: !t.isVisible } : t
+    ));
+    toast({ 
+      title: tab.isVisible ? "Tab hidden" : "Tab shown",
+      description: `${tab.name} has been ${tab.isVisible ? 'hidden' : 'shown'}`
+    });
+  };
+
+  const handleDeleteDashboardTab = (tabId: string) => {
+    const tab = dashboardTabs.find(t => t.id === tabId);
+    if (!tab || tab.isBuiltIn) return; // Can't delete Dashboard tab
+    // For built-in feature tabs (projects, playbooks, care), just hide instead of delete
+    if (['projects', 'playbooks', 'care'].includes(tab.key)) {
+      handleToggleDashboardTabVisibility(tabId);
+      return;
+    }
+    // For truly custom tabs, remove completely
+    setDashboardTabs(dashboardTabs.filter(t => t.id !== tabId));
+    toast({ title: "Tab removed" });
+  };
+
+  const handleAddDashboardTab = (name: string) => {
+    if (!name.trim()) return;
+    const maxOrder = Math.max(...dashboardTabs.map(t => t.order), 0);
+    const newTab: DashboardTab = {
+      id: crypto.randomUUID(),
+      key: `custom-${crypto.randomUUID().slice(0, 8)}`,
+      name: name.trim(),
+      isBuiltIn: false,
+      isVisible: true,
+      order: maxOrder + 1,
+    };
+    setDashboardTabs([...dashboardTabs, newTab]);
+    toast({ title: "Tab created", description: `${newTab.name} has been added` });
+  };
+
+  const handleMoveDashboardTabUp = (tabId: string) => {
+    const sortedTabs = [...dashboardTabs].sort((a, b) => a.order - b.order);
+    const index = sortedTabs.findIndex(t => t.id === tabId);
+    if (index <= 1) return; // Can't move above Dashboard or if already second
+    const newTabs = [...sortedTabs];
+    const temp = newTabs[index].order;
+    newTabs[index].order = newTabs[index - 1].order;
+    newTabs[index - 1].order = temp;
+    setDashboardTabs(newTabs);
+  };
+
+  const handleMoveDashboardTabDown = (tabId: string) => {
+    const sortedTabs = [...dashboardTabs].sort((a, b) => a.order - b.order);
+    const index = sortedTabs.findIndex(t => t.id === tabId);
+    if (index === 0 || index === sortedTabs.length - 1) return; // Can't move Dashboard or if already last
+    const newTabs = [...sortedTabs];
+    const temp = newTabs[index].order;
+    newTabs[index].order = newTabs[index + 1].order;
+    newTabs[index + 1].order = temp;
+    setDashboardTabs(newTabs);
+  };
+
+  const handleResetDashboardTabs = () => {
+    setDashboardTabs(DEFAULT_DASHBOARD_TABS);
+    toast({ title: "Tabs reset", description: "Dashboard tabs have been reset to defaults" });
+  };
+
   const handleAskAI = (message: string) => {
     setInitialAIMessage(message);
     setIsAIAssistantOpen(true);
@@ -1469,11 +1552,15 @@ const Index = () => {
             onDeleteSunlightAnchorWidget={handleDeleteSunlightAnchorWidget}
           />
           <div className="flex items-center gap-2">
-            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 md:auto-cols-auto" style={{ gridTemplateColumns: `repeat(${4 + customTabs.length}, minmax(0, 1fr))` }}>
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="projects">Projects</TabsTrigger>
-              <TabsTrigger value="playbooks">Playbooks</TabsTrigger>
-              <TabsTrigger value="care">Care</TabsTrigger>
+            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 md:auto-cols-auto" style={{ gridTemplateColumns: `repeat(${dashboardTabs.filter(t => t.isVisible).length + customTabs.length}, minmax(0, 1fr))` }}>
+              {dashboardTabs
+                .filter(tab => tab.isVisible)
+                .sort((a, b) => a.order - b.order)
+                .map(tab => (
+                  <TabsTrigger key={tab.id} value={tab.key}>
+                    {tab.name}
+                  </TabsTrigger>
+                ))}
               {customTabs.map(tab => (
                 <TabsTrigger key={tab.id} value={tab.id}>
                   {tab.name}
@@ -1485,19 +1572,19 @@ const Index = () => {
               size="icon"
               variant="outline"
               className="shrink-0"
+              title="Add new tab"
             >
               <Plus className="h-4 w-4" />
             </Button>
-            {customTabs.length > 0 && (
-              <Button
-                onClick={() => setEditTabsDialogOpen(true)}
-                size="icon"
-                variant="outline"
-                className="shrink-0"
-              >
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            )}
+            <Button
+              onClick={() => setEditTabsDialogOpen(true)}
+              size="icon"
+              variant="outline"
+              className="shrink-0"
+              title="Manage tabs"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
           </div>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -1625,7 +1712,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="care">
-            <div className="space-y-6">
+            <div className="space-y-6 bg-background/80 backdrop-blur-md rounded-xl p-6 border border-border/50 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold">Daily Routines</h2>
@@ -1671,7 +1758,7 @@ const Index = () => {
                   }[type] || { title: type, desc: '' };
 
                   return (
-                    <div key={type} className="space-y-2">
+                    <div key={type} className="space-y-2 bg-card/60 backdrop-blur-sm rounded-lg p-4 border border-border/40">
                       <div>
                         <h3 className="font-semibold text-sm">{typeInfo.title}</h3>
                         <p className="text-xs text-muted-foreground">{typeInfo.desc}</p>
@@ -1849,85 +1936,204 @@ const Index = () => {
 
       {/* Edit Tabs Dialog */}
       <Dialog open={editTabsDialogOpen} onOpenChange={setEditTabsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Manage Custom Tabs</DialogTitle>
+            <DialogTitle>Manage Tabs</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            {customTabs.map((tab, index) => (
-              <div key={tab.id} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
-                {editingTabId === tab.id ? (
-                  <Input
-                    value={editingTabName}
-                    onChange={(e) => setEditingTabName(e.target.value)}
-                    onBlur={() => {
-                      if (editingTabName.trim()) {
-                        handleRenameCustomTab(tab.id, editingTabName);
-                      }
-                      setEditingTabId(null);
-                      setEditingTabName('');
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        if (editingTabName.trim()) {
-                          handleRenameCustomTab(tab.id, editingTabName);
-                        }
-                        setEditingTabId(null);
-                        setEditingTabName('');
-                      } else if (e.key === 'Escape') {
-                        setEditingTabId(null);
-                        setEditingTabName('');
-                      }
-                    }}
-                    autoFocus
-                    className="flex-1"
-                  />
-                ) : (
-                  <>
-                    <span className="flex-1 font-medium">{tab.name}</span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingTabId(tab.id);
-                        setEditingTabName(tab.name);
-                      }}
-                      className="h-8 w-8"
+          <div className="space-y-4">
+            {/* Dashboard Tabs Section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-muted-foreground">Main Tabs</h4>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleResetDashboardTabs}
+                  className="h-7 text-xs"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Reset
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {dashboardTabs
+                  .sort((a, b) => a.order - b.order)
+                  .map((tab) => (
+                    <div 
+                      key={tab.id} 
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-lg border bg-card",
+                        !tab.isVisible && "opacity-50"
+                      )}
                     >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  </>
-                )}
-                <div className="flex gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleMoveTabUp(index)}
-                    disabled={index === 0}
-                    className="h-8 w-8"
-                  >
-                    <ChevronUp className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleMoveTabDown(index)}
-                    disabled={index === customTabs.length - 1}
-                    className="h-8 w-8"
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleDeleteCustomTab(tab.id)}
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                      {editingTabId === tab.id ? (
+                        <Input
+                          value={editingTabName}
+                          onChange={(e) => setEditingTabName(e.target.value)}
+                          onBlur={() => {
+                            if (editingTabName.trim()) {
+                              handleRenameDashboardTab(tab.id, editingTabName);
+                            }
+                            setEditingTabId(null);
+                            setEditingTabName('');
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (editingTabName.trim()) {
+                                handleRenameDashboardTab(tab.id, editingTabName);
+                              }
+                              setEditingTabId(null);
+                              setEditingTabName('');
+                            } else if (e.key === 'Escape') {
+                              setEditingTabId(null);
+                              setEditingTabName('');
+                            }
+                          }}
+                          autoFocus
+                          className="flex-1"
+                        />
+                      ) : (
+                        <>
+                          <span className="flex-1 font-medium">
+                            {tab.name}
+                            {tab.isBuiltIn && (
+                              <span className="ml-2 text-xs text-muted-foreground">(locked)</span>
+                            )}
+                          </span>
+                          {!tab.isBuiltIn && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingTabId(tab.id);
+                                setEditingTabName(tab.name);
+                              }}
+                              className="h-8 w-8"
+                              title="Rename"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {!tab.isBuiltIn && editingTabId !== tab.id && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleMoveDashboardTabUp(tab.id)}
+                            className="h-8 w-8"
+                            title="Move up"
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleMoveDashboardTabDown(tab.id)}
+                            className="h-8 w-8"
+                            title="Move down"
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleToggleDashboardTabVisibility(tab.id)}
+                            className="h-8 w-8"
+                            title={tab.isVisible ? "Hide tab" : "Show tab"}
+                          >
+                            {tab.isVisible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Custom Tabs Section */}
+            {customTabs.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Custom Tabs</h4>
+                <div className="space-y-2">
+                  {customTabs.map((tab, index) => (
+                    <div key={tab.id} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
+                      {editingTabId === tab.id ? (
+                        <Input
+                          value={editingTabName}
+                          onChange={(e) => setEditingTabName(e.target.value)}
+                          onBlur={() => {
+                            if (editingTabName.trim()) {
+                              handleRenameCustomTab(tab.id, editingTabName);
+                            }
+                            setEditingTabId(null);
+                            setEditingTabName('');
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (editingTabName.trim()) {
+                                handleRenameCustomTab(tab.id, editingTabName);
+                              }
+                              setEditingTabId(null);
+                              setEditingTabName('');
+                            } else if (e.key === 'Escape') {
+                              setEditingTabId(null);
+                              setEditingTabName('');
+                            }
+                          }}
+                          autoFocus
+                          className="flex-1"
+                        />
+                      ) : (
+                        <>
+                          <span className="flex-1 font-medium">{tab.name}</span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingTabId(tab.id);
+                              setEditingTabName(tab.name);
+                            }}
+                            className="h-8 w-8"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleMoveTabUp(index)}
+                          disabled={index === 0}
+                          className="h-8 w-8"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleMoveTabDown(index)}
+                          disabled={index === customTabs.length - 1}
+                          className="h-8 w-8"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteCustomTab(tab.id)}
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
           <DialogFooter>
             <Button onClick={() => setEditTabsDialogOpen(false)}>

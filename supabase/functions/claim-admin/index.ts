@@ -2,12 +2,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") || "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// The ONLY email that can claim admin access
-const MASTER_EMAIL = "astro.naught3@gmail.com";
+// The ONLY email that can claim admin access - stored securely in environment variable
+// Set this in Supabase Dashboard > Edge Functions > claim-admin > Secrets
+// Add secret: ADMIN_MASTER_EMAIL = your-admin-email@example.com
+const MASTER_EMAIL = Deno.env.get("ADMIN_MASTER_EMAIL");
 
 serve(async (req) => {
     if (req.method === "OPTIONS") {

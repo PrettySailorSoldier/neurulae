@@ -52,6 +52,17 @@ export interface Project {
   createdAt: string;
 }
 
+// Dashboard Tab Configuration
+export interface DashboardTab {
+  id: string;
+  key: string; // Used for routing (e.g., 'dashboard', 'projects', 'playbooks', 'care')
+  name: string; // Display name
+  icon?: string; // Optional icon
+  isBuiltIn: boolean; // true for Dashboard (cannot be deleted)
+  isVisible: boolean; // Whether to show this tab
+  order: number; // Display order
+}
+
 export type Theme = 'orchid' | 'jellyfish' | 'sunset' | 'bluebonnet' | 'ocean' | 'forest' | 'midnight' | 'candy' | 'custom';
 
 export interface CustomTheme {
