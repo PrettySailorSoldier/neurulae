@@ -1,3 +1,4 @@
+// @ts-nocheck - This is a Deno-based Supabase Edge Function. IDE TypeScript errors are expected.
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
@@ -8,7 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+// @ts-ignore - Deno types not available in IDE
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -63,9 +65,9 @@ serve(async (req) => {
           /* ignore */
         }
       }
-    } catch (e) {
+    } catch (_e: unknown) {
       // If rate_limits table doesn't exist, skip rate limiting
-      console.log("Rate limiting skipped (table may not exist):", e);
+      console.log("Rate limiting skipped (table may not exist)");
     }
 
     if (isRateLimited) {
@@ -121,7 +123,7 @@ serve(async (req) => {
 
     if (!validation.success) {
       console.error("Validation error:", validation.error.errors);
-      const errorMessage = validation.error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
+      const errorMessage = validation.error.errors.map((e: { path: (string | number)[]; message: string }) => `${e.path.join(".")}: ${e.message}`).join(", ");
       return new Response(
         JSON.stringify({
           error: `Invalid request format: ${errorMessage}`,
@@ -152,7 +154,7 @@ serve(async (req) => {
     if (timeBlocks.length === 0) {
       return new Response(
         JSON.stringify({
-          priorities: tasks.map(t => t.id).slice(0, 5), // Still prioritize tasks
+          priorities: tasks.map((t: { id: string }) => t.id).slice(0, 5), // Still prioritize tasks
           schedule: [],
           tips: ["Add time blocks to your schedule so AI can assign tasks to specific times."],
         }),
@@ -186,14 +188,17 @@ serve(async (req) => {
     const systemPrompt = `You are a quick task scheduling assistant. Today: ${today}. Prioritize tasks by urgency and schedule them into available time slots. Be concise.`;
 
     // Build compact task list
-    const taskList = tasks.map((t) => `- ${t.id}: "${t.name}"${t.due_date ? ` (due: ${t.due_date})` : ""}${t.estimated_minutes ? ` ~${t.estimated_minutes}min` : ""}`).join("\n");
+    type TaskItem = { id: string; name: string; due_date?: string | null; estimated_minutes?: number | null };
+    const taskList = tasks.map((t: TaskItem) => `- ${t.id}: "${t.name}"${t.due_date ? ` (due: ${t.due_date})` : ""}${t.estimated_minutes ? ` ~${t.estimated_minutes}min` : ""}`).join("\n");
     
     // Build compact time blocks list with IDs that the AI must use
-    const blockList = timeBlocks.map((b) => `- ${b.id}: "${b.title || 'Time Block'}" (${b.start_time}-${b.end_time})`).join("\n");
+    type TimeBlockItem = { id: string; title?: string; start_time: string; end_time: string };
+    const blockList = timeBlocks.map((b: TimeBlockItem) => `- ${b.id}: "${b.title || 'Time Block'}" (${b.start_time}-${b.end_time})`).join("\n");
     
     // Build compact busy blocks
+    interface BusyBlock { start_time?: string; end_time?: string; title?: string; }
     const busyList = busyBlocks.length > 0 
-      ? busyBlocks.map((b: any) => `${b.start_time?.slice(11,16) || "?"}-${b.end_time?.slice(11,16) || "?"}: ${b.title || "busy"}`).join(", ")
+      ? busyBlocks.map((b: BusyBlock) => `${b.start_time?.slice(11,16) || "?"}-${b.end_time?.slice(11,16) || "?"}: ${b.title || "busy"}`).join(", ")
       : "None";
 
     const userPrompt = `Schedule these tasks into the user's time blocks.
