@@ -97,14 +97,14 @@ export function RoutineNotificationManager({
 
     scheduledRoutines.forEach(scheduled => {
       // Skip if already started or completed
-      if (scheduled.status !== 'pending') return;
+      if (scheduled.status !== 'scheduled') return;
 
-      const scheduleDate = format(parseISO(scheduled.scheduledDate), 'yyyy-MM-dd');
+      const scheduleDate = format(parseISO(scheduled.date), 'yyyy-MM-dd');
       if (scheduleDate !== today) return;
 
-      if (!scheduled.scheduledTime) return;
+      if (!scheduled.scheduledStartTime) return;
 
-      const [hours, minutes] = scheduled.scheduledTime.split(':').map(Number);
+      const [hours, minutes] = scheduled.scheduledStartTime.split(':').map(Number);
       const scheduledDateTime = new Date(now);
       scheduledDateTime.setHours(hours, minutes, 0, 0);
 
@@ -264,7 +264,7 @@ function checkRoutineSchedule(routine: Routine, date: Date): boolean {
     case 'weekends':
       return dayOfWeek === 0 || dayOfWeek === 6;
     case 'specific_days':
-      return routine.repeatSchedule.days?.includes(dayNames[dayOfWeek]) || false;
+      return routine.repeatSchedule.days?.includes(dayNames[dayOfWeek] as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday') || false;
     default:
       return false;
   }
