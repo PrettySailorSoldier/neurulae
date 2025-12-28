@@ -101,18 +101,18 @@ serve(async (req) => {
       user_id: z.string().uuid().nullish(),
     });
 
-    const availabilitySchema = z.object({
-      day_of_week: z.number().int().min(0).max(6),
+    const timeBlockSchema = z.object({
+      id: z.string().uuid(),
+      title: z.string().max(200).optional(),
       start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
       end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-      id: z.string().uuid().nullish(),
-      user_id: z.string().uuid().nullish(),
-      created_at: z.string().nullish(),
+      type: z.string().optional(),
+      scheduleType: z.string().optional(),
     });
 
     const requestSchema = z.object({
       tasks: z.array(taskSchema),
-      availability: z.array(availabilitySchema),
+      timeBlocks: z.array(timeBlockSchema),
       today: z.string(), // Accept any ISO-like date string
     });
 
@@ -130,7 +130,7 @@ serve(async (req) => {
       );
     }
 
-    const { tasks, availability, today } = validation.data;
+    const { tasks, timeBlocks, today } = validation.data;
 
     // Early return if no tasks to organize
     if (tasks.length === 0) {
@@ -146,19 +146,33 @@ serve(async (req) => {
       );
     }
 
-    console.log("Organizing tasks:", { taskCount: tasks.length, availabilityCount: availability.length });
+    console.log("Organizing tasks:", { taskCount: tasks.length, blockCount: timeBlocks.length });
 
-    // Fetch existing schedule entries for the next 7 days to avoid conflicts
+    // Early return if no time blocks to schedule into
+    if (timeBlocks.length === 0) {
+      return new Response(
+        JSON.stringify({
+          priorities: tasks.map(t => t.id).slice(0, 5), // Still prioritize tasks
+          schedule: [],
+          tips: ["Add time blocks to your schedule so AI can assign tasks to specific times."],
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Fetch existing schedule entries for today only (faster query)
     const todayDate = new Date(today);
-    const nextWeek = new Date(todayDate);
-    nextWeek.setDate(todayDate.getDate() + 7);
+    const tomorrow = new Date(todayDate);
+    tomorrow.setDate(todayDate.getDate() + 1);
 
     const { data: scheduleEntries, error: scheduleError } = await supabase
       .from("schedule_entries")
-      .select("*")
+      .select("id, title, start_time, end_time, category")
       .eq("user_id", user.id)
       .gte("start_time", todayDate.toISOString())
-      .lte("start_time", nextWeek.toISOString())
+      .lt("start_time", tomorrow.toISOString())
       .order("start_time");
 
     if (scheduleError) {
@@ -166,70 +180,33 @@ serve(async (req) => {
     }
 
     const busyBlocks = scheduleEntries || [];
-    console.log(`Found ${busyBlocks.length} existing schedule entries to avoid`);
+    console.log(`Found ${busyBlocks.length} existing schedule entries for today`);
 
-    const systemPrompt = `You are an expert AI scheduling assistant with deep reasoning capabilities. Today's date is ${today}. Use this date as your reference point for all planning.
+    // Streamlined prompts for faster processing
+    const systemPrompt = `You are a quick task scheduling assistant. Today: ${today}. Prioritize tasks by urgency and schedule them into available time slots. Be concise.`;
 
-## Your Task:
-Create a realistic, step-by-step study/work plan for the user. You MUST:
-1. Break down large tasks into manageable chunks
-2. Schedule them into the user's available free time (gaps in their fixed schedule)
-3. Consider task urgency (due dates) and estimated time requirements
-4. Provide clear reasoning for your scheduling decisions
+    // Build compact task list
+    const taskList = tasks.map((t) => `- ${t.id}: "${t.name}"${t.due_date ? ` (due: ${t.due_date})` : ""}${t.estimated_minutes ? ` ~${t.estimated_minutes}min` : ""}`).join("\n");
+    
+    // Build compact time blocks list with IDs that the AI must use
+    const blockList = timeBlocks.map((b) => `- ${b.id}: "${b.title || 'Time Block'}" (${b.start_time}-${b.end_time})`).join("\n");
+    
+    // Build compact busy blocks
+    const busyList = busyBlocks.length > 0 
+      ? busyBlocks.map((b: any) => `${b.start_time?.slice(11,16) || "?"}-${b.end_time?.slice(11,16) || "?"}: ${b.title || "busy"}`).join(", ")
+      : "None";
 
-## Constraints:
-- Respect the user's fixed schedule blocks (work/class times from availability table)
-- Do NOT schedule during their committed times
-- Use realistic time estimates
-- Prioritize tasks with approaching deadlines
-- Balance workload across available time slots`;
+    const userPrompt = `Schedule these tasks into the user's time blocks.
 
-    const userPrompt = `Context: You are an expert scheduling assistant. You MUST use deep reasoning. Today's date is ${today}.
+TASKS:
+${taskList}
 
-Task: Create a realistic, step-by-step study plan for the user. You must break down large tasks and schedule them into the user's available free time.
+TIME BLOCKS (use exact blockId from these):
+${blockList}
 
-## User's Fixed Schedule (from availability table):
-${JSON.stringify(
-  availability.map((a) => ({
-    day: a.day_of_week,
-    start: a.start_time,
-    end: a.end_time,
-  })),
-  null,
-  2,
-)}
+BUSY TODAY (avoid scheduling during): ${busyList}
 
-## User's Task List (from tasks table):
-${JSON.stringify(
-  tasks.map((t) => ({
-    id: t.id,
-    name: t.name,
-    due_date: t.due_date,
-    estimated_minutes: t.estimated_minutes,
-    type: t.type,
-  })),
-  null,
-  2,
-)}
-
-## Existing Schedule Commitments (DO NOT schedule during these times):
-${JSON.stringify(
-  busyBlocks.map((b) => ({
-    title: b.title,
-    start: b.start_time,
-    end: b.end_time,
-    category: b.category,
-  })),
-  null,
-  2,
-)}
-
-Instructions:
-1. Prioritize tasks based on due dates and importance
-2. Find free time slots by identifying gaps in the fixed schedule
-3. Schedule high-priority tasks in the available slots
-4. Break large tasks into smaller work sessions if needed
-5. Provide clear reasoning for each scheduling decision`;
+IMPORTANT: In your schedule output, use the EXACT blockId (UUID) from the TIME BLOCKS list above. Return priorities (task IDs by urgency) and schedule (task-to-block assignments with exact blockIds).`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -238,7 +215,7 @@ Instructions:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.0-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

@@ -109,22 +109,20 @@ export function AIOrganizeDialog({
         }));
       }
 
-      // Fetch all availability blocks directly from database
-      const { data: availabilityBlocks, error: availError } = await supabase
-        .from('availability')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('day_of_week')
-        .order('start_time');
+      // Use the timeBlocks passed from the parent (these have the correct IDs that the UI expects)
+      // Convert to the format expected by the AI
+      const blocksForAI = timeBlocks.map(block => ({
+        id: block.id,
+        title: block.title,
+        start_time: block.startTime,
+        end_time: block.endTime,
+        type: block.type,
+        scheduleType: block.scheduleType
+      }));
 
-      if (availError) {
-        console.error('Error fetching availability:', availError);
-        throw new Error('Failed to fetch availability from database');
-      }
-
-      console.log('Fetched data:', { 
+      console.log('Sending data to AI:', { 
         taskCount: tasksToProcess?.length || 0, 
-        availabilityCount: availabilityBlocks?.length || 0 
+        blockCount: blocksForAI.length 
       });
 
       // Send everything to the edge function
@@ -134,7 +132,7 @@ export function AIOrganizeDialog({
         },
         body: {
           tasks: tasksToProcess,
-          availability: availabilityBlocks || [],
+          timeBlocks: blocksForAI,
           today,
         },
       });
@@ -145,7 +143,7 @@ export function AIOrganizeDialog({
       setResult(data);
       toast({
         title: "✨ AI Analysis Complete",
-        description: `Analyzed ${tasksToProcess.length} tasks and ${availabilityBlocks?.length || 0} availability blocks`,
+        description: `Analyzed ${tasksToProcess.length} tasks and ${blocksForAI.length} time blocks`,
       });
     } catch (err: any) {
       console.error('Organization error:', err);
@@ -239,9 +237,16 @@ export function AIOrganizeDialog({
                 <h3 className="font-semibold">Today's Schedule</h3>
               </div>
               <div className="space-y-2">
+                {result.schedule.length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">No tasks scheduled - you may need to add time blocks first.</p>
+                )}
                 {result.schedule.map((item: any, idx: number) => {
                   const task = getTaskById(item.taskId);
                   const block = getBlockById(item.blockId);
+                  // Debug: log if task or block is not found
+                  if (!task || !block) {
+                    console.log('Schedule item missing match:', { taskId: item.taskId, blockId: item.blockId, taskFound: !!task, blockFound: !!block });
+                  }
                   return task && block ? (
                     <div key={idx} className="p-3 bg-card/50 rounded space-y-1">
                       <div className="flex items-center justify-between">
@@ -259,7 +264,17 @@ export function AIOrganizeDialog({
                         </div>
                       )}
                     </div>
-                  ) : null;
+                  ) : (
+                    // Show fallback for items where we can't find the block
+                    task ? (
+                      <div key={idx} className="p-3 bg-card/30 rounded space-y-1 border border-dashed border-muted">
+                        <span className="font-medium text-sm">{task.title}</span>
+                        {item.estimatedMinutes && (
+                          <span className="text-xs text-muted-foreground ml-2">{item.estimatedMinutes}m</span>
+                        )}
+                      </div>
+                    ) : null
+                  );
                 })}
               </div>
             </div>
