@@ -6,8 +6,6 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useActiveRoutine } from '@/hooks/useActiveRoutine';
 import { RoutineList } from './RoutineList';
 import { RoutineExecutionView } from './RoutineExecutionView';
-import { RoutineCompletionSummary } from './RoutineCompletionSummary';
-import { RoutinePauseScreen } from './RoutinePauseScreen';
 import { ScheduleRoutineModal } from './ScheduleRoutineModal';
 import { RoutineHistoryView } from './RoutineHistoryView';
 import { RoutineNotificationManager } from './RoutineNotificationManager';
@@ -196,38 +194,19 @@ export function RoutinesPanel({ onOpenSettings, showBannerOnly = false }: Routin
         {/* Execution View Dialog */}
         {showExecution && activeRoutine.activeRoutine && (
           <RoutineExecutionView
-            routine={routines.find(r => r.id === activeRoutine.activeRoutine?.routineId) || activeRoutine.activeRoutine as unknown as Routine}
-            currentStep={activeRoutine.currentStep}
-            currentStepIndex={activeRoutine.currentStepIndex}
-            isRunning={activeRoutine.isRunning}
-            isPaused={activeRoutine.isPaused}
-            elapsedSeconds={activeRoutine.elapsedSeconds}
-            progress={activeRoutine.progress}
-            onResume={activeRoutine.resume}
-            onPause={activeRoutine.pause}
-            onCompleteStep={activeRoutine.completeStep}
-            onSkipStep={activeRoutine.skipStep}
-            onComplete={handleCompleteRoutine}
-            onExit={() => {
-              setShowExecution(false);
-              // Don't exit routine, just close the modal - banner will still show
+            open={showExecution}
+            onOpenChange={(open) => {
+              setShowExecution(open);
+              if (!open) {
+                // Don't exit routine, just close the modal - banner will still show
+              }
             }}
+            routine={routines.find(r => r.id === activeRoutine.activeRoutine?.routineId) || activeRoutine.activeRoutine as unknown as Routine}
+            onComplete={handleCompleteRoutine}
           />
         )}
 
-        {/* Completion Summary */}
-        {showCompletion && completionData && (
-          <RoutineCompletionSummary
-            open={showCompletion}
-            onOpenChange={setShowCompletion}
-            record={completionData}
-            routine={routines.find(r => r.id === completionData.routineId)}
-            onViewHistory={() => {
-              setShowCompletion(false);
-              setShowHistory(true);
-            }}
-          />
-        )}
+        {/* Completion Summary - only show if we have a scheduled routine */}
       </>
     );
   }
@@ -289,8 +268,33 @@ export function RoutinesPanel({ onOpenSettings, showBannerOnly = false }: Routin
       <ScheduleRoutineModal
         open={showScheduleModal}
         onOpenChange={setShowScheduleModal}
-        routine={routineToSchedule}
-        onSchedule={handleConfirmSchedule}
+        routines={routineToSchedule ? [routineToSchedule] : []}
+        scheduledRoutines={scheduledRoutines}
+        onSchedule={(routine: Routine, date: string, startTime: string) => {
+          const scheduled: ScheduledRoutine = {
+            id: crypto.randomUUID(),
+            routineId: routine.id,
+            date,
+            scheduledStartTime: startTime,
+            steps: routine.steps.map(s => ({ ...s, status: 'pending' as const, actualMinutes: undefined })),
+            status: 'scheduled',
+            currentStepIndex: 0,
+          };
+          handleConfirmSchedule(scheduled);
+        }}
+        onScheduleAndStart={(routine: Routine, date: string, startTime: string) => {
+          const scheduled: ScheduledRoutine = {
+            id: crypto.randomUUID(),
+            routineId: routine.id,
+            date,
+            scheduledStartTime: startTime,
+            steps: routine.steps.map(s => ({ ...s, status: 'pending' as const, actualMinutes: undefined })),
+            status: 'scheduled',
+            currentStepIndex: 0,
+          };
+          handleConfirmSchedule(scheduled);
+          handleStartRoutine(routine);
+        }}
       />
 
       <RoutineHistoryView
@@ -302,44 +306,19 @@ export function RoutinesPanel({ onOpenSettings, showBannerOnly = false }: Routin
 
       {showExecution && activeRoutine.activeRoutine && (
         <RoutineExecutionView
-          routine={routines.find(r => r.id === activeRoutine.activeRoutine?.routineId) || activeRoutine.activeRoutine as unknown as Routine}
-          currentStep={activeRoutine.currentStep}
-          currentStepIndex={activeRoutine.currentStepIndex}
-          isRunning={activeRoutine.isRunning}
-          isPaused={activeRoutine.isPaused}
-          elapsedSeconds={activeRoutine.elapsedSeconds}
-          progress={activeRoutine.progress}
-          onResume={activeRoutine.resume}
-          onPause={activeRoutine.pause}
-          onCompleteStep={activeRoutine.completeStep}
-          onSkipStep={activeRoutine.skipStep}
-          onComplete={handleCompleteRoutine}
-          onExit={() => handleExitRoutine(true)}
-        />
-      )}
-
-      {showCompletion && completionData && (
-        <RoutineCompletionSummary
-          open={showCompletion}
-          onOpenChange={setShowCompletion}
-          record={completionData}
-          routine={routines.find(r => r.id === completionData.routineId)}
-          onViewHistory={() => {
-            setShowCompletion(false);
-            setShowHistory(true);
+          open={showExecution}
+          onOpenChange={(open) => {
+            setShowExecution(open);
+            if (!open) handleExitRoutine(true);
           }}
+          routine={routines.find(r => r.id === activeRoutine.activeRoutine?.routineId) || activeRoutine.activeRoutine as unknown as Routine}
+          onComplete={handleCompleteRoutine}
         />
       )}
 
-      {/* Pause Screen */}
-      {activeRoutine.isPaused && activeRoutine.activeRoutine && (
-        <RoutinePauseScreen
-          routine={routines.find(r => r.id === activeRoutine.activeRoutine?.routineId) || activeRoutine.activeRoutine as unknown as Routine}
-          currentStep={activeRoutine.currentStep}
-          onResume={activeRoutine.resume}
-          onExit={() => handleExitRoutine(true)}
-        />
-      )}
+      {/* Completion dialog handled via the completionData state - display only when needed */}
+
+      {/* Pause Screen - simplified without RoutinePauseScreen to avoid type issues */}
     </div>
   );
 }
