@@ -111,7 +111,7 @@ export function AIOrganizeDialog({
 
       // Use the timeBlocks passed from the parent (these have the correct IDs that the UI expects)
       // Convert to the format expected by the AI
-      const blocksForAI = timeBlocks.map(block => ({
+      let blocksForAI = timeBlocks.map(block => ({
         id: block.id,
         title: block.title,
         start_time: block.startTime,
@@ -119,6 +119,38 @@ export function AIOrganizeDialog({
         type: block.type,
         scheduleType: block.scheduleType
       }));
+
+      // If no time blocks exist, create default blocks for scheduling
+      if (blocksForAI.length === 0) {
+        console.log('No time blocks found, creating default blocks');
+        // Create a default "Available" block for typical working hours
+        blocksForAI = [
+          {
+            id: crypto.randomUUID(),
+            title: 'Morning Block',
+            start_time: '08:00',
+            end_time: '12:00',
+            type: 'main',
+            scheduleType: 'weekday'
+          },
+          {
+            id: crypto.randomUUID(),
+            title: 'Afternoon Block',
+            start_time: '13:00',
+            end_time: '17:00',
+            type: 'main',
+            scheduleType: 'weekday'
+          },
+          {
+            id: crypto.randomUUID(),
+            title: 'Evening Block',
+            start_time: '18:00',
+            end_time: '21:00',
+            type: 'dedicated',
+            scheduleType: 'everyday'
+          }
+        ];
+      }
 
       console.log('Sending data to AI:', { 
         taskCount: tasksToProcess?.length || 0, 
