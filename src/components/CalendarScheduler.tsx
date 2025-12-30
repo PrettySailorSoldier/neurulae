@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Task, ScheduledTask } from '@/types';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CalendarSchedulerProps {
   open: boolean;
@@ -19,18 +20,19 @@ interface CalendarSchedulerProps {
   onScheduleTask: (taskId: string, blockId: string, date: string, estimatedMinutes?: number) => void;
 }
 
-export function CalendarScheduler({ 
-  open, 
-  onOpenChange, 
-  tasks, 
+export function CalendarScheduler({
+  open,
+  onOpenChange,
+  tasks,
   scheduledTasks,
   timeBlocks,
-  onScheduleTask 
+  onScheduleTask
 }: CalendarSchedulerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTask, setSelectedTask] = useState<string>('');
   const [selectedBlock, setSelectedBlock] = useState<string>('');
   const [estimatedMinutes, setEstimatedMinutes] = useState<string>('30');
+  const isMobile = useIsMobile();
 
   const unscheduledTasks = tasks.filter(task => !task.completed);
   
@@ -57,7 +59,10 @@ export function CalendarScheduler({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={cn(
+        "max-h-[90vh] overflow-y-auto",
+        isMobile ? "w-full max-w-full" : "max-w-4xl"
+      )}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="h-5 w-5" />

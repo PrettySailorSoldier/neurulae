@@ -7,6 +7,7 @@ import { Cloud } from 'lucide-react';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
 import { Theme, CustomTheme } from '@/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardHeaderProps {
   user: any;
@@ -47,6 +48,8 @@ export function DashboardHeader({
   onDeleteCustomTheme,
   onUseAsTemplate,
 }: DashboardHeaderProps) {
+  const isMobile = useIsMobile();
+
   return (
     <>
       {/* Sync Banner for non-authenticated users */}
@@ -96,45 +99,55 @@ export function DashboardHeader({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onSetEisenhowerOpen(true)}
-                title="Priority Matrix"
-                data-tutorial="eisenhower-matrix"
-              >
-                <Grid3x3 className="h-5 w-5" />
-              </Button>
-              <Link to="/my-schedule" data-tutorial="my-availability">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="My Schedule"
-                >
-                  <Calendar className="h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/my-plan" data-tutorial="my-plan">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="My Plan"
-                >
-                  <CalendarCheck className="h-5 w-5" />
-                </Button>
-              </Link>
+              {/* Desktop: Show all buttons */}
+              {!isMobile && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onSetEisenhowerOpen(true)}
+                    title="Priority Matrix"
+                    data-tutorial="eisenhower-matrix"
+                  >
+                    <Grid3x3 className="h-5 w-5" />
+                  </Button>
+                  <Link to="/my-schedule" data-tutorial="my-availability">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="My Schedule"
+                    >
+                      <Calendar className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link to="/my-plan" data-tutorial="my-plan">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="My Plan"
+                    >
+                      <CalendarCheck className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                </>
+              )}
+
+              {/* AI Assistant - Icon only on mobile, with text on desktop */}
               <Button
                 variant="default"
-                size="sm"
+                size={isMobile ? "icon" : "sm"}
                 onClick={() => onSetChatPanelOpen(true)}
-                className="gap-2"
+                className={isMobile ? "" : "gap-2"}
+                title={isMobile ? "AI Assistant" : undefined}
                 data-tutorial="ai-assistant"
               >
                 <Brain className="h-4 w-4" />
-                AI Assistant
+                {!isMobile && "AI Assistant"}
               </Button>
-              <Button 
-                variant="ghost" 
+
+              {/* Help button - Always visible */}
+              <Button
+                variant="ghost"
                 size="icon"
                 onClick={() => onSetTutorialOpen(true)}
                 title="Help & Tutorial"
@@ -142,40 +155,52 @@ export function DashboardHeader({
               >
                 <HelpCircle className="h-5 w-5" />
               </Button>
+
+              {/* Sync indicator - Always visible */}
               <SyncStatusIndicator />
-              {user && isAdmin && (
+
+              {/* Admin Panel - Hidden on mobile */}
+              {user && isAdmin && !isMobile && (
                 <Button variant="secondary" size="sm" asChild>
                   <Link to="/admin">Admin Panel</Link>
                 </Button>
               )}
+
+              {/* Upgrade/Settings/Sign In - Always visible but compact on mobile */}
               {user && !isPremium && (
-                <Button variant="default" size="sm" asChild>
+                <Button variant="default" size={isMobile ? "icon" : "sm"} asChild title={isMobile ? "Upgrade to Premium" : undefined}>
                   <Link to="/pricing">
-                    <Crown className="h-4 w-4 mr-1" />
-                    Upgrade
+                    <Crown className="h-4 w-4" />
+                    {!isMobile && <span className="ml-1">Upgrade</span>}
                   </Link>
                 </Button>
               )}
               {user && isPremium && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/settings">Settings</Link>
+                <Button variant="outline" size={isMobile ? "icon" : "sm"} asChild title={isMobile ? "Settings" : undefined}>
+                  <Link to="/settings">
+                    {isMobile ? <Crown className="h-4 w-4" /> : "Settings"}
+                  </Link>
                 </Button>
               )}
               {!user && (
                 <Button variant="outline" size="sm" asChild>
-                  <Link to="/auth">Sign In</Link>
+                  <Link to="/auth">{isMobile ? "Sign In" : "Sign In"}</Link>
                 </Button>
               )}
-              <ThemeSwitcher
-                currentTheme={theme}
-                currentCustomTheme={customTheme}
-                onThemeChange={onThemeChange}
-                onCustomThemeClick={onCustomThemeClick}
-                onEditCustomTheme={onEditCustomTheme}
-                onApplyCustomTheme={onApplyCustomTheme}
-                onDeleteCustomTheme={onDeleteCustomTheme}
-                onUseAsTemplate={onUseAsTemplate}
-              />
+
+              {/* Theme switcher - Hidden on mobile */}
+              {!isMobile && (
+                <ThemeSwitcher
+                  currentTheme={theme}
+                  currentCustomTheme={customTheme}
+                  onThemeChange={onThemeChange}
+                  onCustomThemeClick={onCustomThemeClick}
+                  onEditCustomTheme={onEditCustomTheme}
+                  onApplyCustomTheme={onApplyCustomTheme}
+                  onDeleteCustomTheme={onDeleteCustomTheme}
+                  onUseAsTemplate={onUseAsTemplate}
+                />
+              )}
             </div>
           </div>
         </div>
