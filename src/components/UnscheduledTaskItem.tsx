@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText, Target } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ export function UnscheduledTaskItem({
   const [newSubtask, setNewSubtask] = useState('');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notes, setNotes] = useState(task.notes || '');
+  const isMobile = useIsMobile();
 
   const handleToggleSubtask = (subtaskId: string) => {
     const updatedSubtasks = (task.subtasks || []).map(st =>
@@ -173,7 +175,9 @@ export function UnscheduledTaskItem({
           variant="ghost"
           size="sm"
           onClick={() => onDeleteTask(task.id)}
-          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+          className={`h-6 w-6 p-0 transition-opacity text-muted-foreground hover:text-destructive ${
+            isMobile ? 'opacity-70' : 'opacity-0 group-hover:opacity-100'
+          }`}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -183,7 +187,9 @@ export function UnscheduledTaskItem({
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(true)}
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            className={`h-6 w-6 p-0 transition-opacity ${
+              isMobile ? 'opacity-70' : 'opacity-0 group-hover:opacity-100'
+            }`}
           >
             <Plus className="h-3.5 w-3.5" />
           </Button>

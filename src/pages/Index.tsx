@@ -1853,56 +1853,6 @@ const Index = () => {
         />
       </Suspense>
 
-      {/* Widget Panel */}
-      <Suspense fallback={<ComponentLoader />}>
-        <WidgetPanel
-        reminderWidgets={reminderWidgets}
-        energyWidgets={energyWidgets}
-        messengerWidgets={messengerWidgets}
-        moodGardenWidgets={moodGardenWidgets}
-        parallelUniverseWidgets={parallelUniverseWidgets}
-        soundSignatureWidgets={soundSignatureWidgets}
-        brainDumpWidgets={brainDumpWidgets}
-        potionInventoryWidgets={potionInventoryWidgets}
-        sunlightAnchorWidgets={sunlightAnchorWidgets}
-        onAddWidget={handleAddWidget}
-        onEditWidget={handleEditWidget}
-        onDeleteWidget={handleDeleteWidget}
-        onToggleWidgetItem={handleToggleWidgetItem}
-        onResetWidget={handleResetWidget}
-        onAddEnergyWidget={handleAddEnergyWidget}
-        onEditEnergyWidget={handleEditEnergyWidget}
-        onDeleteEnergyWidget={handleDeleteEnergyWidget}
-        onLogEnergy={handleLogEnergy}
-        onAddMessengerWidget={handleAddMessengerWidget}
-        onEditMessengerWidget={handleEditMessengerWidget}
-        onDeleteMessengerWidget={handleDeleteMessengerWidget}
-        onCreateMessage={handleCreateMessage}
-        onViewMessage={handleViewMessage}
-        onAddMoodGardenWidget={handleAddMoodGardenWidget}
-        onEditMoodGardenWidget={handleEditMoodGardenWidget}
-        onDeleteMoodGardenWidget={handleDeleteMoodGardenWidget}
-        onLogMood={handleLogMood}
-        onAddParallelUniverseWidget={handleAddParallelUniverseWidget}
-        onEditParallelUniverseWidget={handleEditParallelUniverseWidget}
-        onDeleteParallelUniverseWidget={handleDeleteParallelUniverseWidget}
-        onLogDecision={handleLogDecision}
-        onGenerateOutcome={handleGenerateOutcome}
-        onAddSoundSignatureWidget={handleAddSoundSignatureWidget}
-        onEditSoundSignatureWidget={handleEditSoundSignatureWidget}
-        onDeleteSoundSignatureWidget={handleDeleteSoundSignatureWidget}
-        onLogSoundSession={handleLogSoundSession}
-        onAddBrainDumpWidget={handleAddBrainDumpWidget}
-        onDeleteBrainDumpWidget={handleDeleteBrainDumpWidget}
-        onAddThought={handleAddThought}
-        onAddPotionInventoryWidget={handleAddPotionInventoryWidget}
-        onDeletePotionInventoryWidget={handleDeletePotionInventoryWidget}
-        onUpdatePotionLevels={handleUpdatePotionLevels}
-        onAddSunlightAnchorWidget={handleAddSunlightAnchorWidget}
-        onDeleteSunlightAnchorWidget={handleDeleteSunlightAnchorWidget}
-      />
-      </Suspense>
-
       {/* New Tab Dialog */}
       <Dialog open={newTabDialogOpen} onOpenChange={setNewTabDialogOpen}>
         <DialogContent>

@@ -44,6 +44,79 @@ interface TaskListProps {
   showTimeConstraintView?: boolean;
 }
 
+// Category labels with emojis
+const categoryLabels: Record<string, string> = {
+  school: 'School',
+  work: 'Work',
+  home: 'Home',
+  appointment: 'Appointment',
+  call: 'Call',
+  other: 'Other',
+};
+
+// Date labels
+const dateLabels: Record<string, string> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  tomorrow: 'Tomorrow',
+  thisWeek: 'This Week',
+  later: 'Later',
+  noDueDate: 'No Due Date',
+};
+
+// Group by task type (category)
+const groupByCategory = (tasksToGroup: Task[]) => {
+  const order = ['school', 'work', 'home', 'appointment', 'call', 'other'];
+  const groups: Record<string, Task[]> = {};
+
+  tasksToGroup.forEach(task => {
+    const type = task.taskType || 'other';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(task);
+  });
+
+  return order
+    .filter(type => groups[type]?.length > 0)
+    .map(type => ({ type, tasks: groups[type] }));
+};
+
+// Group by due date proximity
+const groupByDate = (tasksToGroup: Task[]) => {
+  const now = new Date();
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  const tomorrowEnd = new Date(todayEnd);
+  tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+  const thisWeekEnd = new Date(todayEnd);
+  thisWeekEnd.setDate(thisWeekEnd.getDate() + 7);
+
+  const groups: Record<string, Task[]> = {
+    overdue: [],
+    today: [],
+    tomorrow: [],
+    thisWeek: [],
+    later: [],
+    noDueDate: [],
+  };
+
+  tasksToGroup.forEach(task => {
+    if (!task.dueDate) {
+      groups.noDueDate.push(task);
+    } else {
+      const due = new Date(task.dueDate);
+      if (due < now) groups.overdue.push(task);
+      else if (due <= todayEnd) groups.today.push(task);
+      else if (due <= tomorrowEnd) groups.tomorrow.push(task);
+      else if (due <= thisWeekEnd) groups.thisWeek.push(task);
+      else groups.later.push(task);
+    }
+  });
+
+  return Object.entries(groups)
+    .filter(([_, taskList]) => taskList.length > 0)
+    .map(([label, taskList]) => ({ type: label, tasks: taskList }));
+};
+
 const TaskListComponent = ({
   tasks,
   timeBlocks,
@@ -72,6 +145,7 @@ const TaskListComponent = ({
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [groupBy, setGroupBy] = useState<'none' | 'category' | 'date'>('none');
   const { canUseAIFeatures, showUpgradeModal, upgradeModalOpen, setUpgradeModalOpen } = useFeatureLimit();
 
   // MEMOIZE: Filter calculations to prevent unnecessary re-renders
@@ -249,6 +323,16 @@ const TaskListComponent = ({
                 className="pl-9"
               />
             </div>
+            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as 'none' | 'category' | 'date')}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Group by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No grouping</SelectItem>
+                <SelectItem value="category">By Category</SelectItem>
+                <SelectItem value="date">By Due Date</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               variant="outline"
               size="icon"
@@ -306,45 +390,107 @@ const TaskListComponent = ({
                 <>
                   {/* Daily/Urgent Section */}
                   {dailyTasks.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
-                        📅 Today's Focus ({dailyTasks.length})
-                      </h3>
-                      {dailyTasks.map((task) => (
-                        <UnscheduledTaskItem
-                          key={task.id}
-                          task={task}
-                          onToggleComplete={onToggleComplete}
-                          onUpdateTask={onUpdateTask}
-                          onDeleteTask={onDeleteTask}
-                          onAskAI={onAskAI}
-                          onStartIntention={onStartIntention}
-                          isActiveIntention={activeIntentionId === task.id}
-                          showQuickActions={showQuickActions}
-                        />
-                      ))}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 py-2 px-3 bg-primary/5 rounded-lg border border-primary/20">
+                        <span className="text-sm font-semibold text-primary">
+                          Today's Focus ({dailyTasks.length})
+                        </span>
+                      </div>
+                      {groupBy === 'none' ? (
+                        <div className="space-y-2">
+                          {dailyTasks.map((task) => (
+                            <UnscheduledTaskItem
+                              key={task.id}
+                              task={task}
+                              onToggleComplete={onToggleComplete}
+                              onUpdateTask={onUpdateTask}
+                              onDeleteTask={onDeleteTask}
+                              onAskAI={onAskAI}
+                              onStartIntention={onStartIntention}
+                              isActiveIntention={activeIntentionId === task.id}
+                              showQuickActions={showQuickActions}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {(groupBy === 'category' ? groupByCategory(dailyTasks) : groupByDate(dailyTasks)).map(({ type, tasks: groupTasks }) => (
+                            <div key={type} className="space-y-1">
+                              <div className="flex items-center gap-2 py-1 px-2 bg-muted/50 rounded text-xs font-medium text-muted-foreground">
+                                {(groupBy === 'category' ? categoryLabels : dateLabels)[type] || type} ({groupTasks.length})
+                              </div>
+                              <div className="space-y-1 pl-2 border-l-2 border-primary/30">
+                                {groupTasks.map((task) => (
+                                  <UnscheduledTaskItem
+                                    key={task.id}
+                                    task={task}
+                                    onToggleComplete={onToggleComplete}
+                                    onUpdateTask={onUpdateTask}
+                                    onDeleteTask={onDeleteTask}
+                                    onAskAI={onAskAI}
+                                    onStartIntention={onStartIntention}
+                                    isActiveIntention={activeIntentionId === task.id}
+                                    showQuickActions={showQuickActions}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* Ongoing/Future Section */}
                   {ongoingTasks.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                        🎯 Ongoing & Future ({ongoingTasks.length})
-                      </h3>
-                      {ongoingTasks.map((task) => (
-                        <UnscheduledTaskItem
-                          key={task.id}
-                          task={task}
-                          onToggleComplete={onToggleComplete}
-                          onUpdateTask={onUpdateTask}
-                          onDeleteTask={onDeleteTask}
-                          onAskAI={onAskAI}
-                          onStartIntention={onStartIntention}
-                          isActiveIntention={activeIntentionId === task.id}
-                          showQuickActions={showQuickActions}
-                        />
-                      ))}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 py-2 px-3 bg-muted/30 rounded-lg border border-border">
+                        <span className="text-sm font-semibold text-muted-foreground">
+                          Ongoing & Future ({ongoingTasks.length})
+                        </span>
+                      </div>
+                      {groupBy === 'none' ? (
+                        <div className="space-y-2">
+                          {ongoingTasks.map((task) => (
+                            <UnscheduledTaskItem
+                              key={task.id}
+                              task={task}
+                              onToggleComplete={onToggleComplete}
+                              onUpdateTask={onUpdateTask}
+                              onDeleteTask={onDeleteTask}
+                              onAskAI={onAskAI}
+                              onStartIntention={onStartIntention}
+                              isActiveIntention={activeIntentionId === task.id}
+                              showQuickActions={showQuickActions}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {(groupBy === 'category' ? groupByCategory(ongoingTasks) : groupByDate(ongoingTasks)).map(({ type, tasks: groupTasks }) => (
+                            <div key={type} className="space-y-1">
+                              <div className="flex items-center gap-2 py-1 px-2 bg-muted/50 rounded text-xs font-medium text-muted-foreground">
+                                {(groupBy === 'category' ? categoryLabels : dateLabels)[type] || type} ({groupTasks.length})
+                              </div>
+                              <div className="space-y-1 pl-2 border-l-2 border-border">
+                                {groupTasks.map((task) => (
+                                  <UnscheduledTaskItem
+                                    key={task.id}
+                                    task={task}
+                                    onToggleComplete={onToggleComplete}
+                                    onUpdateTask={onUpdateTask}
+                                    onDeleteTask={onDeleteTask}
+                                    onAskAI={onAskAI}
+                                    onStartIntention={onStartIntention}
+                                    isActiveIntention={activeIntentionId === task.id}
+                                    showQuickActions={showQuickActions}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

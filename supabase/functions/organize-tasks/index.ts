@@ -304,11 +304,13 @@ IMPORTANT: In your schedule output, use the EXACT blockId (UUID) from the TIME B
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
+    // Log full error details server-side for debugging
     console.error("Error in organize-tasks function:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
+    
+    // Return a generic, sanitized message to the client (never expose internal details)
     return new Response(
       JSON.stringify({
-        error: errorMessage,
+        error: "An unexpected error occurred while organizing tasks. Please try again.",
       }),
       {
         status: 200,
