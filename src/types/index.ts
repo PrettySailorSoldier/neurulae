@@ -347,23 +347,60 @@ export interface BrainDumpWidget {
   thoughts: BrainDumpThought[];
 }
 
-// Potion Inventory Widget - gamified health tracker
+// Potion Inventory Widget - gamified wellness tracker (Food/Water/Sleep)
+export interface MealSchedule {
+  breakfast: string;    // "07:00" format
+  morningSnack: string; // "10:00" format
+  lunch: string;        // "12:30" format
+  afternoonSnack: string; // "15:00" format
+  dinner: string;       // "18:30" format
+  bedtime: string;      // "22:00" format
+}
+
 export interface PotionInventoryWidget {
   id: string;
   type: 'potion-inventory';
   title: string;
-  healthLevel: number; // 0-100
-  manaLevel: number;   // 0-100
-  staminaLevel: number; // 0-100
-  lastDecayTime: string;
+  // Levels represent: Food (hunger), Water (hydration), Sleep (energy)
+  foodLevel: number;    // 0-100 - decays between meals
+  waterLevel: number;   // 0-100 - decays throughout the day
+  sleepLevel: number;   // 0-100 - decays from wake time, resets on sleep
+  // Last refill times
+  lastFoodTime: string;
+  lastWaterTime: string;
+  lastSleepTime: string; // When user went to bed
+  wakeTime: string;      // When user woke up
+  // Settings
+  mealSchedule: MealSchedule;
+  useCustomSchedule: boolean;
   decayEnabled: boolean;
+  // Legacy fields for backwards compatibility
+  healthLevel?: number;
+  manaLevel?: number;
+  staminaLevel?: number;
+  lastDecayTime?: string;
 }
 
-// Sunlight Anchor Widget - visual time awareness
+// Sunlight Anchor Widget - visual time awareness with geolocation
 export interface SunlightAnchorWidget {
   id: string;
   type: 'sunlight-anchor';
   title: string;
+  // Location settings
+  useGeolocation: boolean;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+  // Manual override times (used if geolocation disabled or failed)
+  manualSunrise?: string; // "06:30" format
+  manualSunset?: string;  // "19:30" format
+  // User schedule
+  wakeTime?: string;      // "07:00" format
+  sleepTime?: string;     // "22:00" format
+  // Cached sunrise/sunset for today
+  cachedSunrise?: string;
+  cachedSunset?: string;
+  lastLocationUpdate?: string;
 }
 
 // Active Intention Banner - for focus tracking and intention hijacking prevention

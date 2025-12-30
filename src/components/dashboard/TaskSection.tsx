@@ -29,6 +29,8 @@ interface TaskSectionProps {
   showQuickActions: boolean;
   onToggleTimeConstraintView?: () => void;
   showTimeConstraintView?: boolean;
+  onClearCompleted?: () => void;
+  onClearAll?: () => void;
 }
 
 export function TaskSection({
@@ -49,6 +51,8 @@ export function TaskSection({
   showQuickActions,
   onToggleTimeConstraintView,
   showTimeConstraintView,
+  onClearCompleted,
+  onClearAll,
 }: TaskSectionProps) {
   return (
     <div className="lg:col-span-2" data-tutorial="tasks">
@@ -70,6 +74,8 @@ export function TaskSection({
         showQuickActions={showQuickActions}
         onToggleTimeConstraintView={onToggleTimeConstraintView}
         showTimeConstraintView={showTimeConstraintView}
+        onClearCompleted={onClearCompleted}
+        onClearAll={onClearAll}
       />
     </div>
   );

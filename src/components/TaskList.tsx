@@ -1,5 +1,6 @@
 import { useState, useMemo, memo } from 'react';
-import { Plus, Search, Filter, Sparkles, Clock } from 'lucide-react';
+import { Plus, Search, Filter, Sparkles, Clock, MoreVertical, Trash2, CheckCircle2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,8 @@ interface TaskListProps {
   showQuickActions?: boolean;
   onToggleTimeConstraintView?: () => void;
   showTimeConstraintView?: boolean;
+  onClearCompleted?: () => void;
+  onClearAll?: () => void;
 }
 
 // Category labels with emojis
@@ -135,6 +138,8 @@ const TaskListComponent = ({
   showQuickActions = true,
   onToggleTimeConstraintView,
   showTimeConstraintView = false,
+  onClearCompleted,
+  onClearAll,
 }: TaskListProps) => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -311,6 +316,32 @@ const TaskListComponent = ({
                 <Sparkles className="h-4 w-4" />
                 Organize with AI
               </Button>
+              {(onClearCompleted || onClearAll) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onClearCompleted && (
+                      <DropdownMenuItem onClick={onClearCompleted}>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Clear completed
+                      </DropdownMenuItem>
+                    )}
+                    {onClearAll && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={onClearAll} className="text-destructive focus:text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Clear all tasks
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
           <div className="flex gap-2 mt-4">

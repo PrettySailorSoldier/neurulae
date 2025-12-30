@@ -14,6 +14,7 @@ import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil, Flame, Trash2, Eye,
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -505,21 +506,47 @@ const Index = () => {
 
   const handleToggleComplete = async (id: string) => {
     const task = tasks.find(t => t.id === id);
-    const newCompletedState = task ? !task.completed : false;
-    
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, completed: newCompletedState } : task
+    if (!task) return;
+
+    const newCompletedState = !task.completed;
+
+    setTasks(tasks.map(t =>
+      t.id === id ? { ...t, completed: newCompletedState } : t
     ));
-    setPriorities(priorities.map(task =>
-      task.id === id ? { ...task, completed: newCompletedState } : task
+    setPriorities(priorities.map(t =>
+      t.id === id ? { ...t, completed: newCompletedState } : t
     ));
-    
+
+    // Show toast with undo action for completion
+    if (newCompletedState) {
+      const { dismiss } = toast({
+        title: "Task completed",
+        description: task.title.length > 30
+          ? task.title.substring(0, 30) + "..."
+          : task.title,
+        action: (
+          <ToastAction altText="Undo" onClick={() => {
+            // Restore to incomplete
+            setTasks(prev => prev.map(t =>
+              t.id === id ? { ...t, completed: false } : t
+            ));
+            setPriorities(prev => prev.map(t =>
+              t.id === id ? { ...t, completed: false } : t
+            ));
+            dismiss();
+          }}>
+            Undo
+          </ToastAction>
+        ),
+      });
+    }
+
     // Sync to database
     if (user) {
       try {
         await supabase
           .from('tasks')
-          .update({ 
+          .update({
             is_completed: newCompletedState,
             status: newCompletedState ? 'completed' : 'pending'
           })
@@ -550,9 +577,31 @@ const Index = () => {
   };
 
   const handleDeleteTask = async (id: string) => {
+    // Store the deleted task for potential undo
+    const deletedTask = tasks.find(task => task.id === id);
+    if (!deletedTask) return;
+
+    // Remove from UI immediately
     setTasks(tasks.filter(task => task.id !== id));
     setPriorities(priorities.filter(task => task.id !== id));
-    
+
+    // Show toast with undo action
+    const { dismiss } = toast({
+      title: "Task deleted",
+      description: deletedTask.title.length > 30
+        ? deletedTask.title.substring(0, 30) + "..."
+        : deletedTask.title,
+      action: (
+        <ToastAction altText="Undo" onClick={() => {
+          // Restore the task
+          setTasks(prev => [...prev, deletedTask]);
+          dismiss();
+        }}>
+          Undo
+        </ToastAction>
+      ),
+    });
+
     // Soft-delete in database (set deleted_at timestamp)
     if (user) {
       try {
@@ -564,6 +613,98 @@ const Index = () => {
       } catch (err) {
         console.error('Error deleting task from database:', err);
       }
+    }
+  };
+
+  const handleClearCompletedTasks = () => {
+    const completedTasks = tasks.filter(t => t.completed);
+    if (completedTasks.length === 0) {
+      toast({
+        title: "No completed tasks",
+        description: "There are no completed tasks to clear.",
+      });
+      return;
+    }
+
+    // Remove completed tasks from UI
+    setTasks(tasks.filter(t => !t.completed));
+    setPriorities(priorities.filter(t => !t.completed));
+
+    // Show toast with undo action
+    const { dismiss } = toast({
+      title: "Cleared completed tasks",
+      description: `${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} removed`,
+      action: (
+        <ToastAction altText="Undo" onClick={() => {
+          // Restore all completed tasks
+          setTasks(prev => [...prev, ...completedTasks]);
+          dismiss();
+        }}>
+          Undo
+        </ToastAction>
+      ),
+    });
+
+    // Soft-delete in database
+    if (user) {
+      completedTasks.forEach(async (task) => {
+        try {
+          await supabase
+            .from('tasks')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', task.id)
+            .eq('user_id', user.id);
+        } catch (err) {
+          console.error('Error deleting completed task:', err);
+        }
+      });
+    }
+  };
+
+  const handleClearAllTasks = () => {
+    if (tasks.length === 0) {
+      toast({
+        title: "No tasks",
+        description: "There are no tasks to clear.",
+      });
+      return;
+    }
+
+    // Store all tasks for undo
+    const allTasks = [...tasks];
+
+    // Clear all tasks from UI
+    setTasks([]);
+    setPriorities([]);
+
+    // Show toast with undo action
+    const { dismiss } = toast({
+      title: "Cleared all tasks",
+      description: `${allTasks.length} task${allTasks.length > 1 ? 's' : ''} removed`,
+      action: (
+        <ToastAction altText="Undo" onClick={() => {
+          // Restore all tasks
+          setTasks(allTasks);
+          dismiss();
+        }}>
+          Undo
+        </ToastAction>
+      ),
+    });
+
+    // Soft-delete in database
+    if (user) {
+      allTasks.forEach(async (task) => {
+        try {
+          await supabase
+            .from('tasks')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', task.id)
+            .eq('user_id', user.id);
+        } catch (err) {
+          console.error('Error deleting task:', err);
+        }
+      });
     }
   };
 
@@ -858,7 +999,7 @@ const Index = () => {
     toast({ title: "Widget deleted", description: "Your potion inventory has been removed." });
   };
 
-  const handleUpdatePotionLevels = (widgetId: string, updates: Partial<Pick<PotionInventoryWidget, 'healthLevel' | 'manaLevel' | 'staminaLevel' | 'lastDecayTime'>>) => {
+  const handleUpdatePotionLevels = (widgetId: string, updates: Partial<PotionInventoryWidget>) => {
     setPotionInventoryWidgets(potionInventoryWidgets.map(widget => {
       if (widget.id === widgetId) {
         return { ...widget, ...updates };
@@ -881,6 +1022,12 @@ const Index = () => {
   const handleDeleteSunlightAnchorWidget = (widgetId: string) => {
     setSunlightAnchorWidgets(sunlightAnchorWidgets.filter(w => w.id !== widgetId));
     toast({ title: "Widget deleted", description: "Your sunlight anchor has been removed." });
+  };
+
+  const handleUpdateSunlightAnchorSettings = (widgetId: string, updates: Partial<SunlightAnchorWidget>) => {
+    setSunlightAnchorWidgets(sunlightAnchorWidgets.map(w =>
+      w.id === widgetId ? { ...w, ...updates } : w
+    ));
   };
 
   // Auto-reset widgets based on schedule
@@ -1550,6 +1697,7 @@ const Index = () => {
             onUpdatePotionLevels={handleUpdatePotionLevels}
             onAddSunlightAnchorWidget={handleAddSunlightAnchorWidget}
             onDeleteSunlightAnchorWidget={handleDeleteSunlightAnchorWidget}
+            onUpdateSunlightAnchorSettings={handleUpdateSunlightAnchorSettings}
           />
           <div className="flex items-center gap-2">
             <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 md:auto-cols-auto" style={{ gridTemplateColumns: `repeat(${dashboardTabs.filter(t => t.isVisible).length + customTabs.length}, minmax(0, 1fr))` }}>
@@ -1640,6 +1788,8 @@ const Index = () => {
                       showQuickActions={showQuickActions}
                       onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
                       showTimeConstraintView={showTimeConstraintView}
+                      onClearCompleted={handleClearCompletedTasks}
+                      onClearAll={handleClearAllTasks}
                     />
                   )
                 )}
@@ -1687,6 +1837,8 @@ const Index = () => {
                     showQuickActions={showQuickActions}
                     onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
                     showTimeConstraintView={showTimeConstraintView}
+                    onClearCompleted={handleClearCompletedTasks}
+                    onClearAll={handleClearAllTasks}
                   />
                 )}
               </div>

@@ -74,9 +74,10 @@ interface WidgetPanelProps {
   onAddThought: (widgetId: string, content: string) => void;
   onAddPotionInventoryWidget: () => void;
   onDeletePotionInventoryWidget: (id: string) => void;
-  onUpdatePotionLevels: (widgetId: string, updates: Partial<Pick<PotionInventoryWidget, 'healthLevel' | 'manaLevel' | 'staminaLevel' | 'lastDecayTime'>>) => void;
+  onUpdatePotionLevels: (widgetId: string, updates: Partial<PotionInventoryWidget>) => void;
   onAddSunlightAnchorWidget: () => void;
   onDeleteSunlightAnchorWidget: (id: string) => void;
+  onUpdateSunlightAnchorSettings: (widgetId: string, updates: Partial<SunlightAnchorWidget>) => void;
 }
 
 export function WidgetPanel({
@@ -124,6 +125,7 @@ export function WidgetPanel({
   onUpdatePotionLevels,
   onAddSunlightAnchorWidget,
   onDeleteSunlightAnchorWidget,
+  onUpdateSunlightAnchorSettings,
 }: WidgetPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -320,6 +322,7 @@ export function WidgetPanel({
                     widget={widget}
                     onEdit={() => {}}
                     onDelete={() => onDeleteSunlightAnchorWidget(widget.id)}
+                    onUpdateSettings={(updates) => onUpdateSunlightAnchorSettings(widget.id, updates)}
                   />
                 </div>
               ))}
