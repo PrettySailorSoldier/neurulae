@@ -55,6 +55,7 @@ const CommandPalette = lazy(() => import('@/components/CommandPalette').then(m =
 const FocusMode = lazy(() => import('@/components/FocusMode').then(m => ({ default: m.FocusMode })));
 const AnalyticsDashboard = lazy(() => import('@/components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
 const DailyReviewPrompt = lazy(() => import('@/components/DailyReviewPrompt').then(m => ({ default: m.DailyReviewPrompt })));
+const DailyPlanningDialog = lazy(() => import('@/components/DailyPlanningDialog').then(m => ({ default: m.DailyPlanningDialog })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -173,6 +174,10 @@ const Index = () => {
   const [dailyReviewOpen, setDailyReviewOpen] = useState(false);
   const [lastReviewDate, setLastReviewDate] = useLocalStorage<string>('neurulae-last-review-date', '');
 
+  // Daily Planning
+  const [dailyPlanningOpen, setDailyPlanningOpen] = useState(false);
+  const [lastPlanningDate, setLastPlanningDate] = useLocalStorage<string>('neurulae-last-planning-date', '');
+
   // Analytics Dashboard (as a tab)
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -253,6 +258,28 @@ const Index = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusModeOpen]);
+
+  // Check for daily planning prompt (show in morning)
+  useEffect(() => {
+    const checkDailyPlanning = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const today = now.toISOString().split('T')[0];
+
+      // Show planning dialog between 6 AM and 11 AM if not shown today
+      if (hour >= 6 && hour <= 11 && lastPlanningDate !== today) {
+        // Only show if user has incomplete tasks
+        if (tasks.filter(t => !t.completed).length > 0) {
+          setDailyPlanningOpen(true);
+        }
+      }
+    };
+
+    // Check on mount and every 30 minutes
+    checkDailyPlanning();
+    const interval = setInterval(checkDailyPlanning, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [lastPlanningDate, tasks]);
 
   // Check for daily review prompt (show near bedtime)
   useEffect(() => {
@@ -916,6 +943,68 @@ const Index = () => {
     toast({
       title: "Task Scheduled",
       description: "Your task has been added to the schedule.",
+    });
+  };
+
+  const handleBreakdownTask = async (task: Task) => {
+    try {
+      toast({
+        title: "Breaking down task...",
+        description: "AI is generating subtasks for you.",
+      });
+
+      const { data, error } = await supabase.functions.invoke('breakdown-task', {
+        body: {
+          taskTitle: task.title,
+          taskDescription: task.notes,
+          estimatedMinutes: task.estimatedMinutes,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.subtasks && Array.isArray(data.subtasks)) {
+        const subtasks = data.subtasks.map((st: any) => ({
+          id: crypto.randomUUID(),
+          title: st.title,
+          completed: false,
+        }));
+
+        handleUpdateTask({
+          ...task,
+          subtasks,
+        });
+
+        toast({
+          title: "Task broken down!",
+          description: `Added ${subtasks.length} subtasks to help you get started.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error breaking down task:', error);
+      toast({
+        title: "Failed to break down task",
+        description: "There was an error generating subtasks. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDailyPlanningComplete = (selectedTaskIds: string[]) => {
+    // Mark selected tasks as "daily" type
+    setTasks(tasks.map(task =>
+      selectedTaskIds.includes(task.id)
+        ? { ...task, type: 'daily' as const }
+        : task
+    ));
+
+    // Update last planning date
+    const today = new Date().toISOString().split('T')[0];
+    setLastPlanningDate(today);
+
+    toast({
+      title: "Day planned!",
+      description: `You've selected ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''} to focus on today.`,
     });
   };
 
@@ -1884,6 +1973,7 @@ const Index = () => {
                       onPrioritize={handlePrioritizeTasks}
                       onScheduleTasks={handleScheduleTasks}
                       onAskAI={handleAskAI}
+                      onBreakdownTask={handleBreakdownTask}
                       onOpenAIChat={handleOpenAIChat}
                       onStartIntention={startIntention}
                       activeIntentionId={activeIntention?.taskId}
@@ -2525,6 +2615,19 @@ const Index = () => {
           onSelectTask={(task) => setFocusModeTask(task)}
         />
       </Suspense>
+
+      {/* Daily Planning Dialog */}
+      {dailyPlanningOpen && (
+        <Suspense fallback={null}>
+          <DailyPlanningDialog
+            open={dailyPlanningOpen}
+            onOpenChange={setDailyPlanningOpen}
+            tasks={tasks}
+            onPlanComplete={handleDailyPlanningComplete}
+            availableMinutesToday={480}
+          />
+        </Suspense>
+      )}
 
       {/* Daily Review Prompt */}
       {dailyReviewOpen && (
