@@ -37,6 +37,7 @@ interface TaskListProps {
     order?: number;
   }>) => void;
   onAskAI?: (message: string) => void;
+  onBreakdownTask?: (task: Task) => void;
   onOpenAIChat?: (context: string) => void;
   onStartIntention?: (task: Task) => void;
   activeIntentionId?: string | null;
@@ -132,6 +133,7 @@ const TaskListComponent = ({
   onPrioritize,
   onScheduleTasks,
   onAskAI,
+  onBreakdownTask,
   onOpenAIChat,
   onStartIntention,
   activeIntentionId,
@@ -437,6 +439,7 @@ const TaskListComponent = ({
                               onUpdateTask={onUpdateTask}
                               onDeleteTask={onDeleteTask}
                               onAskAI={onAskAI}
+                              onBreakdownTask={onBreakdownTask}
                               onStartIntention={onStartIntention}
                               isActiveIntention={activeIntentionId === task.id}
                               showQuickActions={showQuickActions}
@@ -459,6 +462,7 @@ const TaskListComponent = ({
                                     onUpdateTask={onUpdateTask}
                                     onDeleteTask={onDeleteTask}
                                     onAskAI={onAskAI}
+                                    onBreakdownTask={onBreakdownTask}
                                     onStartIntention={onStartIntention}
                                     isActiveIntention={activeIntentionId === task.id}
                                     showQuickActions={showQuickActions}
@@ -490,6 +494,7 @@ const TaskListComponent = ({
                               onUpdateTask={onUpdateTask}
                               onDeleteTask={onDeleteTask}
                               onAskAI={onAskAI}
+                              onBreakdownTask={onBreakdownTask}
                               onStartIntention={onStartIntention}
                               isActiveIntention={activeIntentionId === task.id}
                               showQuickActions={showQuickActions}
@@ -512,6 +517,7 @@ const TaskListComponent = ({
                                     onUpdateTask={onUpdateTask}
                                     onDeleteTask={onDeleteTask}
                                     onAskAI={onAskAI}
+                                    onBreakdownTask={onBreakdownTask}
                                     onStartIntention={onStartIntention}
                                     isActiveIntention={activeIntentionId === task.id}
                                     showQuickActions={showQuickActions}
