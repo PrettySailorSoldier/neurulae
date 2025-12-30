@@ -32,6 +32,7 @@ interface TaskSectionProps {
   showTimeConstraintView?: boolean;
   onClearCompleted?: () => void;
   onClearAll?: () => void;
+  onOpenDailyPlanning?: () => void;
 }
 
 export function TaskSection({
@@ -55,6 +56,7 @@ export function TaskSection({
   showTimeConstraintView,
   onClearCompleted,
   onClearAll,
+  onOpenDailyPlanning,
 }: TaskSectionProps) {
   return (
     <div className="lg:col-span-2" data-tutorial="tasks">
@@ -79,6 +81,7 @@ export function TaskSection({
         showTimeConstraintView={showTimeConstraintView}
         onClearCompleted={onClearCompleted}
         onClearAll={onClearAll}
+        onOpenDailyPlanning={onOpenDailyPlanning}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Plus, Search, Filter, Sparkles, Clock, MoreVertical, Trash2, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, Sparkles, Clock, MoreVertical, Trash2, CheckCircle2, Target } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +46,7 @@ interface TaskListProps {
   showTimeConstraintView?: boolean;
   onClearCompleted?: () => void;
   onClearAll?: () => void;
+  onOpenDailyPlanning?: () => void;
 }
 
 // Category labels with emojis
@@ -142,6 +143,7 @@ const TaskListComponent = ({
   showTimeConstraintView = false,
   onClearCompleted,
   onClearAll,
+  onOpenDailyPlanning,
 }: TaskListProps) => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -297,6 +299,18 @@ const TaskListComponent = ({
               </p>
             </div>
             <div className="flex gap-2">
+              {onOpenDailyPlanning && (
+                <Button
+                  onClick={onOpenDailyPlanning}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  title="Plan which tasks to focus on today"
+                >
+                  <Target className="h-4 w-4" />
+                  Plan Your Day
+                </Button>
+              )}
               {onToggleTimeConstraintView && (
                 <Button
                   onClick={onToggleTimeConstraintView}
