@@ -14,6 +14,7 @@ import { UnscheduledTaskItem } from './UnscheduledTaskItem';
 import { AIOrganizeDialog } from './AIOrganizeDialog';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from './premium/UpgradeModal';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BulkTaskInput {
   title: string;
@@ -154,6 +155,7 @@ const TaskListComponent = ({
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [groupBy, setGroupBy] = useState<'none' | 'category' | 'date'>('none');
   const { canUseAIFeatures, showUpgradeModal, upgradeModalOpen, setUpgradeModalOpen } = useFeatureLimit();
+  const isMobile = useIsMobile();
 
   // MEMOIZE: Filter calculations to prevent unnecessary re-renders
   const filteredTasks = useMemo(() => {
@@ -301,22 +303,23 @@ const TaskListComponent = ({
                 <Button
                   onClick={onToggleTimeConstraintView}
                   variant={showTimeConstraintView ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                  title="Toggle time-based task view"
+                  size={isMobile ? "icon" : "sm"}
+                  className={isMobile ? "" : "gap-2"}
+                  title={isMobile ? "Toggle time-based task view" : undefined}
                 >
                   <Clock className="h-4 w-4" />
-                  {showTimeConstraintView ? 'List View' : 'Time View'}
+                  {!isMobile && (showTimeConstraintView ? 'List View' : 'Time View')}
                 </Button>
               )}
               <Button
                 onClick={handleAIOrganize}
                 variant="outline"
-                size="sm"
-                className="gap-2"
+                size={isMobile ? "icon" : "sm"}
+                className={isMobile ? "" : "gap-2"}
+                title={isMobile ? "Organize with AI" : undefined}
               >
                 <Sparkles className="h-4 w-4" />
-                Organize with AI
+                {!isMobile && "Organize with AI"}
               </Button>
               {(onClearCompleted || onClearAll) && (
                 <DropdownMenu>
