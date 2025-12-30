@@ -312,7 +312,9 @@ export function UnscheduledTaskItem({
               e.stopPropagation();
               onBreakdownTask(task);
             }}
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            className={`h-6 w-6 p-0 transition-opacity ${
+              isMobile ? 'opacity-70' : 'opacity-0 group-hover:opacity-100'
+            }`}
             title="Break down this task with AI"
             aria-label="Break down task"
           >
