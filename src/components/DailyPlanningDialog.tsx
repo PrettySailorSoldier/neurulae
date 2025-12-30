@@ -88,6 +88,7 @@ export function DailyPlanningDialog({
 
   const handleSkip = () => {
     setSelectedTaskIds(new Set());
+    onPlanComplete([]); // Call with empty array to mark as completed without selecting tasks
     onOpenChange(false);
   };
 
