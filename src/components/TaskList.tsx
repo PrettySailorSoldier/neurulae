@@ -297,7 +297,7 @@ const TaskListComponent = ({
             <div className="min-w-0 flex-1">
               <CardTitle className="text-lg">To-Do List</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {incompleteTasks.length} tasks remaining
+                {filteredTasks.filter(t => !t.completed).length} tasks remaining
               </p>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -317,12 +317,6 @@ const TaskListComponent = ({
                 <Button
                   onClick={onToggleTimeConstraintView}
                   variant={showTimeConstraintView ? "default" : "outline"}
-                  size={isMobile ? "icon" : "sm"}
-                  className={isMobile ? "" : "gap-2"}
-                  title={isMobile ? "Toggle time-based task view" : undefined}
-                >
-                  <Clock className="h-4 w-4" />
-                  {!isMobile && (showTimeConstraintView ? 'List View' : 'Time View')}
                   size="sm"
                   className="h-8 px-2.5"
                   title="Toggle time-based task view"
@@ -334,12 +328,6 @@ const TaskListComponent = ({
               <Button
                 onClick={handleAIOrganize}
                 variant="outline"
-                size={isMobile ? "icon" : "sm"}
-                className={isMobile ? "" : "gap-2"}
-                title={isMobile ? "Organize with AI" : undefined}
-              >
-                <Sparkles className="h-4 w-4" />
-                {!isMobile && "Organize with AI"}
                 size="sm"
                 className="h-8 px-2.5"
                 title="Organize tasks with AI"
