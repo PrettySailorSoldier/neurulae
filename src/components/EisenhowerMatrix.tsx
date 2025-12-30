@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Task } from '@/types';
 import { Grid3x3, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface EisenhowerMatrixProps {
   open: boolean;
@@ -43,6 +44,7 @@ const quadrantConfig = {
 
 function EisenhowerMatrix({ open, onOpenChange, tasks, onUpdateTask }: EisenhowerMatrixProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const getTasksByQuadrant = (quadrant: Quadrant) => {
     return tasks.filter(task => task.eisenhowerQuadrant === quadrant);
@@ -71,7 +73,10 @@ function EisenhowerMatrix({ open, onOpenChange, tasks, onUpdateTask }: Eisenhowe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+      <DialogContent className={cn(
+        "h-[90vh] flex flex-col",
+        isMobile ? "w-full max-w-full" : "max-w-6xl"
+      )}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Grid3x3 className="w-5 h-5" />

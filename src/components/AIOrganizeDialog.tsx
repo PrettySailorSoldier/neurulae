@@ -6,6 +6,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TimeBlock } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface AIOrganizeDialogProps {
   open: boolean;
@@ -38,6 +40,7 @@ export function AIOrganizeDialog({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Automatically trigger organization when dialog opens
   useEffect(() => {
@@ -206,7 +209,10 @@ export function AIOrganizeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className={cn(
+        "max-h-[80vh] overflow-y-auto",
+        isMobile ? "w-full max-w-full" : "max-w-2xl"
+      )}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
