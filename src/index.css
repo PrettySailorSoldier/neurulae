@@ -229,6 +229,47 @@
     color: hsl(var(--muted-foreground));
     opacity: 1;
   }
+
+  /* Fix invisible text in dialogs, sheets, and popovers with custom themes */
+  [role="dialog"],
+  [data-radix-popper-content-wrapper],
+  .sheet-content,
+  [data-state="open"] {
+    /* Ensure text inherits from proper foreground */
+    color: hsl(var(--foreground));
+  }
+
+  /* Ensure labels are always visible */
+  label,
+  .label {
+    color: hsl(var(--foreground));
+  }
+
+  /* Select trigger text visibility fix */
+  [data-radix-select-trigger] span,
+  [role="combobox"] span {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Sheet/Dialog content text visibility */
+  [data-radix-dialog-content],
+  [data-radix-sheet-content] {
+    color: hsl(var(--card-foreground));
+  }
+
+  /* Fix for buttons in overlays */
+  [role="dialog"] button:not([class*="bg-"]),
+  [data-radix-sheet-content] button:not([class*="bg-"]) {
+    color: hsl(var(--foreground));
+  }
+
+  /* Ensure time inputs are visible */
+  input[type="time"],
+  input[type="date"],
+  input[type="datetime-local"] {
+    color: hsl(var(--foreground)) !important;
+    background-color: hsl(var(--input));
+  }
 }
 
 @layer base {

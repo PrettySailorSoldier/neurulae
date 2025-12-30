@@ -12,6 +12,7 @@ import { syncService } from '@/services/syncService';
 import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme, DashboardTab } from '@/types';
 import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil, Flame, Trash2, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
+import { autoOptimizeThemeColors } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -468,7 +469,10 @@ const Index = () => {
 
     // Apply custom theme if selected
     if (theme === 'custom' && customTheme) {
-      Object.entries(customTheme.colors).forEach(([key, value]) => {
+      // Auto-optimize text colors for WCAG compliance (fixes invisible text issue)
+      const optimizedColors = autoOptimizeThemeColors(customTheme.colors as Record<string, string>);
+      
+      Object.entries(optimizedColors).forEach(([key, value]) => {
         const cssVar = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         root.style.setProperty(cssVar, value);
       });
@@ -1058,15 +1062,34 @@ const Index = () => {
 
   // Potion Inventory Widget handlers
   const handleAddPotionInventoryWidget = () => {
+    const now = new Date().toISOString();
     const newWidget: PotionInventoryWidget = {
       id: crypto.randomUUID(),
       type: 'potion-inventory',
       title: 'Potion Inventory',
+      // New required fields
+      foodLevel: 100,
+      waterLevel: 100,
+      sleepLevel: 100,
+      lastFoodTime: now,
+      lastWaterTime: now,
+      lastSleepTime: now,
+      wakeTime: '07:00',
+      mealSchedule: {
+        breakfast: '07:00',
+        morningSnack: '10:00',
+        lunch: '12:30',
+        afternoonSnack: '15:00',
+        dinner: '18:30',
+        bedtime: '22:00',
+      },
+      useCustomSchedule: false,
+      decayEnabled: true,
+      // Legacy fields for backwards compatibility
       healthLevel: 100,
       manaLevel: 100,
       staminaLevel: 100,
-      lastDecayTime: new Date().toISOString(),
-      decayEnabled: true,
+      lastDecayTime: now,
     };
     setPotionInventoryWidgets([...potionInventoryWidgets, newWidget]);
     toast({ title: "Potion Inventory created", description: "Track your health, mana, and stamina." });
@@ -1092,6 +1115,7 @@ const Index = () => {
       id: crypto.randomUUID(),
       type: 'sunlight-anchor',
       title: 'Sunlight Anchor',
+      useGeolocation: true, // Try geolocation by default
     };
     setSunlightAnchorWidgets([...sunlightAnchorWidgets, newWidget]);
     toast({ title: "Sunlight Anchor created", description: "Visual time awareness without numbers." });
