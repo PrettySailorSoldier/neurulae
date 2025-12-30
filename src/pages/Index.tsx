@@ -50,6 +50,10 @@ const KeyboardShortcutsDialog = lazy(() => import('@/components/KeyboardShortcut
 const FocusTimer = lazy(() => import('@/components/FocusTimer').then(m => ({ default: m.FocusTimer })));
 const TimeConstraintTaskView = lazy(() => import('@/components/TimeConstraintTaskView').then(m => ({ default: m.TimeConstraintTaskView })));
 const RoutineTemplate = lazy(() => import('@/components/RoutineTemplate').then(m => ({ default: m.RoutineTemplate })));
+const CommandPalette = lazy(() => import('@/components/CommandPalette').then(m => ({ default: m.CommandPalette })));
+const FocusMode = lazy(() => import('@/components/FocusMode').then(m => ({ default: m.FocusMode })));
+const AnalyticsDashboard = lazy(() => import('@/components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
+const DailyReviewPrompt = lazy(() => import('@/components/DailyReviewPrompt').then(m => ({ default: m.DailyReviewPrompt })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -157,6 +161,20 @@ const Index = () => {
   const [aiFirstMode] = useLocalStorage('neurulae-ai-first-mode', false);
   const [showQuickActions] = useLocalStorage('neurulae-ai-quick-actions', true);
 
+  // Command Palette
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Focus Mode
+  const [focusModeOpen, setFocusModeOpen] = useState(false);
+  const [focusModeTask, setFocusModeTask] = useState<Task | null>(null);
+
+  // Daily Review
+  const [dailyReviewOpen, setDailyReviewOpen] = useState(false);
+  const [lastReviewDate, setLastReviewDate] = useLocalStorage<string>('neurulae-last-review-date', '');
+
+  // Analytics Dashboard (as a tab)
+  const [activeTab, setActiveTab] = useState('dashboard');
+
   const { toast } = useToast();
 
   // Active Intention Banner - for focus tracking
@@ -196,6 +214,66 @@ const Index = () => {
       setHasSeenTutorial(true);
     }
   }, [hasSeenTutorial, setHasSeenTutorial]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Command/Ctrl + K for Command Palette
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+      // Escape to close focus mode
+      if (e.key === 'Escape' && focusModeOpen) {
+        setFocusModeOpen(false);
+      }
+      // N for new task (when not in input)
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+      // F for focus mode
+      if (e.key === 'f' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setFocusModeOpen(true);
+      }
+      // A for AI assistant
+      if (e.key === 'a' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setIsAIAssistantOpen(true);
+      }
+      // ? for keyboard shortcuts help
+      if (e.key === '?' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setKeyboardShortcutsOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusModeOpen]);
+
+  // Check for daily review prompt (show near bedtime)
+  useEffect(() => {
+    const checkDailyReview = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const today = now.toISOString().split('T')[0];
+
+      // Show review prompt between 8 PM and 11 PM if not shown today
+      if (hour >= 20 && hour <= 23 && lastReviewDate !== today) {
+        // Only show if user has some tasks
+        if (tasks.length > 0) {
+          setDailyReviewOpen(true);
+        }
+      }
+    };
+
+    // Check on mount and every 30 minutes
+    checkDailyReview();
+    const interval = setInterval(checkDailyReview, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [lastReviewDate, tasks.length]);
 
   // Download cloud data when user logs in (cross-device sync)
   useEffect(() => {
@@ -2386,6 +2464,60 @@ const Index = () => {
             onUpdatePlaybook={(updated) => {
               handleUpdatePlaybook(updated.id, updated);
               setSelectedRoutine(updated);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Command Palette (Cmd+K) */}
+      <Suspense fallback={null}>
+        <CommandPalette
+          open={commandPaletteOpen}
+          onOpenChange={setCommandPaletteOpen}
+          onAddTask={(title, estimatedMinutes, taskType) => {
+            handleAddTask(title, estimatedMinutes, taskType);
+          }}
+          onOpenAIChat={() => setIsAIAssistantOpen(true)}
+          onOpenTimer={() => setMobileTab('timeline')}
+          onOpenFocusMode={() => setFocusModeOpen(true)}
+          onToggleTheme={() => setCustomThemeBuilderOpen(true)}
+          tasks={tasks}
+          currentTab={activeTab}
+          onChangeTab={setActiveTab}
+        />
+      </Suspense>
+
+      {/* Focus Mode */}
+      <Suspense fallback={null}>
+        <FocusMode
+          isOpen={focusModeOpen}
+          onClose={() => setFocusModeOpen(false)}
+          task={focusModeTask}
+          onCompleteTask={(taskId) => {
+            setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: true } : t));
+            toast({ title: "Task completed!", description: "Great focus session!" });
+          }}
+          tasks={tasks.filter(t => !t.completed)}
+          onSelectTask={(task) => setFocusModeTask(task)}
+        />
+      </Suspense>
+
+      {/* Daily Review Prompt */}
+      {dailyReviewOpen && (
+        <Suspense fallback={null}>
+          <DailyReviewPrompt
+            tasks={tasks}
+            onClose={() => {
+              setDailyReviewOpen(false);
+              setLastReviewDate(new Date().toISOString().split('T')[0]);
+            }}
+            onAddTask={(title) => handleAddTask(title)}
+            lastReviewDate={lastReviewDate}
+            onSaveReview={(date, notes) => {
+              setLastReviewDate(date);
+              if (notes) {
+                toast({ title: "Review saved", description: "Good night! See you tomorrow." });
+              }
             }}
           />
         </Suspense>

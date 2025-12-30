@@ -9,6 +9,7 @@ interface ScheduleSectionProps {
   onUpdateTimeBlock: (id: string, blockData: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
   onDeleteTimeBlock: (id: string) => void;
   onAddTask: (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
+  onScheduleTask?: (scheduledTask: Omit<ScheduledTask, 'id'>) => void;
 }
 
 export function ScheduleSection({
@@ -19,6 +20,7 @@ export function ScheduleSection({
   onUpdateTimeBlock,
   onDeleteTimeBlock,
   onAddTask,
+  onScheduleTask,
 }: ScheduleSectionProps) {
   return (
     <div className="lg:col-span-3" data-tutorial="timeline">
@@ -30,6 +32,7 @@ export function ScheduleSection({
         onUpdateTimeBlock={onUpdateTimeBlock}
         onDeleteTimeBlock={onDeleteTimeBlock}
         onAddTask={onAddTask}
+        onScheduleTask={onScheduleTask}
       />
     </div>
   );

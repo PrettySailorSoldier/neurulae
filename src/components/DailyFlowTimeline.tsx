@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
-import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { format } from 'date-fns';
 import {
   timeToPercentage,
   getCurrentTimePercentage,
@@ -45,6 +47,7 @@ interface DailyFlowTimelineProps {
   onUpdateTimeBlock: (id: string, block: Omit<TimeBlock, 'id' | 'createdAt'>) => void;
   onDeleteTimeBlock: (id: string) => void;
   onAddTask?: (task: Omit<Task, 'id' | 'createdAt'>) => void;
+  onScheduleTask?: (scheduledTask: Omit<ScheduledTask, 'id'>) => void;
 }
 
 export function DailyFlowTimeline({
@@ -55,6 +58,7 @@ export function DailyFlowTimeline({
   onUpdateTimeBlock,
   onDeleteTimeBlock,
   onAddTask,
+  onScheduleTask,
 }: DailyFlowTimelineProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -183,6 +187,54 @@ export function DailyFlowTimeline({
     }
   };
 
+  // Handle drag-and-drop of tasks onto time blocks
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+    
+    // Dropped outside a valid droppable
+    if (!destination) return;
+    
+    // Check if dropped on a time block (droppableId starts with 'timeblock-')
+    if (destination.droppableId.startsWith('timeblock-')) {
+      const blockId = destination.droppableId.replace('timeblock-', '');
+      const taskId = draggableId.replace('task-', '');
+      
+      // Find the task to get its details
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      
+      // Check if already scheduled to this block today
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const alreadyScheduled = scheduledTasks.some(
+        st => st.taskId === taskId && st.blockId === blockId && st.date === today
+      );
+      
+      if (alreadyScheduled) {
+        toast({
+          title: "Already Scheduled",
+          description: `"${task.title}" is already scheduled to this time block today.`,
+          variant: "default",
+        });
+        return;
+      }
+      
+      // Create the scheduled task
+      if (onScheduleTask) {
+        onScheduleTask({
+          taskId,
+          blockId,
+          date: today,
+          estimatedMinutes: task.estimatedMinutes,
+        });
+        
+        toast({
+          title: "Task Scheduled",
+          description: `"${task.title}" has been scheduled to this time block.`,
+        });
+      }
+    }
+  };
+
   const formatTime = (date: Date) => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
@@ -286,36 +338,75 @@ export function DailyFlowTimeline({
     const topPercentage = timeToPercentage(block.startTime);
     const bottomPercentage = timeToPercentage(block.endTime);
     const height = bottomPercentage - topPercentage;
+    
+    // Get tasks scheduled to this block today
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const scheduledToBlock = scheduledTasks.filter(
+      st => st.blockId === block.id && st.date === today
+    );
+    const scheduledTaskDetails = scheduledToBlock
+      .map(st => tasks.find(t => t.id === st.taskId))
+      .filter(Boolean);
 
     return (
-      <div
-        key={block.id}
-        className={`absolute border rounded-lg p-1.5 cursor-pointer transition-all hover:shadow-lg ${
-          isActive ? 'bg-primary/20 border-primary ring-2 ring-primary/50' : 'bg-card/80 border-border'
-        }`}
-        style={{
-          top: `${topPercentage}%`,
-          height: `${height}%`,
-          left: '80px',
-          right: '8px',
-          backgroundColor: block.color ? `${block.color}20` : undefined,
-          borderColor: block.color || undefined,
-          zIndex: 3,
-        }}
-        onClick={() => {
-          setEditingBlock(block);
-          setIsTimeBlockEditorOpen(true);
-        }}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <h4 className="font-semibold text-xs truncate">{block.title}</h4>
-            <p className="text-[10px] text-muted-foreground">
-              {block.startTime} - {block.endTime}
-            </p>
+      <Droppable key={block.id} droppableId={`timeblock-${block.id}`}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={cn(
+              "absolute border rounded-lg p-1.5 cursor-pointer transition-all hover:shadow-lg",
+              isActive ? 'bg-primary/20 border-primary ring-2 ring-primary/50' : 'bg-card/80 border-border',
+              snapshot.isDraggingOver && 'ring-2 ring-green-500/50 bg-green-500/10 border-green-500'
+            )}
+            style={{
+              top: `${topPercentage}%`,
+              height: `${height}%`,
+              left: '80px',
+              right: '8px',
+              backgroundColor: snapshot.isDraggingOver 
+                ? undefined // Let the className handle it
+                : (block.color ? `${block.color}20` : undefined),
+              borderColor: snapshot.isDraggingOver ? undefined : (block.color || undefined),
+              zIndex: snapshot.isDraggingOver ? 10 : 3,
+            }}
+            onClick={() => {
+              setEditingBlock(block);
+              setIsTimeBlockEditorOpen(true);
+            }}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-xs truncate">{block.title}</h4>
+                <p className="text-[10px] text-muted-foreground">
+                  {block.startTime} - {block.endTime}
+                </p>
+                {/* Show scheduled tasks count */}
+                {scheduledTaskDetails.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-0.5">
+                    {scheduledTaskDetails.slice(0, 3).map((t, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-[9px] px-1 py-0 truncate max-w-[80px]">
+                        {t?.title}
+                      </Badge>
+                    ))}
+                    {scheduledTaskDetails.length > 3 && (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0">
+                        +{scheduledTaskDetails.length - 3}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              {snapshot.isDraggingOver && (
+                <div className="flex-shrink-0 text-green-600">
+                  <Plus className="h-4 w-4" />
+                </div>
+              )}
+            </div>
+            {provided.placeholder}
           </div>
-        </div>
-      </div>
+        )}
+      </Droppable>
     );
   };
 
@@ -500,7 +591,8 @@ export function DailyFlowTimeline({
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Timeline View (3/4 width on large screens) */}
         <div className={cn("space-y-3", viewMode === 'timeline' ? 'lg:col-span-3' : 'lg:col-span-4')}>
           {viewMode === 'timeline' ? (
@@ -630,19 +722,57 @@ export function DailyFlowTimeline({
                     No tasks available right now
                   </p>
                 ) : (
-                  availableTasks.slice(0, 5).map(task => (
-                    <div
-                      key={task.id}
-                      className="p-2 rounded-md bg-green-500/10 border border-green-500/20 text-xs"
-                    >
-                      <p className="font-medium truncate">{task.title}</p>
-                      {task.taskType && (
-                        <Badge variant="outline" className="text-[9px] mt-1">
-                          {task.taskType}
-                        </Badge>
-                      )}
-                    </div>
-                  ))
+                  <Droppable droppableId="available-tasks" isDropDisabled={true}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="space-y-1"
+                      >
+                        {availableTasks.slice(0, 8).map((task, index) => (
+                          <Draggable
+                            key={task.id}
+                            draggableId={`task-${task.id}`}
+                            index={index}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  "p-2 rounded-md bg-green-500/10 border border-green-500/20 text-xs flex items-center gap-2 group cursor-grab active:cursor-grabbing",
+                                  snapshot.isDragging && "shadow-lg ring-2 ring-primary/50 bg-card"
+                                )}
+                              >
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="flex-shrink-0 text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <GripVertical className="h-3.5 w-3.5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{task.title}</p>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    {task.taskType && (
+                                      <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                        {task.taskType}
+                                      </Badge>
+                                    )}
+                                    {task.estimatedMinutes && (
+                                      <span className="text-[9px] text-muted-foreground">
+                                        ~{task.estimatedMinutes}m
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
                 )}
                 {availableTasks.length > 5 && (
                   <p className="text-[10px] text-muted-foreground text-center">
@@ -737,6 +867,7 @@ export function DailyFlowTimeline({
           </div>
         )}
       </div>
+      </DragDropContext>
 
       {/* Category Filters (only show if there are schedule entries) */}
       {scheduleEntries.length > 0 && (
