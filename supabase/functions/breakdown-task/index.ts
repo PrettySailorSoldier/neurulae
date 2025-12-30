@@ -1,17 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
-  // Handle CORS
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+
+  if (!LOVABLE_API_KEY) {
+    console.error('LOVABLE_API_KEY is not configured');
+    return new Response(
+      JSON.stringify({ error: 'AI service not configured' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -20,7 +28,7 @@ serve(async (req) => {
     if (!taskTitle) {
       return new Response(
         JSON.stringify({ error: 'Task title is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -71,10 +79,11 @@ Please provide 3-7 actionable subtasks in JSON format.`,
     });
 
     if (!aiResponse.ok) {
-      console.error('AI API error:', await aiResponse.text());
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
       return new Response(
-        JSON.stringify({ error: 'Failed to generate subtasks' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Failed to generate subtasks', details: errorText }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -84,7 +93,7 @@ Please provide 3-7 actionable subtasks in JSON format.`,
     if (!content) {
       return new Response(
         JSON.stringify({ error: 'No response from AI' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -103,7 +112,7 @@ Please provide 3-7 actionable subtasks in JSON format.`,
       console.error('Failed to parse AI response:', content);
       return new Response(
         JSON.stringify({ error: 'Failed to parse AI response', rawResponse: content }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -111,30 +120,19 @@ Please provide 3-7 actionable subtasks in JSON format.`,
     if (!Array.isArray(subtasks) || subtasks.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Invalid subtasks format' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     return new Response(
       JSON.stringify({ subtasks }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error in breakdown-task function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
+      JSON.stringify({ error: error.message || 'Unknown error occurred' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Plus, Search, Filter, Sparkles, Clock, MoreVertical, Trash2, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, Sparkles, Clock, MoreVertical, Trash2, CheckCircle2, Target } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +47,7 @@ interface TaskListProps {
   showTimeConstraintView?: boolean;
   onClearCompleted?: () => void;
   onClearAll?: () => void;
+  onOpenDailyPlanning?: () => void;
 }
 
 // Category labels with emojis
@@ -143,6 +144,7 @@ const TaskListComponent = ({
   showTimeConstraintView = false,
   onClearCompleted,
   onClearAll,
+  onOpenDailyPlanning,
 }: TaskListProps) => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -290,15 +292,27 @@ const TaskListComponent = ({
   return (
     <>
       <Card className="card-elevated h-full flex flex-col">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>✓ To-Do List</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                All your tasks - add details, subtasks, and notes
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-lg">To-Do List</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {incompleteTasks.length} tasks remaining
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {onOpenDailyPlanning && (
+                <Button
+                  onClick={onOpenDailyPlanning}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5"
+                  title="Plan which tasks to focus on today"
+                >
+                  <Target className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Plan Day</span>
+                </Button>
+              )}
               {onToggleTimeConstraintView && (
                 <Button
                   onClick={onToggleTimeConstraintView}
@@ -309,6 +323,12 @@ const TaskListComponent = ({
                 >
                   <Clock className="h-4 w-4" />
                   {!isMobile && (showTimeConstraintView ? 'List View' : 'Time View')}
+                  size="sm"
+                  className="h-8 px-2.5"
+                  title="Toggle time-based task view"
+                >
+                  <Clock className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">{showTimeConstraintView ? 'List' : 'Time'}</span>
                 </Button>
               )}
               <Button
@@ -320,11 +340,17 @@ const TaskListComponent = ({
               >
                 <Sparkles className="h-4 w-4" />
                 {!isMobile && "Organize with AI"}
+                size="sm"
+                className="h-8 px-2.5"
+                title="Organize tasks with AI"
+              >
+                <Sparkles className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">AI</span>
               </Button>
               {(onClearCompleted || onClearAll) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8">
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -349,19 +375,19 @@ const TaskListComponent = ({
               )}
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex gap-2 mt-3">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search tasks..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-8 h-8 text-sm"
               />
             </div>
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as 'none' | 'category' | 'date')}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Group by" />
+              <SelectTrigger className="w-[100px] h-8 text-sm">
+                <SelectValue placeholder="Group" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No grouping</SelectItem>
@@ -371,48 +397,50 @@ const TaskListComponent = ({
             </Select>
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
+              className="h-8 w-8 p-0"
               onClick={() => setShowCompleted(!showCompleted)}
+              title={showCompleted ? "Hide completed" : "Show completed"}
             >
               <Filter className={`h-4 w-4 ${showCompleted ? 'text-primary' : ''}`} />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 flex-1 flex flex-col overflow-hidden">
+        <CardContent className="space-y-2 flex-1 flex flex-col overflow-hidden pt-0">
           <div className="space-y-2">
-            <div className="flex gap-2 items-center">
-              <Button
-                variant={bulkMode ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setBulkMode(!bulkMode)}
-                className="text-xs"
-              >
-                {bulkMode ? 'Single' : 'Bulk'} Add
-              </Button>
-            </div>
-            
             {bulkMode ? (
               <div className="space-y-2">
                 <Textarea
                   placeholder="Paste your task list here... (one task per line)"
                   value={bulkText}
                   onChange={(e) => setBulkText(e.target.value)}
-                  className="min-h-[120px] resize-none"
+                  className="min-h-[100px] resize-none text-sm"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={handleBulkAdd} className="btn-primary flex-1" disabled={bulkAddLoading}>
-                    {bulkAddLoading ? 'Saving...' : 'Add All Tasks'}
+                  <Button onClick={handleBulkAdd} className="btn-primary flex-1 h-8 text-sm" disabled={bulkAddLoading}>
+                    {bulkAddLoading ? 'Saving...' : 'Add All'}
                   </Button>
-                  <Button onClick={() => { setBulkText(''); setBulkMode(false); }} variant="outline" disabled={bulkAddLoading}>
+                  <Button onClick={() => { setBulkText(''); setBulkMode(false); }} variant="outline" className="h-8 text-sm" disabled={bulkAddLoading}>
                     Cancel
                   </Button>
                 </div>
               </div>
             ) : (
-              <Button onClick={handleOpenTaskDialog} className="btn-primary w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Task
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleOpenTaskDialog} className="btn-primary flex-1 h-9">
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Add Task
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBulkMode(true)}
+                  className="h-9 px-3 text-xs"
+                  title="Add multiple tasks at once"
+                >
+                  Bulk
+                </Button>
+              </div>
             )}
           </div>
 

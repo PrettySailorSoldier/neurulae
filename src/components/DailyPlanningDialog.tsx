@@ -224,8 +224,8 @@ export function DailyPlanningDialog({
         </div>
 
         {/* Task Lists */}
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="space-y-4 pr-4">
+        <ScrollArea className="flex-1 min-h-0 max-h-[50vh] -mx-6 px-6">
+          <div className="space-y-4 pr-4 pb-4">
             {/* Priority Tasks */}
             {priorityTasks.length > 0 && (
               <div className="space-y-2">
@@ -253,14 +253,9 @@ export function DailyPlanningDialog({
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  {otherTasks.slice(0, 15).map(task => (
+                  {otherTasks.map(task => (
                     <TaskItem key={task.id} task={task} />
                   ))}
-                  {otherTasks.length > 15 && (
-                    <p className="text-xs text-muted-foreground text-center py-2">
-                      + {otherTasks.length - 15} more tasks available
-                    </p>
-                  )}
                 </div>
               </div>
             )}

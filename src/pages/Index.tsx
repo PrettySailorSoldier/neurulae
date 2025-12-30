@@ -259,27 +259,8 @@ const Index = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusModeOpen]);
 
-  // Check for daily planning prompt (show in morning)
-  useEffect(() => {
-    const checkDailyPlanning = () => {
-      const now = new Date();
-      const hour = now.getHours();
-      const today = now.toISOString().split('T')[0];
-
-      // Show planning dialog between 6 AM and 11 AM if not shown today
-      if (hour >= 6 && hour <= 11 && lastPlanningDate !== today) {
-        // Only show if user has incomplete tasks
-        if (tasks.filter(t => !t.completed).length > 0) {
-          setDailyPlanningOpen(true);
-        }
-      }
-    };
-
-    // Check on mount and every 30 minutes
-    checkDailyPlanning();
-    const interval = setInterval(checkDailyPlanning, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [lastPlanningDate, tasks]);
+  // Daily planning is now triggered manually via button - auto-open disabled
+  // Users can click the "Plan Your Day" button in the TaskList header
 
   // Check for daily review prompt (show near bedtime)
   useEffect(() => {
@@ -1958,6 +1939,7 @@ const Index = () => {
                         onDeleteTask={handleDeleteTask}
                         onAskAI={handleAskAI}
                         showQuickActions={showQuickActions}
+                        onBack={() => setShowTimeConstraintView(false)}
                       />
                     </Suspense>
                   ) : (
@@ -1982,6 +1964,7 @@ const Index = () => {
                       showTimeConstraintView={showTimeConstraintView}
                       onClearCompleted={handleClearCompletedTasks}
                       onClearAll={handleClearAllTasks}
+                      onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
                     />
                   )
                 )}
@@ -2007,6 +1990,7 @@ const Index = () => {
                         onDeleteTask={handleDeleteTask}
                         onAskAI={handleAskAI}
                         showQuickActions={showQuickActions}
+                        onBack={() => setShowTimeConstraintView(false)}
                       />
                     </Suspense>
                   </div>
@@ -2023,6 +2007,7 @@ const Index = () => {
                     onPrioritize={handlePrioritizeTasks}
                     onScheduleTasks={handleScheduleTasks}
                     onAskAI={handleAskAI}
+                    onBreakdownTask={handleBreakdownTask}
                     onOpenAIChat={handleOpenAIChat}
                     onStartIntention={startIntention}
                     activeIntentionId={activeIntention?.taskId}
@@ -2031,6 +2016,7 @@ const Index = () => {
                     showTimeConstraintView={showTimeConstraintView}
                     onClearCompleted={handleClearCompletedTasks}
                     onClearAll={handleClearAllTasks}
+                    onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
                   />
                 )}
               </div>
