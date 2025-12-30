@@ -144,10 +144,7 @@ Deno.serve(async (req) => {
     
     if (!validation.success) {
       return new Response(
-        JSON.stringify({ 
-          error: 'Invalid input', 
-          details: validation.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-        }),
+        JSON.stringify({ error: 'Invalid input' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
