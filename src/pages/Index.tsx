@@ -1939,6 +1939,7 @@ const Index = () => {
                         onDeleteTask={handleDeleteTask}
                         onAskAI={handleAskAI}
                         showQuickActions={showQuickActions}
+                        onBack={() => setShowTimeConstraintView(false)}
                       />
                     </Suspense>
                   ) : (
@@ -1989,6 +1990,7 @@ const Index = () => {
                         onDeleteTask={handleDeleteTask}
                         onAskAI={handleAskAI}
                         showQuickActions={showQuickActions}
+                        onBack={() => setShowTimeConstraintView(false)}
                       />
                     </Suspense>
                   </div>
