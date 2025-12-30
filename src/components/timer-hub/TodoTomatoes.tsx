@@ -1,7 +1,7 @@
 import { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X, Undo2, Edit2, Check } from 'lucide-react';
+import { Plus, X, Undo2, Edit2, Check, CheckSquare, Square } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
 
@@ -103,6 +103,32 @@ export const TodoTomatoes = memo(function TodoTomatoes() {
     e.preventDefault();
   };
 
+  const handleSelectAll = () => {
+    if (activeTodos.length === 0) {
+      toast.info('No active tasks to complete');
+      return;
+    }
+    setTodos(todos.map(t => ({ 
+      ...t, 
+      completed: true, 
+      completedAt: t.completed ? t.completedAt : new Date().toISOString() 
+    })));
+    toast.success(`🍅 ${activeTodos.length} tomatoes completed!`);
+  };
+
+  const handleDeselectAll = () => {
+    if (completedTodos.length === 0) {
+      toast.info('No completed tasks to deselect');
+      return;
+    }
+    setTodos(todos.map(t => ({ 
+      ...t, 
+      completed: false, 
+      completedAt: undefined 
+    })));
+    toast.success(`Deselected ${completedTodos.length} tasks`);
+  };
+
   const activeTodos = todos.filter(t => !t.completed);
   const completedTodos = todos.filter(t => t.completed);
   const todayCompletions = completedTodos.filter(t => {
@@ -161,10 +187,36 @@ export const TodoTomatoes = memo(function TodoTomatoes() {
           onDrop={(e) => handleDrop(e, false)}
           onDragOver={handleDragOver}
         >
-          <h4 className="font-semibold mb-3 text-center flex items-center justify-center gap-2">
-            <span>📝 To-Do</span>
-            <span className="text-xs text-muted-foreground">({activeTodos.length})</span>
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold flex items-center gap-2">
+              <span>📝 To-Do</span>
+              <span className="text-xs text-muted-foreground">({activeTodos.length})</span>
+            </h4>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleSelectAll}
+                disabled={activeTodos.length === 0}
+                className="h-7 px-2 text-xs hover:bg-primary/20"
+                title="Select All"
+              >
+                <CheckSquare className="h-3 w-3 mr-1" />
+                All
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDeselectAll}
+                disabled={completedTodos.length === 0}
+                className="h-7 px-2 text-xs hover:bg-accent/20"
+                title="Deselect All"
+              >
+                <Square className="h-3 w-3 mr-1" />
+                None
+              </Button>
+            </div>
+          </div>
           <div className="space-y-2">
             {activeTodos.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-8 animate-fade-in">
