@@ -36,7 +36,7 @@ const PlaybooksTab = lazy(() => import('@/components/PlaybooksTab').then(m => ({
 const WidgetPanel = lazy(() => import('@/components/WidgetPanel').then(m => ({ default: m.WidgetPanel })));
 const CalendarScheduler = lazy(() => import('@/components/CalendarScheduler').then(m => ({ default: m.CalendarScheduler })));
 const ChatPanel = lazy(() => import('@/components/ChatPanel').then(m => ({ default: m.ChatPanel })));
-const EisenhowerMatrix = lazy(() => import('@/components/EisenhowerMatrix').then(m => ({ default: m.EisenhowerMatrix })));
+const EisenhowerMatrix = lazy(() => import('@/components/EisenhowerMatrix'));
 const AIAssistant = lazy(() => import('@/components/AIAssistant').then(m => ({ default: m.AIAssistant })));
 const ReminderWidgetEditor = lazy(() => import('@/components/ReminderWidgetEditor').then(m => ({ default: m.ReminderWidgetEditor })));
 const EnergyTaskWidgetEditor = lazy(() => import('@/components/EnergyTaskWidgetEditor').then(m => ({ default: m.EnergyTaskWidgetEditor })));

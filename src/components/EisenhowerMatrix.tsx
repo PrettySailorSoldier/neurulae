@@ -41,7 +41,7 @@ const quadrantConfig = {
   },
 };
 
-export function EisenhowerMatrix({ open, onOpenChange, tasks, onUpdateTask }: EisenhowerMatrixProps) {
+function EisenhowerMatrix({ open, onOpenChange, tasks, onUpdateTask }: EisenhowerMatrixProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
 
   const getTasksByQuadrant = (quadrant: Quadrant) => {
@@ -159,3 +159,5 @@ export function EisenhowerMatrix({ open, onOpenChange, tasks, onUpdateTask }: Ei
     </Dialog>
   );
 }
+
+export default EisenhowerMatrix;
