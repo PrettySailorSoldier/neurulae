@@ -352,7 +352,7 @@ export function DailyFlowTimeline({
       .filter(Boolean);
 
     return (
-      <Droppable key={block.id} droppableId={`timeblock-${block.id}`}>
+      <Droppable key={block.id} droppableId={`timeblock-${block.id}`} type="TASK">
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}

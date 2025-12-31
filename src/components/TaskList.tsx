@@ -508,7 +508,7 @@ const TaskListComponent = ({
                         </span>
                       </div>
                       {groupBy === 'none' ? (
-                        <Droppable droppableId="daily-tasks" isDropDisabled={true}>
+                        <Droppable droppableId="daily-tasks" type="TASK">
                           {(provided) => (
                             <div
                               ref={provided.innerRef}
@@ -576,7 +576,7 @@ const TaskListComponent = ({
                         </span>
                       </div>
                       {groupBy === 'none' ? (
-                        <Droppable droppableId="ongoing-tasks" isDropDisabled={true}>
+                        <Droppable droppableId="ongoing-tasks" type="TASK">
                           {(provided) => (
                             <div
                               ref={provided.innerRef}
