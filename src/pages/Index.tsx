@@ -51,7 +51,6 @@ const OnboardingTutorial = lazy(() => import('@/components/OnboardingTutorial').
 const ProfileSetupDialog = lazy(() => import('@/components/ProfileSetupDialog').then(m => ({ default: m.ProfileSetupDialog })));
 const KeyboardShortcutsDialog = lazy(() => import('@/components/KeyboardShortcutsDialog').then(m => ({ default: m.KeyboardShortcutsDialog })));
 const FocusTimer = lazy(() => import('@/components/FocusTimer').then(m => ({ default: m.FocusTimer })));
-const TimeConstraintTaskView = lazy(() => import('@/components/TimeConstraintTaskView').then(m => ({ default: m.TimeConstraintTaskView })));
 const RoutineTemplate = lazy(() => import('@/components/RoutineTemplate').then(m => ({ default: m.RoutineTemplate })));
 const CommandPalette = lazy(() => import('@/components/CommandPalette').then(m => ({ default: m.CommandPalette })));
 const FocusMode = lazy(() => import('@/components/FocusMode').then(m => ({ default: m.FocusMode })));
@@ -1980,43 +1979,29 @@ const Index = () => {
                   />
                 )}
                 {mobileTab === 'tasks' && (
-                  showTimeConstraintView ? (
-                    <Suspense fallback={<ComponentLoader />}>
-                      <TimeConstraintTaskView
-                        tasks={tasks}
-                        onToggleComplete={handleToggleComplete}
-                        onUpdateTask={handleUpdateTask}
-                        onDeleteTask={handleDeleteTask}
-                        onAskAI={handleAskAI}
-                        showQuickActions={showQuickActions}
-                        onBack={() => setShowTimeConstraintView(false)}
-                      />
-                    </Suspense>
-                  ) : (
-                    <TaskSection
-                      tasks={tasks}
-                      timeBlocks={timeBlocks}
-                      userId={user?.id}
-                      onAddTask={handleAddTask}
-                      onBulkAddTasks={handleBulkAddTasks}
-                      onToggleComplete={handleToggleComplete}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      onPrioritize={handlePrioritizeTasks}
-                      onScheduleTasks={handleScheduleTasks}
-                      onAskAI={handleAskAI}
-                      onBreakdownTask={handleBreakdownTask}
-                      onOpenAIChat={handleOpenAIChat}
-                      onStartIntention={startIntention}
-                      activeIntentionId={activeIntention?.taskId}
-                      showQuickActions={showQuickActions}
-                      onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
-                      showTimeConstraintView={showTimeConstraintView}
-                      onClearCompleted={handleClearCompletedTasks}
-                      onClearAll={handleClearAllTasks}
-                      onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
-                    />
-                  )
+                  <TaskSection
+                    tasks={tasks}
+                    timeBlocks={timeBlocks}
+                    userId={user?.id}
+                    onAddTask={handleAddTask}
+                    onBulkAddTasks={handleBulkAddTasks}
+                    onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onPrioritize={handlePrioritizeTasks}
+                    onScheduleTasks={handleScheduleTasks}
+                    onAskAI={handleAskAI}
+                    onBreakdownTask={handleBreakdownTask}
+                    onOpenAIChat={handleOpenAIChat}
+                    onStartIntention={startIntention}
+                    activeIntentionId={activeIntention?.taskId}
+                    showQuickActions={showQuickActions}
+                    onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
+                    showTimeConstraintView={showTimeConstraintView}
+                    onClearCompleted={handleClearCompletedTasks}
+                    onClearAll={handleClearAllTasks}
+                    onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
+                  />
                 )}
               </div>
             ) : (
@@ -2033,46 +2018,30 @@ const Index = () => {
                     onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
                     useExternalDragContext={true}
                   />
-                  {showTimeConstraintView ? (
-                    <div className="lg:col-span-2">
-                      <Suspense fallback={<ComponentLoader />}>
-                        <TimeConstraintTaskView
-                          tasks={tasks}
-                          onToggleComplete={handleToggleComplete}
-                          onUpdateTask={handleUpdateTask}
-                          onDeleteTask={handleDeleteTask}
-                          onAskAI={handleAskAI}
-                          showQuickActions={showQuickActions}
-                          onBack={() => setShowTimeConstraintView(false)}
-                        />
-                      </Suspense>
-                    </div>
-                  ) : (
-                    <TaskSection
-                      tasks={tasks}
-                      timeBlocks={timeBlocks}
-                      userId={user?.id}
-                      onAddTask={handleAddTask}
-                      onBulkAddTasks={handleBulkAddTasks}
-                      onToggleComplete={handleToggleComplete}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      onPrioritize={handlePrioritizeTasks}
-                      onScheduleTasks={handleScheduleTasks}
-                      onAskAI={handleAskAI}
-                      onBreakdownTask={handleBreakdownTask}
-                      onOpenAIChat={handleOpenAIChat}
-                      onStartIntention={startIntention}
-                      activeIntentionId={activeIntention?.taskId}
-                      showQuickActions={showQuickActions}
-                      onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
-                      showTimeConstraintView={showTimeConstraintView}
-                      onClearCompleted={handleClearCompletedTasks}
-                      onClearAll={handleClearAllTasks}
-                      onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
-                      enableDragDrop={true}
-                    />
-                  )}
+                  <TaskSection
+                    tasks={tasks}
+                    timeBlocks={timeBlocks}
+                    userId={user?.id}
+                    onAddTask={handleAddTask}
+                    onBulkAddTasks={handleBulkAddTasks}
+                    onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                    onPrioritize={handlePrioritizeTasks}
+                    onScheduleTasks={handleScheduleTasks}
+                    onAskAI={handleAskAI}
+                    onBreakdownTask={handleBreakdownTask}
+                    onOpenAIChat={handleOpenAIChat}
+                    onStartIntention={startIntention}
+                    activeIntentionId={activeIntention?.taskId}
+                    showQuickActions={showQuickActions}
+                    onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
+                    showTimeConstraintView={showTimeConstraintView}
+                    onClearCompleted={handleClearCompletedTasks}
+                    onClearAll={handleClearAllTasks}
+                    onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
+                    enableDragDrop={true}
+                  />
                 </div>
               </DragDropContext>
             )}

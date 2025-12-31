@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Plus, Search, Filter, Sparkles, Clock, MoreVertical, Trash2, CheckCircle2, Target } from 'lucide-react';
+import { Plus, Search, Filter, Sparkles, Clock, MoreVertical, Trash2, CheckCircle2, Target, Sun, Moon, Calendar, Zap, Battery } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Task, TimeBlock } from '@/types';
 import { UnscheduledTaskItem } from './UnscheduledTaskItem';
 import { AIOrganizeDialog } from './AIOrganizeDialog';
@@ -16,6 +17,8 @@ import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from './premium/UpgradeModal';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface BulkTaskInput {
   title: string;
@@ -124,6 +127,152 @@ const groupByDate = (tasksToGroup: Task[]) => {
   return Object.entries(groups)
     .filter(([_, taskList]) => taskList.length > 0)
     .map(([label, taskList]) => ({ type: label, tasks: taskList }));
+};
+
+// Time-based category for the Time view mode
+interface TimeCategory {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+  tasks: Task[];
+  isAvailableNow: boolean;
+}
+
+// Group tasks by time constraints (for Time view mode)
+const groupByTimeConstraint = (tasksToGroup: Task[], currentHour: number): { available: TimeCategory[]; unavailable: TimeCategory[] } => {
+  const isBusinessHours = currentHour >= 8 && currentHour < 17;
+  const isMorning = currentHour >= 5 && currentHour < 12;
+  const isEvening = currentHour >= 17 && currentHour < 23;
+
+  const categories: TimeCategory[] = [];
+
+  // Business Hours Tasks (8am-5pm only)
+  const businessHoursTasks = tasksToGroup.filter(task => {
+    if (task.completed) return false;
+    if (task.timeConstraint === 'business-hours') return true;
+    if (task.taskType === 'call' || task.taskType === 'appointment') return true;
+    if (task.timeConstraint === 'custom' && task.customTimeWindow) {
+      const startHour = parseInt(task.customTimeWindow.startTime.split(':')[0]);
+      const endHour = parseInt(task.customTimeWindow.endTime.split(':')[0]);
+      return startHour >= 8 && endHour <= 17;
+    }
+    return false;
+  });
+
+  if (businessHoursTasks.length > 0) {
+    categories.push({
+      id: 'business-hours',
+      title: 'Business Hours Only',
+      description: '8am - 5pm',
+      icon: <Calendar className="h-4 w-4" />,
+      color: isBusinessHours ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground',
+      tasks: businessHoursTasks,
+      isAvailableNow: isBusinessHours,
+    });
+  }
+
+  // Morning Tasks
+  const morningTasks = tasksToGroup.filter(task => {
+    if (task.completed) return false;
+    if (task.timeConstraint === 'morning') return true;
+    if (task.timeConstraint === 'custom' && task.customTimeWindow) {
+      const startHour = parseInt(task.customTimeWindow.startTime.split(':')[0]);
+      return startHour >= 5 && startHour < 12;
+    }
+    return false;
+  });
+
+  if (morningTasks.length > 0) {
+    categories.push({
+      id: 'morning',
+      title: 'Morning Tasks',
+      description: '5am - 12pm',
+      icon: <Sun className="h-4 w-4" />,
+      color: isMorning ? 'text-orange-600 dark:text-orange-400' : 'text-muted-foreground',
+      tasks: morningTasks,
+      isAvailableNow: isMorning,
+    });
+  }
+
+  // Evening Tasks
+  const eveningTasks = tasksToGroup.filter(task => {
+    if (task.completed) return false;
+    if (task.timeConstraint === 'evening') return true;
+    if (task.timeConstraint === 'custom' && task.customTimeWindow) {
+      const startHour = parseInt(task.customTimeWindow.startTime.split(':')[0]);
+      return startHour >= 17;
+    }
+    return false;
+  });
+
+  if (eveningTasks.length > 0) {
+    categories.push({
+      id: 'evening',
+      title: 'Evening Tasks',
+      description: '5pm - 11pm',
+      icon: <Moon className="h-4 w-4" />,
+      color: isEvening ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground',
+      tasks: eveningTasks,
+      isAvailableNow: isEvening,
+    });
+  }
+
+  // High Energy Tasks
+  const highEnergyTasks = tasksToGroup.filter(task =>
+    !task.completed && task.energyLevel === 'high' && !task.timeConstraint
+  );
+
+  if (highEnergyTasks.length > 0) {
+    categories.push({
+      id: 'high-energy',
+      title: 'High Energy Required',
+      description: "Best when you're fresh",
+      icon: <Zap className="h-4 w-4" />,
+      color: 'text-yellow-600 dark:text-yellow-400',
+      tasks: highEnergyTasks,
+      isAvailableNow: true,
+    });
+  }
+
+  // Low Energy Tasks
+  const lowEnergyTasks = tasksToGroup.filter(task =>
+    !task.completed && task.energyLevel === 'low' && !task.timeConstraint
+  );
+
+  if (lowEnergyTasks.length > 0) {
+    categories.push({
+      id: 'low-energy',
+      title: 'Low Energy OK',
+      description: 'Can do when tired',
+      icon: <Battery className="h-4 w-4" />,
+      color: 'text-gray-600 dark:text-gray-400',
+      tasks: lowEnergyTasks,
+      isAvailableNow: true,
+    });
+  }
+
+  // Anytime Tasks (no time constraint, not already categorized)
+  const categorizedIds = new Set(categories.flatMap(cat => cat.tasks.map(t => t.id)));
+  const anytimeTasks = tasksToGroup.filter(task => !task.completed && !categorizedIds.has(task.id));
+
+  if (anytimeTasks.length > 0) {
+    categories.push({
+      id: 'anytime',
+      title: 'Anytime Tasks',
+      description: 'No time constraints',
+      icon: <Clock className="h-4 w-4" />,
+      color: 'text-primary',
+      tasks: anytimeTasks,
+      isAvailableNow: true,
+    });
+  }
+
+  return {
+    available: categories.filter(cat => cat.isAvailableNow && cat.tasks.length > 0),
+    unavailable: categories.filter(cat => !cat.isAvailableNow && cat.tasks.length > 0),
+  };
 };
 
 // Helper component to render a task item, optionally wrapped in a Draggable
@@ -271,6 +420,12 @@ const TaskListComponent = ({
 
     return { dailyTasks: daily, ongoingTasks: ongoing };
   }, [filteredTasks]);
+
+  // MEMOIZE: Time-constraint categories (for Time view mode)
+  const currentHour = new Date().getHours();
+  const timeCategories = useMemo(() => {
+    return groupByTimeConstraint(filteredTasks, currentHour);
+  }, [filteredTasks, currentHour]);
 
   const handleOpenTaskDialog = () => {
     setNewTaskTitle('');
@@ -513,7 +668,105 @@ const TaskListComponent = ({
                 <div className="text-center py-8 text-muted-foreground">
                   <p>No tasks yet. Add one above!</p>
                 </div>
+              ) : showTimeConstraintView ? (
+                /* ========== TIME VIEW MODE ========== */
+                <div className="space-y-6">
+                  {/* Header with current time */}
+                  <p className="text-xs text-muted-foreground">
+                    Tasks organized by when you can do them • {format(new Date(), 'h:mm a')}
+                  </p>
+
+                  {/* Available Now Section */}
+                  {timeCategories.available.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="bg-green-600">
+                          Available Now
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {timeCategories.available.reduce((sum, cat) => sum + cat.tasks.length, 0)} tasks
+                        </span>
+                      </div>
+
+                      {timeCategories.available.map(category => (
+                        <div key={category.id} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("flex items-center gap-1", category.color)}>
+                              {category.icon}
+                              <h3 className="font-semibold text-sm">{category.title}</h3>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              ({category.tasks.length})
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 pl-6 border-l-2 border-muted">
+                            {category.tasks.map((task, index) => (
+                              <DraggableTaskItem
+                                key={task.id}
+                                task={task}
+                                index={index}
+                                enableDragDrop={enableDragDrop}
+                                onToggleComplete={onToggleComplete}
+                                onUpdateTask={onUpdateTask}
+                                onDeleteTask={onDeleteTask}
+                                onAskAI={onAskAI}
+                                onBreakdownTask={onBreakdownTask}
+                                onStartIntention={onStartIntention}
+                                isActiveIntention={activeIntentionId === task.id}
+                                showQuickActions={showQuickActions}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Not Available Now Section */}
+                  {timeCategories.unavailable.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          Not Available Right Now
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {timeCategories.unavailable.reduce((sum, cat) => sum + cat.tasks.length, 0)} tasks
+                        </span>
+                      </div>
+
+                      {timeCategories.unavailable.map(category => (
+                        <div key={category.id} className="space-y-2 opacity-60">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("flex items-center gap-1", category.color)}>
+                              {category.icon}
+                              <h3 className="font-semibold text-sm">{category.title}</h3>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              ({category.tasks.length})
+                            </span>
+                          </div>
+
+                          <div className="space-y-1 pl-6">
+                            {category.tasks.map(task => (
+                              <div key={task.id} className="text-xs text-muted-foreground truncate">
+                                • {task.title}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {timeCategories.available.length === 0 && timeCategories.unavailable.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No tasks to show. Add some tasks to get started!</p>
+                    </div>
+                  )}
+                </div>
               ) : (
+                /* ========== LIST VIEW MODE ========== */
                 <>
                   {/* Daily/Urgent Section */}
                   {dailyTasks.length > 0 && (
@@ -656,9 +909,19 @@ const TaskListComponent = ({
           </ScrollArea>
 
           <div className="text-sm text-muted-foreground pt-2 border-t border-border">
-            {dailyTasks.filter(t => !t.completed).length} today •{' '}
-            {ongoingTasks.filter(t => !t.completed).length} ongoing •{' '}
-            {filteredTasks.filter(t => t.completed).length} completed
+            {showTimeConstraintView ? (
+              <>
+                {timeCategories.available.reduce((sum, cat) => sum + cat.tasks.length, 0)} available now •{' '}
+                {timeCategories.unavailable.reduce((sum, cat) => sum + cat.tasks.length, 0)} later •{' '}
+                {filteredTasks.filter(t => t.completed).length} completed
+              </>
+            ) : (
+              <>
+                {dailyTasks.filter(t => !t.completed).length} today •{' '}
+                {ongoingTasks.filter(t => !t.completed).length} ongoing •{' '}
+                {filteredTasks.filter(t => t.completed).length} completed
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
