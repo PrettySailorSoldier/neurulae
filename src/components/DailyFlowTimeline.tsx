@@ -11,6 +11,7 @@ import {
   getCurrentTime,
   isTimeInRange,
   timeToMinutes,
+  getComputedTimeZones,
   formatTimeDisplay,
   type TimeZoneConfig
 } from '@/lib/timeUtils';
@@ -703,7 +704,6 @@ export function DailyFlowTimeline({
             </div>
           )}
         </div>
-      </div>
       </DragDropContextWrapper>
 
       {/* Category Filters (only show if there are schedule entries) */}
