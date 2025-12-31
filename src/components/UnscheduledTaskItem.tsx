@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText, Target, ListTodo } from 'lucide-react';
+import { useState, useRef, useEffect, forwardRef } from 'react';
+import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText, Target, ListTodo, Pencil, GripVertical } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Task, SubTask } from '@/types';
 import { cn } from '@/lib/utils';
+import { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 
 interface UnscheduledTaskItemProps {
   task: Task;
@@ -19,6 +20,12 @@ interface UnscheduledTaskItemProps {
   onStartIntention?: (task: Task) => void;
   isActiveIntention?: boolean;
   showQuickActions?: boolean;
+  // Optional drag handle props for when used inside a Draggable
+  dragHandleProps?: DraggableProvidedDragHandleProps | null;
+  // Whether to show the drag handle
+  isDraggable?: boolean;
+  // Whether currently being dragged
+  isDragging?: boolean;
 }
 
 export function UnscheduledTaskItem({
@@ -30,14 +37,35 @@ export function UnscheduledTaskItem({
   onBreakdownTask,
   onStartIntention,
   isActiveIntention = false,
-  showQuickActions = true
+  showQuickActions = true,
+  dragHandleProps,
+  isDraggable = false,
+  isDragging = false,
 }: UnscheduledTaskItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [newSubtask, setNewSubtask] = useState('');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notes, setNotes] = useState(task.notes || '');
   const [justCompleted, setJustCompleted] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(task.title);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
+
+  // Keep editedTitle in sync with task.title when not editing
+  useEffect(() => {
+    if (!isEditingTitle) {
+      setEditedTitle(task.title);
+    }
+  }, [task.title, isEditingTitle]);
 
   // Calculate priority based on due date
   const getPriorityLevel = (): 'high' | 'medium' | 'low' | null => {
@@ -139,6 +167,21 @@ export function UnscheduledTaskItem({
     setIsEditingNotes(false);
   };
 
+  const handleSaveTitle = () => {
+    const trimmedTitle = editedTitle.trim();
+    if (trimmedTitle && trimmedTitle !== task.title) {
+      onUpdateTask({ ...task, title: trimmedTitle });
+    } else {
+      setEditedTitle(task.title);
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleCancelTitleEdit = () => {
+    setEditedTitle(task.title);
+    setIsEditingTitle(false);
+  };
+
   const hasDetails = (task.subtasks && task.subtasks.length > 0) || task.notes || isExpanded;
 
   const getTaskTypeIcon = () => {
@@ -209,11 +252,23 @@ export function UnscheduledTaskItem({
           ? `${priorityColors.border} ${priorityColors.ring} ${priorityColors.bg}`
           : 'border-border bg-card',
         !task.completed && "hover:shadow-md hover:scale-[1.01]",
-        task.completed && "opacity-60"
+        task.completed && "opacity-60",
+        isDragging && "shadow-lg ring-2 ring-primary/50 opacity-90"
       )}
     >
       {/* Main row - always visible */}
       <div className="flex items-center gap-3 p-3 group">
+        {/* Drag handle - shown when task is draggable */}
+        {isDraggable && dragHandleProps && !task.completed && (
+          <div
+            {...dragHandleProps}
+            className="flex-shrink-0 text-muted-foreground opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
+            title="Drag to schedule on a time block"
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+        )}
+
         {hasDetails && (
           <Button
             variant="ghost"
@@ -228,7 +283,7 @@ export function UnscheduledTaskItem({
             )}
           </Button>
         )}
-        
+
         <Checkbox
           checked={task.completed}
           onCheckedChange={handleToggleComplete}
@@ -248,12 +303,52 @@ export function UnscheduledTaskItem({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn(
-              "text-sm font-medium transition-all",
-              task.completed ? 'line-through text-muted-foreground' : 'text-card-foreground'
-            )}>
-              {task.title}
-            </span>
+            {isEditingTitle ? (
+              <Input
+                ref={titleInputRef}
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleSaveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveTitle();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleCancelTitleEdit();
+                  }
+                }}
+                className="h-7 text-sm font-medium flex-1 min-w-[120px]"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span
+                className={cn(
+                  "text-sm font-medium transition-all cursor-pointer hover:text-primary",
+                  task.completed ? 'line-through text-muted-foreground' : 'text-card-foreground'
+                )}
+                onClick={() => !task.completed && setIsEditingTitle(true)}
+                title="Click to edit"
+              >
+                {task.title}
+              </span>
+            )}
+            {!isEditingTitle && !task.completed && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingTitle(true);
+                }}
+                className={`h-5 w-5 p-0 transition-opacity ${
+                  isMobile ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'
+                } hover:opacity-100`}
+                title="Edit task title"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            )}
             {task.course && (
               <span className="text-xs text-primary/80">({task.course})</span>
             )}
@@ -304,7 +399,7 @@ export function UnscheduledTaskItem({
           </Button>
         )}
 
-        {showQuickActions && onBreakdownTask && !task.subtasks?.length && !task.completed && (
+        {showQuickActions && onBreakdownTask && !task.completed && (
           <Button
             variant="ghost"
             size="sm"
@@ -313,7 +408,7 @@ export function UnscheduledTaskItem({
               onBreakdownTask(task);
             }}
             className={`h-6 w-6 p-0 transition-opacity ${
-              isMobile ? 'opacity-70' : 'opacity-0 group-hover:opacity-100'
+              isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             }`}
             title="Break down this task with AI"
             aria-label="Break down task"

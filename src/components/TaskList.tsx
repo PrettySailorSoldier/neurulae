@@ -15,6 +15,7 @@ import { AIOrganizeDialog } from './AIOrganizeDialog';
 import { useFeatureLimit } from '@/hooks/useFeatureLimit';
 import { UpgradeModal } from './premium/UpgradeModal';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
 
 interface BulkTaskInput {
   title: string;
@@ -48,6 +49,8 @@ interface TaskListProps {
   onClearCompleted?: () => void;
   onClearAll?: () => void;
   onOpenDailyPlanning?: () => void;
+  // When true, tasks are draggable and can be dropped on time blocks
+  enableDragDrop?: boolean;
 }
 
 // Category labels with emojis
@@ -123,6 +126,77 @@ const groupByDate = (tasksToGroup: Task[]) => {
     .map(([label, taskList]) => ({ type: label, tasks: taskList }));
 };
 
+// Helper component to render a task item, optionally wrapped in a Draggable
+interface DraggableTaskItemProps {
+  task: Task;
+  index: number;
+  enableDragDrop: boolean;
+  onToggleComplete: (id: string) => void;
+  onUpdateTask: (task: Task) => void;
+  onDeleteTask: (id: string) => void;
+  onAskAI?: (message: string) => void;
+  onBreakdownTask?: (task: Task) => void;
+  onStartIntention?: (task: Task) => void;
+  isActiveIntention: boolean;
+  showQuickActions: boolean;
+}
+
+const DraggableTaskItem = ({
+  task,
+  index,
+  enableDragDrop,
+  onToggleComplete,
+  onUpdateTask,
+  onDeleteTask,
+  onAskAI,
+  onBreakdownTask,
+  onStartIntention,
+  isActiveIntention,
+  showQuickActions,
+}: DraggableTaskItemProps) => {
+  if (enableDragDrop && !task.completed) {
+    return (
+      <Draggable draggableId={`task-${task.id}`} index={index}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+          >
+            <UnscheduledTaskItem
+              task={task}
+              onToggleComplete={onToggleComplete}
+              onUpdateTask={onUpdateTask}
+              onDeleteTask={onDeleteTask}
+              onAskAI={onAskAI}
+              onBreakdownTask={onBreakdownTask}
+              onStartIntention={onStartIntention}
+              isActiveIntention={isActiveIntention}
+              showQuickActions={showQuickActions}
+              dragHandleProps={provided.dragHandleProps}
+              isDraggable={true}
+              isDragging={snapshot.isDragging}
+            />
+          </div>
+        )}
+      </Draggable>
+    );
+  }
+
+  return (
+    <UnscheduledTaskItem
+      task={task}
+      onToggleComplete={onToggleComplete}
+      onUpdateTask={onUpdateTask}
+      onDeleteTask={onDeleteTask}
+      onAskAI={onAskAI}
+      onBreakdownTask={onBreakdownTask}
+      onStartIntention={onStartIntention}
+      isActiveIntention={isActiveIntention}
+      showQuickActions={showQuickActions}
+    />
+  );
+};
+
 const TaskListComponent = ({
   tasks,
   timeBlocks,
@@ -145,6 +219,7 @@ const TaskListComponent = ({
   onClearCompleted,
   onClearAll,
   onOpenDailyPlanning,
+  enableDragDrop = false,
 }: TaskListProps) => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -449,22 +524,33 @@ const TaskListComponent = ({
                         </span>
                       </div>
                       {groupBy === 'none' ? (
-                        <div className="space-y-2">
-                          {dailyTasks.map((task) => (
-                            <UnscheduledTaskItem
-                              key={task.id}
-                              task={task}
-                              onToggleComplete={onToggleComplete}
-                              onUpdateTask={onUpdateTask}
-                              onDeleteTask={onDeleteTask}
-                              onAskAI={onAskAI}
-                              onBreakdownTask={onBreakdownTask}
-                              onStartIntention={onStartIntention}
-                              isActiveIntention={activeIntentionId === task.id}
-                              showQuickActions={showQuickActions}
-                            />
-                          ))}
-                        </div>
+                        <Droppable droppableId="daily-tasks" isDropDisabled={true}>
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className="space-y-2"
+                            >
+                              {dailyTasks.map((task, index) => (
+                                <DraggableTaskItem
+                                  key={task.id}
+                                  task={task}
+                                  index={index}
+                                  enableDragDrop={enableDragDrop}
+                                  onToggleComplete={onToggleComplete}
+                                  onUpdateTask={onUpdateTask}
+                                  onDeleteTask={onDeleteTask}
+                                  onAskAI={onAskAI}
+                                  onBreakdownTask={onBreakdownTask}
+                                  onStartIntention={onStartIntention}
+                                  isActiveIntention={activeIntentionId === task.id}
+                                  showQuickActions={showQuickActions}
+                                />
+                              ))}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
                       ) : (
                         <div className="space-y-3">
                           {(groupBy === 'category' ? groupByCategory(dailyTasks) : groupByDate(dailyTasks)).map(({ type, tasks: groupTasks }) => (
@@ -473,10 +559,12 @@ const TaskListComponent = ({
                                 {(groupBy === 'category' ? categoryLabels : dateLabels)[type] || type} ({groupTasks.length})
                               </div>
                               <div className="space-y-1 pl-2 border-l-2 border-primary/30">
-                                {groupTasks.map((task) => (
-                                  <UnscheduledTaskItem
+                                {groupTasks.map((task, index) => (
+                                  <DraggableTaskItem
                                     key={task.id}
                                     task={task}
+                                    index={index}
+                                    enableDragDrop={enableDragDrop}
                                     onToggleComplete={onToggleComplete}
                                     onUpdateTask={onUpdateTask}
                                     onDeleteTask={onDeleteTask}
@@ -504,22 +592,33 @@ const TaskListComponent = ({
                         </span>
                       </div>
                       {groupBy === 'none' ? (
-                        <div className="space-y-2">
-                          {ongoingTasks.map((task) => (
-                            <UnscheduledTaskItem
-                              key={task.id}
-                              task={task}
-                              onToggleComplete={onToggleComplete}
-                              onUpdateTask={onUpdateTask}
-                              onDeleteTask={onDeleteTask}
-                              onAskAI={onAskAI}
-                              onBreakdownTask={onBreakdownTask}
-                              onStartIntention={onStartIntention}
-                              isActiveIntention={activeIntentionId === task.id}
-                              showQuickActions={showQuickActions}
-                            />
-                          ))}
-                        </div>
+                        <Droppable droppableId="ongoing-tasks" isDropDisabled={true}>
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className="space-y-2"
+                            >
+                              {ongoingTasks.map((task, index) => (
+                                <DraggableTaskItem
+                                  key={task.id}
+                                  task={task}
+                                  index={index}
+                                  enableDragDrop={enableDragDrop}
+                                  onToggleComplete={onToggleComplete}
+                                  onUpdateTask={onUpdateTask}
+                                  onDeleteTask={onDeleteTask}
+                                  onAskAI={onAskAI}
+                                  onBreakdownTask={onBreakdownTask}
+                                  onStartIntention={onStartIntention}
+                                  isActiveIntention={activeIntentionId === task.id}
+                                  showQuickActions={showQuickActions}
+                                />
+                              ))}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
                       ) : (
                         <div className="space-y-3">
                           {(groupBy === 'category' ? groupByCategory(ongoingTasks) : groupByDate(ongoingTasks)).map(({ type, tasks: groupTasks }) => (
@@ -528,10 +627,12 @@ const TaskListComponent = ({
                                 {(groupBy === 'category' ? categoryLabels : dateLabels)[type] || type} ({groupTasks.length})
                               </div>
                               <div className="space-y-1 pl-2 border-l-2 border-border">
-                                {groupTasks.map((task) => (
-                                  <UnscheduledTaskItem
+                                {groupTasks.map((task, index) => (
+                                  <DraggableTaskItem
                                     key={task.id}
                                     task={task}
+                                    index={index}
+                                    enableDragDrop={enableDragDrop}
                                     onToggleComplete={onToggleComplete}
                                     onUpdateTask={onUpdateTask}
                                     onDeleteTask={onDeleteTask}

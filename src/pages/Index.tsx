@@ -1,10 +1,12 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { TaskSection } from '@/components/dashboard/TaskSection';
 import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
+import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { format } from 'date-fns';
 
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSyncedStorage } from '@/hooks/useSyncedStorage';
@@ -926,6 +928,54 @@ const Index = () => {
       description: "Your task has been added to the schedule.",
     });
   };
+
+  // Handle drag-and-drop from TaskList to time blocks
+  const handleDashboardDragEnd = useCallback((result: DropResult) => {
+    const { source, destination, draggableId } = result;
+
+    // Dropped outside a valid droppable
+    if (!destination) return;
+
+    // Check if dropped on a time block (droppableId starts with 'timeblock-')
+    if (destination.droppableId.startsWith('timeblock-')) {
+      const blockId = destination.droppableId.replace('timeblock-', '');
+      const taskId = draggableId.replace('task-', '');
+
+      // Find the task to get its details
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      // Check if already scheduled to this block today
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const alreadyScheduled = scheduledTasks.some(
+        st => st.taskId === taskId && st.blockId === blockId && st.date === today
+      );
+
+      if (alreadyScheduled) {
+        toast({
+          title: "Already Scheduled",
+          description: `"${task.title}" is already scheduled to this time block today.`,
+        });
+        return;
+      }
+
+      // Create the scheduled task
+      const newScheduledTask: ScheduledTask = {
+        id: crypto.randomUUID(),
+        taskId,
+        blockId,
+        date: today,
+        estimatedMinutes: task.estimatedMinutes,
+      };
+
+      setScheduledTasks([...scheduledTasks, newScheduledTask]);
+
+      toast({
+        title: "Task Scheduled",
+        description: `"${task.title}" has been scheduled to this time block.`,
+      });
+    }
+  }, [tasks, scheduledTasks, setScheduledTasks, toast]);
 
   const handleBreakdownTask = async (task: Task) => {
     try {
@@ -1970,56 +2020,61 @@ const Index = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <ScheduleSection
-                  timeBlocks={timeBlocks}
-                  scheduledTasks={scheduledTasks}
-                  tasks={tasks}
-                  onAddTimeBlock={handleAddTimeBlock}
-                  onUpdateTimeBlock={handleUpdateTimeBlock}
-                  onDeleteTimeBlock={handleDeleteTimeBlock}
-                  onAddTask={handleAddTask}
-                />
-                {showTimeConstraintView ? (
-                  <div className="lg:col-span-2">
-                    <Suspense fallback={<ComponentLoader />}>
-                      <TimeConstraintTaskView
-                        tasks={tasks}
-                        onToggleComplete={handleToggleComplete}
-                        onUpdateTask={handleUpdateTask}
-                        onDeleteTask={handleDeleteTask}
-                        onAskAI={handleAskAI}
-                        showQuickActions={showQuickActions}
-                        onBack={() => setShowTimeConstraintView(false)}
-                      />
-                    </Suspense>
-                  </div>
-                ) : (
-                  <TaskSection
-                    tasks={tasks}
+              <DragDropContext onDragEnd={handleDashboardDragEnd}>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                  <ScheduleSection
                     timeBlocks={timeBlocks}
-                    userId={user?.id}
+                    scheduledTasks={scheduledTasks}
+                    tasks={tasks}
+                    onAddTimeBlock={handleAddTimeBlock}
+                    onUpdateTimeBlock={handleUpdateTimeBlock}
+                    onDeleteTimeBlock={handleDeleteTimeBlock}
                     onAddTask={handleAddTask}
-                    onBulkAddTasks={handleBulkAddTasks}
-                    onToggleComplete={handleToggleComplete}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    onPrioritize={handlePrioritizeTasks}
-                    onScheduleTasks={handleScheduleTasks}
-                    onAskAI={handleAskAI}
-                    onBreakdownTask={handleBreakdownTask}
-                    onOpenAIChat={handleOpenAIChat}
-                    onStartIntention={startIntention}
-                    activeIntentionId={activeIntention?.taskId}
-                    showQuickActions={showQuickActions}
-                    onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
-                    showTimeConstraintView={showTimeConstraintView}
-                    onClearCompleted={handleClearCompletedTasks}
-                    onClearAll={handleClearAllTasks}
-                    onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
+                    onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
+                    useExternalDragContext={true}
                   />
-                )}
-              </div>
+                  {showTimeConstraintView ? (
+                    <div className="lg:col-span-2">
+                      <Suspense fallback={<ComponentLoader />}>
+                        <TimeConstraintTaskView
+                          tasks={tasks}
+                          onToggleComplete={handleToggleComplete}
+                          onUpdateTask={handleUpdateTask}
+                          onDeleteTask={handleDeleteTask}
+                          onAskAI={handleAskAI}
+                          showQuickActions={showQuickActions}
+                          onBack={() => setShowTimeConstraintView(false)}
+                        />
+                      </Suspense>
+                    </div>
+                  ) : (
+                    <TaskSection
+                      tasks={tasks}
+                      timeBlocks={timeBlocks}
+                      userId={user?.id}
+                      onAddTask={handleAddTask}
+                      onBulkAddTasks={handleBulkAddTasks}
+                      onToggleComplete={handleToggleComplete}
+                      onUpdateTask={handleUpdateTask}
+                      onDeleteTask={handleDeleteTask}
+                      onPrioritize={handlePrioritizeTasks}
+                      onScheduleTasks={handleScheduleTasks}
+                      onAskAI={handleAskAI}
+                      onBreakdownTask={handleBreakdownTask}
+                      onOpenAIChat={handleOpenAIChat}
+                      onStartIntention={startIntention}
+                      activeIntentionId={activeIntention?.taskId}
+                      showQuickActions={showQuickActions}
+                      onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
+                      showTimeConstraintView={showTimeConstraintView}
+                      onClearCompleted={handleClearCompletedTasks}
+                      onClearAll={handleClearAllTasks}
+                      onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
+                      enableDragDrop={true}
+                    />
+                  )}
+                </div>
+              </DragDropContext>
             )}
           </TabsContent>
 

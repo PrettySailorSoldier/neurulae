@@ -10,6 +10,8 @@ interface ScheduleSectionProps {
   onDeleteTimeBlock: (id: string) => void;
   onAddTask: (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
   onScheduleTask?: (scheduledTask: Omit<ScheduledTask, 'id'>) => void;
+  // When true, expects an external DragDropContext to be provided by parent
+  useExternalDragContext?: boolean;
 }
 
 export function ScheduleSection({
@@ -21,6 +23,7 @@ export function ScheduleSection({
   onDeleteTimeBlock,
   onAddTask,
   onScheduleTask,
+  useExternalDragContext = false,
 }: ScheduleSectionProps) {
   return (
     <div className="lg:col-span-3" data-tutorial="timeline">
@@ -33,6 +36,7 @@ export function ScheduleSection({
         onDeleteTimeBlock={onDeleteTimeBlock}
         onAddTask={onAddTask}
         onScheduleTask={onScheduleTask}
+        useExternalDragContext={useExternalDragContext}
       />
     </div>
   );

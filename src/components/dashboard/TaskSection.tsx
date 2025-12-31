@@ -33,6 +33,8 @@ interface TaskSectionProps {
   onClearCompleted?: () => void;
   onClearAll?: () => void;
   onOpenDailyPlanning?: () => void;
+  // When true, tasks are draggable and can be dropped on time blocks
+  enableDragDrop?: boolean;
 }
 
 export function TaskSection({
@@ -57,6 +59,7 @@ export function TaskSection({
   onClearCompleted,
   onClearAll,
   onOpenDailyPlanning,
+  enableDragDrop = false,
 }: TaskSectionProps) {
   return (
     <div className="lg:col-span-2" data-tutorial="tasks">
@@ -82,6 +85,7 @@ export function TaskSection({
         onClearCompleted={onClearCompleted}
         onClearAll={onClearAll}
         onOpenDailyPlanning={onOpenDailyPlanning}
+        enableDragDrop={enableDragDrop}
       />
     </div>
   );

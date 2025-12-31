@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
@@ -28,6 +28,24 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { TimeZoneSettingsDialog } from './TimeZoneSettingsDialog';
 
+// Wrapper component that conditionally applies DragDropContext
+function DragDropContextWrapper({
+  useExternalContext,
+  onDragEnd,
+  children,
+}: {
+  useExternalContext: boolean;
+  onDragEnd: (result: DropResult) => void;
+  children: ReactNode;
+}) {
+  if (useExternalContext) {
+    // When using external context, just render children (context is provided by parent)
+    return <>{children}</>;
+  }
+  // Otherwise, wrap with our own DragDropContext
+  return <DragDropContext onDragEnd={onDragEnd}>{children}</DragDropContext>;
+}
+
 interface ScheduleEntry {
   id: string;
   title: string;
@@ -48,6 +66,10 @@ interface DailyFlowTimelineProps {
   onDeleteTimeBlock: (id: string) => void;
   onAddTask?: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   onScheduleTask?: (scheduledTask: Omit<ScheduledTask, 'id'>) => void;
+  // When true, the component doesn't wrap with its own DragDropContext (expects external context)
+  useExternalDragContext?: boolean;
+  // Callback for handling drag end events (used when useExternalDragContext is true)
+  onExternalDragEnd?: (result: DropResult) => void;
 }
 
 export function DailyFlowTimeline({
@@ -59,6 +81,8 @@ export function DailyFlowTimeline({
   onDeleteTimeBlock,
   onAddTask,
   onScheduleTask,
+  useExternalDragContext = false,
+  onExternalDragEnd,
 }: DailyFlowTimelineProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -590,8 +614,11 @@ export function DailyFlowTimeline({
         </Tabs>
       </div>
 
-      {/* Main Content */}
-      <DragDropContext onDragEnd={handleDragEnd}>
+      {/* Main Content - wrapped in DragDropContext unless using external context */}
+      <DragDropContextWrapper
+        useExternalContext={useExternalDragContext}
+        onDragEnd={handleDragEnd}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Timeline View (3/4 width on large screens) */}
         <div className={cn("space-y-3", viewMode === 'timeline' ? 'lg:col-span-3' : 'lg:col-span-4')}>
@@ -867,7 +894,7 @@ export function DailyFlowTimeline({
           </div>
         )}
       </div>
-      </DragDropContext>
+      </DragDropContextWrapper>
 
       {/* Category Filters (only show if there are schedule entries) */}
       {scheduleEntries.length > 0 && (
