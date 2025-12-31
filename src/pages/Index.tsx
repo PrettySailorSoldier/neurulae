@@ -152,9 +152,6 @@ const Index = () => {
   const [initialAIMessage, setInitialAIMessage] = useState<string | undefined>();
   const [profileSetupDialogOpen, setProfileSetupDialogOpen] = useState(false);
 
-  // Time Constraint View
-  const [showTimeConstraintView, setShowTimeConstraintView] = useLocalStorage('neurulae-show-time-constraint-view', false);
-
   // Routine Template Viewer
   const [selectedRoutine, setSelectedRoutine] = useState<Playbook | null>(null);
   const [routineViewerOpen, setRoutineViewerOpen] = useState(false);
@@ -1996,8 +1993,6 @@ const Index = () => {
                     onStartIntention={startIntention}
                     activeIntentionId={activeIntention?.taskId}
                     showQuickActions={showQuickActions}
-                    onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
-                    showTimeConstraintView={showTimeConstraintView}
                     onClearCompleted={handleClearCompletedTasks}
                     onClearAll={handleClearAllTasks}
                     onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
@@ -2035,8 +2030,6 @@ const Index = () => {
                     onStartIntention={startIntention}
                     activeIntentionId={activeIntention?.taskId}
                     showQuickActions={showQuickActions}
-                    onToggleTimeConstraintView={() => setShowTimeConstraintView(!showTimeConstraintView)}
-                    showTimeConstraintView={showTimeConstraintView}
                     onClearCompleted={handleClearCompletedTasks}
                     onClearAll={handleClearAllTasks}
                     onOpenDailyPlanning={() => setDailyPlanningOpen(true)}

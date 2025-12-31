@@ -28,8 +28,6 @@ interface TaskSectionProps {
   onStartIntention?: (task: Task) => void;
   activeIntentionId?: string | null;
   showQuickActions: boolean;
-  onToggleTimeConstraintView?: () => void;
-  showTimeConstraintView?: boolean;
   onClearCompleted?: () => void;
   onClearAll?: () => void;
   onOpenDailyPlanning?: () => void;
@@ -54,8 +52,6 @@ export function TaskSection({
   onStartIntention,
   activeIntentionId,
   showQuickActions,
-  onToggleTimeConstraintView,
-  showTimeConstraintView,
   onClearCompleted,
   onClearAll,
   onOpenDailyPlanning,
@@ -80,8 +76,6 @@ export function TaskSection({
         onStartIntention={onStartIntention}
         activeIntentionId={activeIntentionId}
         showQuickActions={showQuickActions}
-        onToggleTimeConstraintView={onToggleTimeConstraintView}
-        showTimeConstraintView={showTimeConstraintView}
         onClearCompleted={onClearCompleted}
         onClearAll={onClearAll}
         onOpenDailyPlanning={onOpenDailyPlanning}
