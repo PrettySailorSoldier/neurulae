@@ -268,12 +268,6 @@ const TaskListComponent = ({
     return { dailyTasks: daily, ongoingTasks: ongoing };
   }, [filteredTasks]);
 
-  // MEMOIZE: Time-constraint categories (for Time view mode)
-  const currentHour = new Date().getHours();
-  const timeCategories = useMemo(() => {
-    return groupByTimeConstraint(filteredTasks, currentHour);
-  }, [filteredTasks, currentHour]);
-
   const handleOpenTaskDialog = () => {
     setNewTaskTitle('');
     setNewTaskMinutes('');

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { TimeBlock, ScheduledTask, Task } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
-import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 import {
@@ -11,8 +11,6 @@ import {
   getCurrentTime,
   isTimeInRange,
   timeToMinutes,
-  getComputedTimeZones,
-  isTaskAvailableInTimeZone,
   formatTimeDisplay,
   type TimeZoneConfig
 } from '@/lib/timeUtils';
@@ -24,7 +22,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useTimeZoneSettings } from '@/hooks/useTimeZoneSettings';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { TimeZoneSettingsDialog } from './TimeZoneSettingsDialog';
 
@@ -101,7 +98,6 @@ export function DailyFlowTimeline({
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [clearScheduleDialogOpen, setClearScheduleDialogOpen] = useState(false);
   const [showTimeZoneSettings, setShowTimeZoneSettings] = useState(false);
-  const [showAvailableTasks, setShowAvailableTasks] = useState(true);
 
   // Update time every minute
   useEffect(() => {
@@ -131,24 +127,6 @@ export function DailyFlowTimeline({
     getComputedTimeZones(timeZoneConfig),
     [timeZoneConfig]
   );
-
-  // Categorize tasks by availability
-  const { availableTasks, unavailableTasks } = useMemo(() => {
-    const incomplete = tasks.filter(t => !t.completed);
-    const available: Task[] = [];
-    const unavailable: { task: Task; reason: string }[] = [];
-
-    for (const task of incomplete) {
-      const result = isTaskAvailableInTimeZone(task, timeZoneConfig);
-      if (result.available) {
-        available.push(task);
-      } else {
-        unavailable.push({ task, reason: result.reason || 'Not available now' });
-      }
-    }
-
-    return { availableTasks: available, unavailableTasks: unavailable };
-  }, [tasks, timeZoneConfig]);
 
   const loadScheduleEntries = async () => {
     if (!user) return;
@@ -619,9 +597,8 @@ export function DailyFlowTimeline({
         useExternalContext={useExternalDragContext}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Timeline View (3/4 width on large screens) */}
-        <div className={cn("space-y-3", viewMode === 'timeline' ? 'lg:col-span-3' : 'lg:col-span-4')}>
+        {/* Timeline View (full width now) */}
+        <div className={cn("space-y-3", viewMode === 'timeline' ? 'lg:col-span-4' : 'lg:col-span-4')}>
           {viewMode === 'timeline' ? (
             <div className="relative h-[600px] bg-card/50 border border-border rounded-lg overflow-hidden">
               {/* Time Zone Background Regions */}
@@ -726,173 +703,6 @@ export function DailyFlowTimeline({
             </div>
           )}
         </div>
-
-        {/* Task Availability Panel (1/4 width on large screens, only in timeline view) */}
-        {viewMode === 'timeline' && (
-          <div className="space-y-3">
-            <Collapsible open={showAvailableTasks} onOpenChange={setShowAvailableTasks}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between p-2 h-auto">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="font-semibold text-sm">Available Now</span>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {availableTasks.length}
-                    </Badge>
-                  </div>
-                  {showAvailableTasks ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1 pt-1">
-                {availableTasks.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    No tasks available right now
-                  </p>
-                ) : (
-                  <Droppable droppableId="available-tasks" isDropDisabled={true}>
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className="space-y-1"
-                      >
-                        {availableTasks.slice(0, 8).map((task, index) => (
-                          <Draggable
-                            key={task.id}
-                            draggableId={`task-${task.id}`}
-                            index={index}
-                          >
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                className={cn(
-                                  "p-2 rounded-md bg-green-500/10 border border-green-500/20 text-xs flex items-center gap-2 group cursor-grab active:cursor-grabbing",
-                                  snapshot.isDragging && "shadow-lg ring-2 ring-primary/50 bg-card"
-                                )}
-                              >
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className="flex-shrink-0 text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <GripVertical className="h-3.5 w-3.5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{task.title}</p>
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                    {task.taskType && (
-                                      <Badge variant="outline" className="text-[9px] px-1 py-0">
-                                        {task.taskType}
-                                      </Badge>
-                                    )}
-                                    {task.estimatedMinutes && (
-                                      <span className="text-[9px] text-muted-foreground">
-                                        ~{task.estimatedMinutes}m
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                )}
-                {availableTasks.length > 5 && (
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    +{availableTasks.length - 5} more
-                  </p>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Unavailable Tasks */}
-            {unavailableTasks.length > 0 && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 p-2">
-                  <div className="w-2 h-2 rounded-full bg-muted" />
-                  <span className="font-semibold text-sm text-muted-foreground">Not Now</span>
-                  <Badge variant="outline" className="text-[10px]">
-                    {unavailableTasks.length}
-                  </Badge>
-                </div>
-                {unavailableTasks.slice(0, 3).map(({ task, reason }) => (
-                  <div
-                    key={task.id}
-                    className="p-2 rounded-md bg-muted/30 border border-border text-xs opacity-60"
-                  >
-                    <p className="font-medium truncate">{task.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{reason}</p>
-                  </div>
-                ))}
-                {unavailableTasks.length > 3 && (
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    +{unavailableTasks.length - 3} more
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Quick Settings */}
-            <Card className="p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-muted-foreground">Time Zone Settings</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={() => setShowTimeZoneSettings(true)}
-                >
-                  <Settings2 className="h-3 w-3" />
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Moon className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs">Quiet Hours</span>
-                </div>
-                <Button
-                  variant={timeZoneSettings.quietHours.enabled ? "default" : "outline"}
-                  size="sm"
-                  className="h-6 text-[10px] px-2"
-                  onClick={() => updateQuietHours({ enabled: !timeZoneSettings.quietHours.enabled })}
-                >
-                  {timeZoneSettings.quietHours.enabled ? 'On' : 'Off'}
-                </Button>
-              </div>
-              {timeZoneSettings.quietHours.enabled && (
-                <p className="text-[10px] text-muted-foreground pl-4">
-                  {formatTimeDisplay(timeZoneSettings.quietHours.startTime)} - {formatTimeDisplay(timeZoneSettings.quietHours.endTime)}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Briefcase className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs">Business Hours</span>
-                </div>
-                <Button
-                  variant={timeZoneSettings.businessHours.enabled ? "default" : "outline"}
-                  size="sm"
-                  className="h-6 text-[10px] px-2"
-                  onClick={() => updateBusinessHours({ enabled: !timeZoneSettings.businessHours.enabled })}
-                >
-                  {timeZoneSettings.businessHours.enabled ? 'On' : 'Off'}
-                </Button>
-              </div>
-              {timeZoneSettings.businessHours.enabled && (
-                <p className="text-[10px] text-muted-foreground pl-4">
-                  {formatTimeDisplay(timeZoneSettings.businessHours.startTime)} - {formatTimeDisplay(timeZoneSettings.businessHours.endTime)}
-                  {timeZoneSettings.businessHours.weekdaysOnly && ' (weekdays)'}
-                </p>
-              )}
-            </Card>
-          </div>
-        )}
       </div>
       </DragDropContextWrapper>
 
