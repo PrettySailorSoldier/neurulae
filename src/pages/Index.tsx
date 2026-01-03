@@ -57,6 +57,7 @@ const FocusMode = lazy(() => import('@/components/FocusMode').then(m => ({ defau
 const AnalyticsDashboard = lazy(() => import('@/components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
 const DailyReviewPrompt = lazy(() => import('@/components/DailyReviewPrompt').then(m => ({ default: m.DailyReviewPrompt })));
 const DailyPlanningDialog = lazy(() => import('@/components/DailyPlanningDialog').then(m => ({ default: m.DailyPlanningDialog })));
+const NDDashboardPanel = lazy(() => import('@/components/nd/NDDashboardPanel').then(m => ({ default: m.NDDashboardPanel })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -2059,13 +2060,29 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="care">
-            <div className="space-y-6 bg-background/80 backdrop-blur-md rounded-xl p-6 border border-border/50 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Daily Routines</h2>
-                  <p className="text-sm text-muted-foreground">Build consistency with structured routines</p>
-                </div>
-                <Button onClick={() => {
+            <div className="space-y-6">
+              {/* Neurodivergent Support Panel */}
+              <Suspense fallback={<ComponentLoader />}>
+                <NDDashboardPanel
+                  playbooks={playbooks}
+                  onNavigateToRoutine={(routineId) => {
+                    const routine = playbooks.find(p => p.id === routineId);
+                    if (routine) {
+                      setSelectedRoutine(routine);
+                      setRoutineViewerOpen(true);
+                    }
+                  }}
+                />
+              </Suspense>
+
+              {/* Daily Routines Section */}
+              <div className="bg-background/80 backdrop-blur-md rounded-xl p-6 border border-border/50 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Daily Routines</h2>
+                    <p className="text-sm text-muted-foreground">Build consistency with structured routines</p>
+                  </div>
+                  <Button onClick={() => {
                   const newRoutine: Playbook = {
                     id: crypto.randomUUID(),
                     title: 'New Routine',
@@ -2178,6 +2195,7 @@ const Index = () => {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </TabsContent>
 

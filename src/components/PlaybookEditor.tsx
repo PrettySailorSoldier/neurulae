@@ -119,9 +119,10 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
         let errorMessage = 'Failed to generate playbook. Please try again.';
         
         if (error.message?.includes('non-2xx')) {
-          errorMessage = 'AI service temporarily unavailable. Please try again in a moment.';
+          // Check if we can get more info from the response
+          errorMessage = 'Service error. Please try refreshing the page.';
         } else if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-          errorMessage = 'Please log in to use AI generation.';
+          errorMessage = 'Session expired. Please refresh the page or log in again.';
         } else if (error.message?.includes('403')) {
           errorMessage = 'You\'ve reached your free tier limit. Upgrade to premium for unlimited access.';
         } else if (error.message?.includes('429')) {
@@ -140,11 +141,21 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
 
       // Handle application-level errors returned in the response body
       if (data?.error) {
-        toast({
-          title: 'Generation failed',
-          description: data.error,
-          variant: 'destructive',
-        });
+        // Check for auth-related errors
+        const errorLower = data.error.toLowerCase();
+        if (errorLower.includes('unauthorized') || errorLower.includes('session')) {
+          toast({
+            title: 'Session Expired',
+            description: 'Please refresh the page or log in again to continue.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Generation failed',
+            description: data.error,
+            variant: 'destructive',
+          });
+        }
         return;
       }
 
