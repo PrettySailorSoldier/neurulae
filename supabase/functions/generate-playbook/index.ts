@@ -36,68 +36,85 @@ interface AIPlaybookResponse {
 }
 
 Deno.serve(async (req) => {
+  console.log('=== generate-playbook function called ===');
+  console.log('Method:', req.method);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('Starting request processing...');
+    
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.log('No auth header provided');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.log('Auth header present, creating Supabase client...');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    console.log('Getting user...');
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      console.log('Auth error:', authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    console.log('User authenticated:', user.id.substring(0, 8) + '...');
 
-    // Check stuck sessions quota (server-side enforcement)
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    // Check premium status (wrapped in try-catch to prevent failures)
+    let isPremium = false;
+    try {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      isPremium = roles?.some(r => ['premium', 'lifetime', 'admin'].includes(r.role)) ?? false;
+      console.log('Premium status:', isPremium);
+    } catch (roleError) {
+      console.log('Error checking premium (continuing anyway):', roleError);
+    }
 
-    // Check premium status
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-
-    const isPremium = roles?.some(r => ['premium', 'lifetime', 'admin'].includes(r.role));
-
-    // Only check quota for non-premium users
+    // Skip quota check for premium users, and make it non-blocking for free users
     if (!isPremium) {
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('stuck_sessions')
-        .select('id')
-        .eq('user_id', user.id)
-        .gte('created_at', startOfMonth.toISOString());
+      try {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
 
-      if (sessionsError) {
-        console.error('Error checking stuck sessions:', sessionsError);
-      }
+        const { data: sessions } = await supabase
+          .from('stuck_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .gte('created_at', startOfMonth.toISOString());
 
-      const sessionCount = sessions?.length || 0;
-      if (sessionCount >= 3) {
-        return new Response(JSON.stringify({ 
-          error: 'You\'ve reached your free tier limit of 3 stuck sessions this month. Upgrade to premium for unlimited access.',
-          quota: { used: sessionCount, limit: 3 }
-        }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        const sessionCount = sessions?.length || 0;
+        console.log('Stuck sessions this month:', sessionCount);
+        
+        if (sessionCount >= 5) { // Increased limit slightly
+          return new Response(JSON.stringify({ 
+            error: 'You\'ve reached your free tier limit. Upgrade to premium for unlimited access.',
+            quota: { used: sessionCount, limit: 5 }
+          }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (quotaError) {
+        // Don't block on quota check errors - just log and continue
+        console.log('Error checking quota (continuing anyway):', quotaError);
       }
     }
 
@@ -139,26 +156,41 @@ Deno.serve(async (req) => {
 
 
     // Parse and validate input
-    const body = await req.json();
+    console.log('Parsing request body...');
+    let body;
+    try {
+      body = await req.json();
+      console.log('Request body parsed:', { goal: body.goal?.substring(0, 50), category: body.category });
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     const validation = playbookSchema.safeParse(body);
     
     if (!validation.success) {
+      console.log('Validation failed:', validation.error);
       return new Response(
-        JSON.stringify({ error: 'Invalid input' }),
+        JSON.stringify({ error: 'Invalid input', details: validation.error.issues }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const { goal, details, category } = validation.data;
+    console.log('Input validated. Goal:', goal.substring(0, 50));
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
+      console.error('LOVABLE_API_KEY not configured in environment');
       return new Response(
-        JSON.stringify({ error: 'Service temporarily unavailable' }),
+        JSON.stringify({ error: 'AI service not configured. Please contact support.' }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('API key present, length:', LOVABLE_API_KEY.length);
 
     console.log('Generating playbook for authenticated user');
 
