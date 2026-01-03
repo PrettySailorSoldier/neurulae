@@ -996,16 +996,27 @@ const Index = () => {
           id: crypto.randomUUID(),
           title: st.title,
           completed: false,
+          estimatedMinutes: st.estimatedMinutes,
+          energyLevel: st.energyLevel,
+          tip: st.tip,
+          potentialBlocker: st.potentialBlocker,
+          description: st.description,
         }));
+
+        // Append overview and reward to notes if present
+        let newNotes = task.notes || '';
+        if (data.overview) newNotes = (newNotes ? newNotes + '\n\n' : '') + `🤖 AI Overview: ${data.overview}`;
+        if (data.completionReward) newNotes += `\n🎁 Reward: ${data.completionReward}`;
 
         handleUpdateTask({
           ...task,
           subtasks,
+          notes: newNotes,
         });
 
         toast({
           title: "Task broken down!",
-          description: `Added ${subtasks.length} subtasks to help you get started.`,
+          description: `Added ${subtasks.length} detailed steps for you. Check the notes for an overview!`,
         });
       }
     } catch (error) {

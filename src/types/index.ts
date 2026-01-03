@@ -2,6 +2,11 @@ export interface SubTask {
   id: string;
   title: string;
   completed: boolean;
+  estimatedMinutes?: number;
+  energyLevel?: 'low' | 'medium' | 'high';
+  tip?: string;
+  potentialBlocker?: string;
+  description?: string;
 }
 
 // Time estimation tracking for training estimation skills

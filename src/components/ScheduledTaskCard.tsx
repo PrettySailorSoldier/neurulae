@@ -1,131 +1,76 @@
 import { useState } from 'react';
 import { Task } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, GripVertical, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Clock, GripVertical, ChevronDown, ChevronRight, Plus, Trash2, Sparkles } from 'lucide-react';
 import { formatDuration } from '@/lib/timeUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
-interface ScheduledTaskCardProps {
-  task: Task;
-  onToggleComplete: (id: string) => void;
-  onUpdateTask?: (task: Task) => void;
-  estimatedMinutes?: number;
-}
+// ... (existing code omitted) ...
 
-export function ScheduledTaskCard({ task, onToggleComplete, onUpdateTask, estimatedMinutes }: ScheduledTaskCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [newSubtask, setNewSubtask] = useState('');
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [notes, setNotes] = useState(task.notes || '');
-
-  const handleToggleSubtask = (subtaskId: string) => {
-    if (!onUpdateTask) return;
-    
-    const updatedSubtasks = task.subtasks?.map(st => 
-      st.id === subtaskId ? { ...st, completed: !st.completed } : st
-    );
-    
-    onUpdateTask({ ...task, subtasks: updatedSubtasks });
-  };
-
-  const handleAddSubtask = () => {
-    if (!newSubtask.trim() || !onUpdateTask) return;
-    
-    const newSubtaskItem = {
-      id: `${task.id}-sub-${Date.now()}`,
-      title: newSubtask,
-      completed: false
-    };
-    
-    const updatedSubtasks = [...(task.subtasks || []), newSubtaskItem];
-    onUpdateTask({ ...task, subtasks: updatedSubtasks });
-    setNewSubtask('');
-  };
-
-  const handleDeleteSubtask = (subtaskId: string) => {
-    if (!onUpdateTask) return;
-    
-    const updatedSubtasks = task.subtasks?.filter(st => st.id !== subtaskId);
-    onUpdateTask({ ...task, subtasks: updatedSubtasks });
-  };
-
-  const handleSaveNotes = () => {
-    if (!onUpdateTask) return;
-    onUpdateTask({ ...task, notes });
-    setIsEditingNotes(false);
-  };
-
-  const hasDetails = task.subtasks?.length || task.notes || estimatedMinutes;
-
-  return (
-    <div className="group bg-card border border-border rounded-lg hover:shadow-sm transition-all">
-      <div className="flex items-start gap-2 p-3 cursor-move">
-        <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex-shrink-0" />
-        
-        <Checkbox
-          checked={task.completed}
-          onCheckedChange={() => onToggleComplete(task.id)}
-          className="mt-0.5 flex-shrink-0"
-        />
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <p className={`text-sm flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-              {task.title}
-            </p>
-            
-            {hasDetails && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 flex-shrink-0"
-                onClick={() => setIsExpanded(!isExpanded)}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-          </div>
-          
-          {estimatedMinutes && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-              <Clock className="h-3 w-3" />
-              {formatDuration(estimatedMinutes)}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {isExpanded && hasDetails && (
-        <div className="px-3 pb-3 pl-11 space-y-3 border-t border-border/50 pt-3">
-          {/* Subtasks */}
-          {task.subtasks && task.subtasks.length > 0 && (
-            <div className="space-y-2">
               {task.subtasks.map((subtask) => (
-                <div key={subtask.id} className="flex items-center gap-2 group/subtask">
-                  <Checkbox
-                    checked={subtask.completed}
-                    onCheckedChange={() => handleToggleSubtask(subtask.id)}
-                    className="flex-shrink-0"
-                  />
-                  <span className={`text-sm flex-1 ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
-                    {subtask.title}
-                  </span>
-                  {onUpdateTask && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 opacity-0 group-hover/subtask:opacity-100"
-                      onClick={() => handleDeleteSubtask(subtask.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
+                <div key={subtask.id} className="group/subtask">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={subtask.completed}
+                      onCheckedChange={() => handleToggleSubtask(subtask.id)}
+                      className="mt-0.5 self-start flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn(
+                          "text-sm transition-colors",
+                          subtask.completed ? 'line-through text-muted-foreground' : ''
+                        )}>
+                          {subtask.title}
+                        </span>
+                        
+                        {/* Subtask Meta Badges */}
+                        {!subtask.completed && (
+                          <div className="flex items-center gap-1.5 opacity-80">
+                            {subtask.estimatedMinutes && (
+                              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1 rounded">
+                                <Clock className="w-2.5 h-2.5" />
+                                {subtask.estimatedMinutes}m
+                              </span>
+                            )}
+                            {subtask.energyLevel && (
+                              <span className={cn(
+                                "flex items-center gap-0.5 text-[10px] px-1 rounded bg-muted/50",
+                                subtask.energyLevel === 'high' ? "text-red-500" :
+                                subtask.energyLevel === 'medium' ? "text-orange-500" :
+                                "text-green-500"
+                              )}>
+                                <Sparkles className="w-2.5 h-2.5" />
+                                {subtask.energyLevel}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Subtask Description/Tip */}
+                      {(subtask.description || subtask.tip || subtask.potentialBlocker) && !subtask.completed && (
+                        <div className="mt-1 text-[11px] text-muted-foreground pl-2 border-l-2 border-primary/20 space-y-0.5">
+                          {subtask.description && <p>{subtask.description}</p>}
+                          {subtask.tip && <p className="text-primary/80">💡 {subtask.tip}</p>}
+                          {subtask.potentialBlocker && <p className="text-red-500/80">⚠️ {subtask.potentialBlocker}</p>}
+                        </div>
+                      )}
+                    </div>
+                    {onUpdateTask && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover/subtask:opacity-100 self-start"
+                        onClick={() => handleDeleteSubtask(subtask.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

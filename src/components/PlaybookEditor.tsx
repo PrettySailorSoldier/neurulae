@@ -34,6 +34,28 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
   const [aiGoal, setAiGoal] = useState('');
   const [aiDetails, setAiDetails] = useState('');
 
+  // Reset form when opening or changing playbook
+  useEffect(() => {
+    if (open) {
+      if (playbook) {
+        setTitle(playbook.title);
+        setDescription(playbook.description || '');
+        setCategory(playbook.category || 'Other');
+        setSteps(playbook.steps || []);
+        setMode('manual');
+      } else {
+        // Reset for new playbook
+        setTitle('');
+        setDescription('');
+        setCategory('Other');
+        setSteps([]);
+        setMode('manual');
+        setAiGoal('');
+        setAiDetails('');
+      }
+    }
+  }, [open, playbook]);
+
   const handleAddStep = () => {
     const newStep: PlaybookStep = {
       id: crypto.randomUUID(),

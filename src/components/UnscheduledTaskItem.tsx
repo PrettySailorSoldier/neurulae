@@ -464,23 +464,64 @@ export function UnscheduledTaskItem({
           {/* Subtasks */}
           <div className="space-y-1">
             {task.subtasks?.map((subtask) => (
-              <div key={subtask.id} className="flex items-center gap-2 group/subtask">
-                <Checkbox
-                  checked={subtask.completed}
-                  onCheckedChange={() => handleToggleSubtask(subtask.id)}
-                  className="h-3.5 w-3.5"
-                />
-                <span className={`flex-1 text-xs ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
-                  {subtask.title}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteSubtask(subtask.id)}
-                  className="h-5 w-5 p-0 opacity-0 group-hover/subtask:opacity-100"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+              <div key={subtask.id} className="group/subtask">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={subtask.completed}
+                    onCheckedChange={() => handleToggleSubtask(subtask.id)}
+                    className="h-3.5 w-3.5 mt-0.5 self-start"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn(
+                        "text-xs transition-colors",
+                        subtask.completed ? 'line-through text-muted-foreground' : ''
+                      )}>
+                        {subtask.title}
+                      </span>
+                      
+                      {/* Subtask Meta Badges */}
+                      {!subtask.completed && (
+                        <div className="flex items-center gap-1.5 opacity-80">
+                          {subtask.estimatedMinutes && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1 rounded">
+                              <Clock className="w-2.5 h-2.5" />
+                              {subtask.estimatedMinutes}m
+                            </span>
+                          )}
+                          {subtask.energyLevel && (
+                            <span className={cn(
+                              "flex items-center gap-0.5 text-[10px] px-1 rounded bg-muted/50",
+                              subtask.energyLevel === 'high' ? "text-red-500" :
+                              subtask.energyLevel === 'medium' ? "text-orange-500" :
+                              "text-green-500"
+                            )}>
+                              <Sparkles className="w-2.5 h-2.5" />
+                              {subtask.energyLevel}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Subtask Description/Tip */}
+                    {(subtask.description || subtask.tip || subtask.potentialBlocker) && !subtask.completed && (
+                      <div className="mt-1 text-[10px] text-muted-foreground pl-1 border-l-2 border-primary/20 space-y-0.5">
+                        {subtask.description && <p>{subtask.description}</p>}
+                        {subtask.tip && <p className="text-primary/80">💡 {subtask.tip}</p>}
+                        {subtask.potentialBlocker && <p className="text-red-500/80">⚠️ {subtask.potentialBlocker}</p>}
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteSubtask(subtask.id)}
+                    className="h-5 w-5 p-0 opacity-0 group-hover/subtask:opacity-100 self-start"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             ))}
             

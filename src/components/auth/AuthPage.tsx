@@ -63,30 +63,17 @@ export function AuthPage() {
         });
       } else {
         // Handle "Remember me" functionality
+        // Note: Supabase always stores session in localStorage
+        // "Remember me" controls whether we auto-refresh the session
         if (rememberMe) {
-          // Save email for convenience
           localStorage.setItem('neurulae-saved-email', email);
           localStorage.setItem('neurulae-remember-me', 'true');
-          // Mark session as persistent - will trigger auto-refresh
           localStorage.setItem('neurulae-persist-session', 'true');
         } else {
           localStorage.removeItem('neurulae-saved-email');
           localStorage.setItem('neurulae-remember-me', 'false');
           localStorage.removeItem('neurulae-persist-session');
-          
-          // Move session from localStorage to sessionStorage for session-only persistence
-          // This makes the session expire when the browser closes
-          const authKey = Object.keys(localStorage).find(key => 
-            key.startsWith('sb-') && key.includes('-auth-token')
-          );
-          
-          if (authKey) {
-            const authData = localStorage.getItem(authKey);
-            if (authData) {
-              sessionStorage.setItem(authKey, authData);
-              localStorage.removeItem(authKey);
-            }
-          }
+          // Session will expire naturally without auto-refresh
         }
 
         // Download cloud data after successful sign in
@@ -106,7 +93,7 @@ export function AuthPage() {
 
         toast({
           title: 'Welcome back!',
-          description: rememberMe ? 'Signed in successfully. You\'ll stay logged in.' : 'Signed in successfully.'
+          description: 'Signed in successfully.'
         });
         navigate('/app');
       }
