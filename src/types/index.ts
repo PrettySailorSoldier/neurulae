@@ -626,3 +626,187 @@ export interface RoutineSettings {
   soundEnabled: boolean;
   vibrationEnabled: boolean;
 }
+
+// ============ NEURODIVERGENT-FOCUSED TYPES ============
+
+// AI Personality for neurodivergent-friendly coaching
+export type AIPersonality = 'warm' | 'direct' | 'playful';
+
+export interface AIPersonalityOption {
+  id: AIPersonality;
+  name: string;
+  description: string;
+  sampleResponse: string;
+}
+
+// Anchor Point System (Simple Triggers Only)
+export interface AnchorPoint {
+  id: string;
+  name: string;
+
+  // Simple trigger: EITHER time-based OR event-based (not both, no complex logic)
+  triggerType: 'time' | 'event';
+
+  // For time-based: "07:00" format
+  triggerTime?: string;
+
+  // For event-based: simple string like "after morning coffee", "when partner leaves"
+  triggerEvent?: string;
+
+  // How reliable is this anchor? (helps AI make better suggestions)
+  reliability: 'rock-solid' | 'usually' | 'sometimes';
+
+  // What attaches to this anchor
+  linkedRoutineIds: string[];
+  attachmentPosition: 'before' | 'after';
+
+  // Metadata
+  category: 'morning' | 'midday' | 'evening' | 'flex';
+  isActive: boolean;
+  createdAt: string;
+}
+
+// Natural patterns discovered during onboarding
+export interface NaturalPattern {
+  id: string;
+  activity: string;
+  typicalTime?: string;
+  reliability: 'always' | 'usually' | 'sometimes';
+  notes?: string;
+}
+
+// Friction points - where transitions are hard
+export interface FrictionPoint {
+  id: string;
+  transition: string; // "getting out of bed", "starting work"
+  severity: 'minor' | 'moderate' | 'major';
+  currentStrategies?: string[];
+  aiSuggestions?: string[];
+}
+
+// Energy patterns throughout the day
+export interface EnergyPattern {
+  peakHours: string[]; // ["09:00", "14:00"]
+  lowHours: string[];
+  variability: 'predictable' | 'somewhat-variable' | 'highly-variable';
+}
+
+// Onboarding Flow State
+export interface OnboardingFlowState {
+  currentStep: 'welcome' | 'personality' | 'patterns' | 'anchors' | 'friction' | 'first-routine' | 'complete';
+  aiPersonality: AIPersonality;
+  collectedData: {
+    naturalPatterns: NaturalPattern[];
+    anchorPoints: AnchorPoint[];
+    frictionPoints: FrictionPoint[];
+    transitionStruggles: string[];
+    energyPatterns: EnergyPattern;
+  };
+  completedAt?: string;
+  canResumeFrom?: string; // step to resume from if user exits early
+}
+
+// Enhanced Routine for "Good Enough" versions
+export interface RoutineVariant {
+  id: string;
+  routineId: string;
+  name: string; // "Full version", "Low energy", "Minimal"
+  energyLevel: 'high' | 'medium' | 'low';
+  steps: RoutineStep[]; // Subset or modified steps
+  estimatedMinutes: number;
+}
+
+// Check-in System
+export interface CheckIn {
+  id: string;
+  type: 'daily' | 'weekly' | 'ad-hoc';
+  scheduledFor: string; // ISO timestamp
+  completedAt?: string;
+
+  responses: {
+    whatWorked: string[];
+    whatDidnt: string[];
+    energyLevel: number; // 1-10
+    overallFeeling: 'great' | 'okay' | 'struggling';
+    freeformNotes?: string;
+  };
+
+  aiInsights?: string[];
+  suggestedAdjustments?: RoutineAdjustment[];
+}
+
+export interface RoutineAdjustment {
+  routineId: string;
+  type: 'timing' | 'steps' | 'anchor' | 'remove';
+  suggestion: string;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+}
+
+// Environment Design Suggestions
+export interface EnvironmentSuggestion {
+  id: string;
+  category: 'physical' | 'digital' | 'social';
+  suggestion: string;
+  linkedRoutineId?: string;
+  linkedTransition?: string;
+  status: 'suggested' | 'trying' | 'kept' | 'rejected';
+  effectivenessRating?: number; // 1-5
+  notes?: string;
+  createdAt: string;
+}
+
+// Pattern insights from check-ins and usage data
+export interface PatternInsight {
+  id: string;
+  type: 'success' | 'struggle' | 'suggestion';
+  description: string;
+  relatedRoutineIds?: string[];
+  relatedAnchorIds?: string[];
+  confidence: 'high' | 'medium' | 'low';
+  generatedAt: string;
+  dismissed: boolean;
+}
+
+// Transition support prompt (shown when starting a new task/routine)
+export interface TransitionPrompt {
+  id: string;
+  message: string;
+  environmentChecklist?: string[];
+  breathingPrompt?: boolean;
+  linkedRoutineId?: string;
+}
+
+// Storage keys for neurodivergent features
+export const ND_STORAGE_KEYS = {
+  ANCHOR_POINTS: 'neurulae-anchor-points',
+  ONBOARDING_FLOW: 'neurulae-nd-onboarding',
+  ROUTINE_VARIANTS: 'neurulae-routine-variants',
+  CHECK_INS: 'neurulae-check-ins',
+  ENVIRONMENT_SUGGESTIONS: 'neurulae-env-suggestions',
+  PATTERN_INSIGHTS: 'neurulae-pattern-insights',
+  AI_PERSONALITY: 'neurulae-ai-personality',
+  TRANSITION_PROMPTS: 'neurulae-transition-prompts',
+} as const;
+
+// AI Personality options with sample responses
+export const AI_PERSONALITIES: AIPersonalityOption[] = [
+  {
+    id: 'warm',
+    name: 'Warm & Validating',
+    description: 'Acknowledges struggles, celebrates small wins, supportive',
+    sampleResponse: "That's a really good observation about your mornings. Let's work with what's already happening naturally."
+  },
+  {
+    id: 'direct',
+    name: 'Direct & Practical',
+    description: 'Minimal emotional language, focused on concrete steps',
+    sampleResponse: "Morning anchor identified: coffee at 8am. Next: pick one small task to attach to it."
+  },
+  {
+    id: 'playful',
+    name: 'Playful & Light',
+    description: 'Uses humor and lightness, reduces pressure',
+    sampleResponse: "Ooh, coffee as an anchor! Your brain already knows what's up. Let's sneak a tiny win in there."
+  }
+];
