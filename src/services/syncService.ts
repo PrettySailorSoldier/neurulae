@@ -6,7 +6,10 @@ export type DataType =
   | 'scheduledTasks' | 'playbooks' | 'reminderWidgets'
   | 'energyWidgets' | 'messengerWidgets' | 'moodGardenWidgets'
   | 'parallelUniverseWidgets' | 'soundSignatureWidgets'
-  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions';
+  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions'
+  // ND features
+  | 'anchorPoints' | 'routineVariants' | 'ndOnboarding'
+  | 'patternInsights' | 'aiPersonality';
 
 interface SyncResult {
   success: boolean;
@@ -25,10 +28,12 @@ class SyncService {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.debug(`[Sync] Upload skipped - not authenticated`);
         return { success: false, error: 'Not authenticated' };
       }
 
       const deviceId = getDeviceId();
+      console.debug(`[Sync] Uploading dataType="${dataType}" for user=${user.id.substring(0, 8)}...`);
       
       const { error } = await supabase
         .from('user_data')
@@ -42,7 +47,10 @@ class SyncService {
           onConflict: 'user_id,data_type'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[Sync] Upload failed for dataType="${dataType}":`, error);
+        throw error;
+      }
 
       // Update sync metadata
       await supabase
@@ -55,9 +63,10 @@ class SyncService {
           onConflict: 'user_id,device_id'
         });
 
+      console.debug(`[Sync] Upload success for dataType="${dataType}"`);
       return { success: true };
     } catch (error: any) {
-      console.error('Upload to cloud failed:', error);
+      console.error('[Sync] Upload to cloud failed:', error);
       return { success: false, error: error.message };
     }
   }

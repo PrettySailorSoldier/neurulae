@@ -306,8 +306,8 @@ const Index = () => {
         if (cloudData.timeblocks && Array.isArray(cloudData.timeblocks) && cloudData.timeblocks.length > 0) {
           setTimeBlocks(cloudData.timeblocks);
         }
-        if (cloudData['scheduled-tasks'] && Array.isArray(cloudData['scheduled-tasks']) && cloudData['scheduled-tasks'].length > 0) {
-          setScheduledTasks(cloudData['scheduled-tasks']);
+        if (cloudData.scheduledTasks && Array.isArray(cloudData.scheduledTasks) && cloudData.scheduledTasks.length > 0) {
+          setScheduledTasks(cloudData.scheduledTasks);
         }
         if (cloudData.playbooks && Array.isArray(cloudData.playbooks) && cloudData.playbooks.length > 0) {
           setPlaybooks(cloudData.playbooks);

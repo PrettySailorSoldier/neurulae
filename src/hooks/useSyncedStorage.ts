@@ -8,6 +8,21 @@ interface SyncOptions {
   onSyncError?: (error: string) => void;
 }
 
+/**
+ * Convert a localStorage key to the database DataType enum format
+ * e.g., 'neurulae-scheduled-tasks' -> 'scheduledTasks'
+ */
+function toDataType(key: string): DataType {
+  // Remove 'neurulae-' prefix
+  const stripped = key.replace('neurulae-', '');
+  
+  // Convert hyphenated-case to camelCase
+  // e.g., 'scheduled-tasks' -> 'scheduledTasks'
+  const camelCase = stripped.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+  
+  return camelCase as DataType;
+}
+
 export function useSyncedStorage<T>(
   key: string,
   initialValue: T,
@@ -26,8 +41,8 @@ export function useSyncedStorage<T>(
     }
 
     if (user && session && options.syncEnabled) {
-      // Remove 'neurulae-' prefix to get the data type
-      const dataType = key.replace('neurulae-', '') as DataType;
+      const dataType = toDataType(key);
+      console.debug(`[Sync] Queuing sync for key "${key}" as dataType "${dataType}"`);
       syncService.queueSync(dataType, value);
     }
   }, [value, user, session, options.syncEnabled, key]);
