@@ -20,8 +20,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const { user, session } = useAuth();
 
   const checkSubscription = async () => {
-    // Don't check if no user
-    if (!user) {
+    // Don't check if no user or no session
+    if (!user || !session?.access_token) {
       setPlan('free');
       setLoading(false);
       return;
