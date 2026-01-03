@@ -6,8 +6,10 @@ import { Progress } from '@/components/ui/progress';
 import { AnchorPointManager } from '@/components/anchor';
 import { RoutineVariantEditor } from '@/components/routine';
 import { ConversationalOnboarding } from '@/components/onboarding/ConversationalOnboarding';
+import { CheckInPrompt } from '@/components/checkin';
 import { useAnchorPoints } from '@/hooks/useAnchorPoints';
 import { useRoutineVariants } from '@/hooks/useRoutineVariants';
+import { useCheckIns } from '@/hooks/useCheckIns';
 import { Playbook, AnchorPoint } from '@/types';
 import {
   Anchor,
@@ -20,6 +22,7 @@ import {
   Sun,
   Sunset,
   Moon,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,9 +51,17 @@ export function NDDashboardPanel({
     getVariantCount,
   } = useRoutineVariants();
 
+  const {
+    addCheckIn,
+    shouldPromptDaily,
+    patterns,
+    todaysCheckIn,
+  } = useCheckIns();
+
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [anchorManagerOpen, setAnchorManagerOpen] = useState(false);
   const [variantEditorOpen, setVariantEditorOpen] = useState(false);
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   const nextAnchor = getNextAnchor();
 
@@ -187,6 +198,15 @@ export function NDDashboardPanel({
               Low-Energy Variants
             </Button>
             <Button
+              variant={shouldPromptDaily && !todaysCheckIn ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCheckInOpen(true)}
+              className="gap-1.5"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              {todaysCheckIn ? 'View Check-In' : 'Daily Check-In'}
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
               onClick={() => setOnboardingOpen(true)}
@@ -231,6 +251,14 @@ export function NDDashboardPanel({
       <ConversationalOnboarding
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}
+      />
+
+      {/* Check-In Prompt */}
+      <CheckInPrompt
+        open={checkInOpen}
+        onOpenChange={setCheckInOpen}
+        type="daily"
+        onSave={(checkIn) => addCheckIn(checkIn)}
       />
     </>
   );
