@@ -44,9 +44,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (!shouldPersist || !session) return;
 
-    // Refresh the session immediately on app load if it's close to expiring
+    // Don't refresh immediately after login - only refresh sessions older than 5 minutes
     const checkAndRefreshSession = async () => {
       try {
+        // Check if session is close to expiring (less than 30 minutes left)
+        const expiresAt = session.expires_at;
+        if (!expiresAt) return;
+        
+        const expiresAtMs = expiresAt * 1000;
+        const now = Date.now();
+        const timeUntilExpiry = expiresAtMs - now;
+        const thirtyMinutes = 30 * 60 * 1000;
+        
+        // Only refresh if session expires in less than 30 minutes
+        if (timeUntilExpiry > thirtyMinutes) {
+          console.log('Session still fresh, no refresh needed');
+          return;
+        }
+
+        console.log('Session expiring soon, refreshing...');
         const { data, error } = await supabase.auth.refreshSession();
         if (error) {
           console.log('Session refresh failed:', error.message);
@@ -58,13 +74,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Check immediately
-    checkAndRefreshSession();
+    // Wait 30 seconds before first check to avoid interfering with fresh login
+    const initialDelay = setTimeout(checkAndRefreshSession, 30 * 1000);
 
-    // Set up interval to refresh every 10 minutes (session typically expires in 1 hour)
+    // Set up interval to check every 10 minutes
     const refreshInterval = setInterval(checkAndRefreshSession, 10 * 60 * 1000);
 
-    return () => clearInterval(refreshInterval);
+    return () => {
+      clearTimeout(initialDelay);
+      clearInterval(refreshInterval);
+    };
   }, [session]);
 
   const signUp = async (email: string, password: string) => {

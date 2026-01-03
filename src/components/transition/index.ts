@@ -1,0 +1,1 @@
+export { TransitionSupport } from './TransitionSupport';
