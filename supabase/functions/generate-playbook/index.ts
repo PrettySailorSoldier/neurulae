@@ -172,9 +172,11 @@ Deno.serve(async (req) => {
     const validation = playbookSchema.safeParse(body);
     
     if (!validation.success) {
-      console.log('Validation failed:', validation.error);
+      // Type guard: validation.success is false, so validation is SafeParseError
+      const parseError = validation as { success: false; error: { issues: unknown[] } };
+      console.log('Validation failed:', parseError.error.issues);
       return new Response(
-        JSON.stringify({ error: 'Invalid input', details: validation.error.issues }),
+        JSON.stringify({ error: 'Invalid input', details: parseError.error.issues }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -1,15 +1,31 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId } from './deviceManager';
 
-export type DataType =
+// Database-supported data types (must match data_type_enum in database)
+export type DbDataType =
   | 'tasks' | 'projects' | 'priorities' | 'timeblocks'
   | 'scheduledTasks' | 'playbooks' | 'reminderWidgets'
   | 'energyWidgets' | 'messengerWidgets' | 'moodGardenWidgets'
   | 'parallelUniverseWidgets' | 'soundSignatureWidgets'
-  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions'
-  // ND features
-  | 'anchorPoints' | 'routineVariants' | 'ndOnboarding'
-  | 'patternInsights' | 'aiPersonality';
+  | 'theme' | 'customTheme' | 'customTabs' | 'timerSessions';
+
+// Extended data types (local-only, not synced to database)
+export type LocalDataType = 'anchorPoints' | 'routineVariants' | 'ndOnboarding' | 'patternInsights' | 'aiPersonality';
+
+// Combined type for internal use
+export type DataType = DbDataType | LocalDataType;
+
+// Helper to check if a data type is supported by the database
+const isDbDataType = (dataType: DataType): dataType is DbDataType => {
+  const dbTypes: DbDataType[] = [
+    'tasks', 'projects', 'priorities', 'timeblocks',
+    'scheduledTasks', 'playbooks', 'reminderWidgets',
+    'energyWidgets', 'messengerWidgets', 'moodGardenWidgets',
+    'parallelUniverseWidgets', 'soundSignatureWidgets',
+    'theme', 'customTheme', 'customTabs', 'timerSessions'
+  ];
+  return dbTypes.includes(dataType as DbDataType);
+};
 
 interface SyncResult {
   success: boolean;
@@ -25,6 +41,12 @@ class SyncService {
 
   // Upload local data to cloud
   async uploadToCloud(dataType: DataType, data: any): Promise<SyncResult> {
+    // Skip upload for local-only data types
+    if (!isDbDataType(dataType)) {
+      console.debug(`[Sync] Skipping upload for local-only dataType="${dataType}"`);
+      return { success: true };
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -73,6 +95,12 @@ class SyncService {
 
   // Download data from cloud
   async downloadFromCloud(dataType: DataType): Promise<SyncResult> {
+    // Skip download for local-only data types
+    if (!isDbDataType(dataType)) {
+      console.debug(`[Sync] Skipping download for local-only dataType="${dataType}"`);
+      return { success: true, cloudData: null, localData: null };
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {

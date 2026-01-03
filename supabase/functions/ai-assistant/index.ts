@@ -482,7 +482,10 @@ Pick one to try. We can adjust if it doesn't stick."`,
     };
 
     // Get the personality-specific prompt
-    const ndPersonalityPrompt = ndPersonalityPrompts[ndPersonality] || ndPersonalityPrompts.warm;
+    const personalityKey = typeof ndPersonality === 'string' && ndPersonality in ndPersonalityPrompts 
+      ? ndPersonality as keyof typeof ndPersonalityPrompts 
+      : 'warm';
+    const ndPersonalityPrompt = ndPersonalityPrompts[personalityKey];
 
     const stuckModePrompt = `You are a compassionate productivity coach guiding someone who feels overwhelmed and doesn't know where to start. Your mission is to help them identify what needs attention through a gentle, structured interview process.
 
