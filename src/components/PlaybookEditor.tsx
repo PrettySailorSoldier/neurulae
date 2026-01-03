@@ -112,9 +112,34 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
         },
       });
 
-      if (error) throw error;
+      // Handle function invocation errors (e.g., network issues, auth problems)
+      if (error) {
+        console.error('Edge function error:', error);
+        // Try to extract a more meaningful message
+        let errorMessage = 'Failed to generate playbook. Please try again.';
+        
+        if (error.message?.includes('non-2xx')) {
+          errorMessage = 'AI service temporarily unavailable. Please try again in a moment.';
+        } else if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          errorMessage = 'Please log in to use AI generation.';
+        } else if (error.message?.includes('403')) {
+          errorMessage = 'You\'ve reached your free tier limit. Upgrade to premium for unlimited access.';
+        } else if (error.message?.includes('429')) {
+          errorMessage = 'Too many requests. Please wait a moment before trying again.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      if (data.error) {
+      // Handle application-level errors returned in the response body
+      if (data?.error) {
         toast({
           title: 'Generation failed',
           description: data.error,
@@ -123,19 +148,29 @@ export function PlaybookEditor({ open, onOpenChange, playbook, onSave, onDelete 
         return;
       }
 
-      setTitle(data.title);
+      // Success - update the form
+      if (!data?.steps || !Array.isArray(data.steps)) {
+        toast({
+          title: 'Error',
+          description: 'Invalid response from AI. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setTitle(data.title || aiGoal);
       setSteps(data.steps);
       setMode('manual'); // Switch to manual mode to show and edit generated steps
       
       toast({
         title: 'Playbook generated! ✨',
-        description: 'Review and edit the steps as needed',
+        description: `Created ${data.steps.length} steps. Review and edit as needed.`,
       });
     } catch (error) {
       console.error('Error generating playbook:', error);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to generate playbook',
+        description: error instanceof Error ? error.message : 'Failed to generate playbook. Please check your connection and try again.',
         variant: 'destructive',
       });
     } finally {

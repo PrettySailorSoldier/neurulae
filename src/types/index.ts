@@ -709,12 +709,16 @@ export interface OnboardingFlowState {
 // Enhanced Routine for "Good Enough" versions
 export interface RoutineVariant {
   id: string;
-  routineId: string;
-  name: string; // "Full version", "Low energy", "Minimal"
-  energyLevel: 'high' | 'medium' | 'low';
-  steps: RoutineStep[]; // Subset or modified steps
-  estimatedMinutes: number;
+  parentRoutineId: string; // The full routine this is a variant of
+  name: string; // "Low energy morning", "Minimal version"
+  energyLevel: 'high' | 'medium' | 'low' | 'minimal';
+  simplifiedSteps: string[]; // Simplified step descriptions
+  timeMultiplier: number; // 0.5 = half the time, 2 = double the time
+  skipThreshold: number; // Energy level (1-10) at or below which this variant is suggested
+  aiSuggestions?: string[]; // AI-generated simplification tips
+  createdAt: string;
 }
+
 
 // Check-in System
 export interface CheckIn {
