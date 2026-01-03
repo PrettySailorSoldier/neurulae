@@ -215,45 +215,78 @@ Make this playbook practical, empowering, and achievable for someone managing mu
 
 Remember to respond with ONLY valid JSON, no markdown or explanations.`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-      }),
-    });
+    // Try the primary model first, fall back to alternative if needed
+    const models = ['google/gemini-2.0-flash', 'google/gemini-2.5-pro'];
+    let lastError: string | null = null;
+    let successResponse: Response | null = null;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
+    for (const model of models) {
+      console.log(`Trying model: ${model}`);
       
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      try {
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.7,
+          }),
+        });
 
+        if (response.ok) {
+          successResponse = response;
+          console.log(`Successfully got response from model: ${model}`);
+          break;
+        }
+
+        const errorText = await response.text();
+        console.error(`Model ${model} failed:`, response.status, errorText);
+        lastError = `${response.status}: ${errorText}`;
+        
+        // Don't retry for certain error types
+        if (response.status === 429) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: 'AI credits exhausted. Please contact support.' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (response.status === 401) {
+          console.error('API key authentication failed');
+          return new Response(
+            JSON.stringify({ error: 'AI service configuration error. Please contact support.' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (fetchError) {
+        console.error(`Network error with model ${model}:`, fetchError);
+        lastError = fetchError instanceof Error ? fetchError.message : 'Network error';
+      }
+    }
+
+    if (!successResponse) {
+      console.error('All models failed. Last error:', lastError);
       return new Response(
-        JSON.stringify({ error: 'Failed to generate playbook. Please try again.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'AI service temporarily unavailable. Please try again later.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const response = successResponse;
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
