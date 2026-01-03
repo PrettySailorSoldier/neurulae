@@ -38,6 +38,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Auto-refresh session when "Remember Me" is enabled
+  useEffect(() => {
+    const shouldPersist = localStorage.getItem('neurulae-persist-session') === 'true';
+    
+    if (!shouldPersist || !session) return;
+
+    // Refresh the session immediately on app load if it's close to expiring
+    const checkAndRefreshSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.log('Session refresh failed:', error.message);
+        } else if (data.session) {
+          console.log('Session refreshed successfully');
+        }
+      } catch (e) {
+        console.log('Session refresh error:', e);
+      }
+    };
+
+    // Check immediately
+    checkAndRefreshSession();
+
+    // Set up interval to refresh every 10 minutes (session typically expires in 1 hour)
+    const refreshInterval = setInterval(checkAndRefreshSession, 10 * 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
+  }, [session]);
+
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
     

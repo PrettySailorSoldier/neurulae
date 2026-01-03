@@ -62,15 +62,20 @@ export function AuthPage() {
           variant: 'destructive'
         });
       } else {
-        // Handle "Remember me" functionality (only email, never password)
+        // Handle "Remember me" functionality
         if (rememberMe) {
+          // Save email for convenience
           localStorage.setItem('neurulae-saved-email', email);
           localStorage.setItem('neurulae-remember-me', 'true');
+          // Mark session as persistent - will trigger auto-refresh
+          localStorage.setItem('neurulae-persist-session', 'true');
         } else {
           localStorage.removeItem('neurulae-saved-email');
           localStorage.setItem('neurulae-remember-me', 'false');
+          localStorage.removeItem('neurulae-persist-session');
           
           // Move session from localStorage to sessionStorage for session-only persistence
+          // This makes the session expire when the browser closes
           const authKey = Object.keys(localStorage).find(key => 
             key.startsWith('sb-') && key.includes('-auth-token')
           );
@@ -101,7 +106,7 @@ export function AuthPage() {
 
         toast({
           title: 'Welcome back!',
-          description: 'Signed in successfully'
+          description: rememberMe ? 'Signed in successfully. You\'ll stay logged in.' : 'Signed in successfully.'
         });
         navigate('/app');
       }
