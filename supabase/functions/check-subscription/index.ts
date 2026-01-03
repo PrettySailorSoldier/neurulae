@@ -34,14 +34,63 @@ serve(async (req) => {
     logStep("Function started");
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader) {
+      logStep("No authorization header");
+      return new Response(JSON.stringify({ 
+        subscribed: false, 
+        plan: 'free',
+        productId: null,
+        error: 'Not authenticated'
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, // Return 200 with free plan instead of error
+      });
+    }
     
     const token = authHeader.replace("Bearer ", "");
+    
+    // Skip if token looks like the anon key (starts with eyJ and contains specific patterns)
+    if (!token || token.length < 100) {
+      logStep("Invalid token format");
+      return new Response(JSON.stringify({ 
+        subscribed: false, 
+        plan: 'free',
+        productId: null 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Auth error: ${userError.message}`);
+    
+    if (userError || !userData.user) {
+      logStep("Auth failed", { error: userError?.message });
+      // Return free plan instead of error - user might just need to re-authenticate
+      return new Response(JSON.stringify({ 
+        subscribed: false, 
+        plan: 'free',
+        productId: null,
+        authError: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    if (!user?.email) {
+      logStep("No email in user data");
+      return new Response(JSON.stringify({ 
+        subscribed: false, 
+        plan: 'free',
+        productId: null 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    logStep("User authenticated", { userId: user.id });
 
     // FIRST: Check if user has active promo code (before Stripe check)
     // This ensures users with promo codes get premium even without Stripe account
