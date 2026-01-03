@@ -76,25 +76,13 @@ export function AuthPage() {
           // Session will expire naturally without auto-refresh
         }
 
-        // Download cloud data after successful sign in
-        const cloudData = await syncService.downloadAll();
-        
-        // Merge with local data if exists
-        Object.entries(cloudData).forEach(([key, value]) => {
-          const localKey = `neurulae-${key}`;
-          const localData = localStorage.getItem(localKey);
-          
-          if (!localData || localData === 'null' || localData === '[]') {
-            // No local data, use cloud data
-            localStorage.setItem(localKey, JSON.stringify(value));
-          }
-          // If local data exists, keep it (local-first approach)
-        });
-
+        // Create loading session for smooth transition
         toast({
           title: 'Welcome back!',
           description: 'Signed in successfully.'
         });
+        
+        // Navigate immediately - sync will happen in background on Index page
         navigate('/app');
       }
     } catch (error: any) {
