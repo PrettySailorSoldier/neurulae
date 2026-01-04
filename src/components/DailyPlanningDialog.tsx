@@ -223,9 +223,9 @@ export function DailyPlanningDialog({
           )}
         </div>
 
-        {/* Task Lists */}
-        <ScrollArea className="flex-1 min-h-0 -mx-6 px-6" style={{ maxHeight: 'calc(90vh - 280px)' }}>
-          <div className="space-y-4 pr-4 pb-4">
+        {/* Task Lists - Scrollable container */}
+        <ScrollArea className="flex-1 min-h-0 h-[350px] -mx-6 px-6">
+          <div className="space-y-4 pr-4 pb-4 overflow-y-auto">
             {/* Priority Tasks */}
             {priorityTasks.length > 0 && (
               <div className="space-y-2">
