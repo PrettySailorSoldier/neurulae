@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// Removed ScrollArea - using native scroll for better mobile compatibility
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle2, Clock, Target, TrendingUp, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -223,9 +223,9 @@ export function DailyPlanningDialog({
           )}
         </div>
 
-        {/* Task Lists - Scrollable container */}
-        <ScrollArea className="flex-1 min-h-0 h-[350px] -mx-6 px-6">
-          <div className="space-y-4 pr-4 pb-4 overflow-y-auto">
+        {/* Task Lists - Scrollable container with native overflow */}
+        <div className="flex-1 overflow-y-auto max-h-[50vh] min-h-[200px] -mx-6 px-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+          <div className="space-y-4 pr-2 pb-4">
             {/* Priority Tasks */}
             {priorityTasks.length > 0 && (
               <div className="space-y-2">
@@ -267,7 +267,7 @@ export function DailyPlanningDialog({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-row gap-2">
           <Button variant="outline" onClick={handleSkip} className="flex-1">
