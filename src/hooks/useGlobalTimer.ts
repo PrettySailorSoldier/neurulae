@@ -245,6 +245,15 @@ export function useGlobalTimer(options: UseGlobalTimerOptions = {}) {
     return Math.max(1, Math.ceil(totalElapsed / 60000));
   }, [state]);
 
+  // Define stopTimer first to avoid circular reference issues
+  const stopTimer = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setState(DEFAULT_STATE);
+  }, []);
+
   const startTimer = useCallback((
     durationSeconds: number,
     timerType: TimerType,
@@ -268,7 +277,7 @@ export function useGlobalTimer(options: UseGlobalTimerOptions = {}) {
       elapsedBeforePause: 0,
       hierarchicalInterval: null,
     });
-  }, [state.isRunning]);
+  }, [state.isRunning, stopTimer]);
 
   // Start a hierarchical interval timer with nested steps
   const startHierarchicalInterval = useCallback((
@@ -337,14 +346,6 @@ export function useGlobalTimer(options: UseGlobalTimerOptions = {}) {
       pausedAt: null,
     }));
   }, [state.isPaused]);
-
-  const stopTimer = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setState(DEFAULT_STATE);
-  }, []);
 
   const addTime = useCallback((extraSeconds: number) => {
     setState(prev => ({
