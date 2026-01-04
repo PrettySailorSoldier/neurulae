@@ -42,6 +42,7 @@ interface TaskListProps {
   onBreakdownTask?: (task: Task) => void;
   onOpenAIChat?: (context: string) => void;
   onStartIntention?: (task: Task) => void;
+  onBreakIntoIntervals?: (task: Task) => void;
   activeIntentionId?: string | null;
   showQuickActions?: boolean;
   onClearCompleted?: () => void;
@@ -135,6 +136,7 @@ interface DraggableTaskItemProps {
   onAskAI?: (message: string) => void;
   onBreakdownTask?: (task: Task) => void;
   onStartIntention?: (task: Task) => void;
+  onBreakIntoIntervals?: (task: Task) => void;
   isActiveIntention: boolean;
   showQuickActions: boolean;
 }
@@ -149,6 +151,7 @@ const DraggableTaskItem = ({
   onAskAI,
   onBreakdownTask,
   onStartIntention,
+  onBreakIntoIntervals,
   isActiveIntention,
   showQuickActions,
 }: DraggableTaskItemProps) => {
@@ -168,6 +171,7 @@ const DraggableTaskItem = ({
               onAskAI={onAskAI}
               onBreakdownTask={onBreakdownTask}
               onStartIntention={onStartIntention}
+              onBreakIntoIntervals={onBreakIntoIntervals}
               isActiveIntention={isActiveIntention}
               showQuickActions={showQuickActions}
               dragHandleProps={provided.dragHandleProps}
@@ -189,6 +193,7 @@ const DraggableTaskItem = ({
       onAskAI={onAskAI}
       onBreakdownTask={onBreakdownTask}
       onStartIntention={onStartIntention}
+      onBreakIntoIntervals={onBreakIntoIntervals}
       isActiveIntention={isActiveIntention}
       showQuickActions={showQuickActions}
     />
@@ -210,6 +215,7 @@ const TaskListComponent = ({
   onBreakdownTask,
   onOpenAIChat,
   onStartIntention,
+  onBreakIntoIntervals,
   activeIntentionId,
   showQuickActions = true,
   onClearCompleted,
@@ -527,6 +533,7 @@ const TaskListComponent = ({
                                   onAskAI={onAskAI}
                                   onBreakdownTask={onBreakdownTask}
                                   onStartIntention={onStartIntention}
+                                  onBreakIntoIntervals={onBreakIntoIntervals}
                                   isActiveIntention={activeIntentionId === task.id}
                                   showQuickActions={showQuickActions}
                                 />
@@ -595,6 +602,7 @@ const TaskListComponent = ({
                                   onAskAI={onAskAI}
                                   onBreakdownTask={onBreakdownTask}
                                   onStartIntention={onStartIntention}
+                                  onBreakIntoIntervals={onBreakIntoIntervals}
                                   isActiveIntention={activeIntentionId === task.id}
                                   showQuickActions={showQuickActions}
                                 />

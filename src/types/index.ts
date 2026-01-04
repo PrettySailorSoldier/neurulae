@@ -47,6 +47,15 @@ export interface Task {
   // Time estimation tracking
   actualMinutes?: number; // Actual time spent (recorded after timer completion)
   estimationHistory?: EstimationRecord[]; // History of estimate vs actual for this task
+  // Hierarchical interval timer integration
+  linkedIntervalTemplateId?: string; // Links to a saved custom interval template
+  intervalSessions?: { // History of interval timer sessions for this task
+    id: string;
+    completedAt: string;
+    actualMinutes: number;
+    stepsCompleted: number;
+    totalSteps: number;
+  }[];
 }
 
 export interface Project {
@@ -151,7 +160,26 @@ export interface TimerSession {
   endTime?: string;
   actualMinutes?: number;
   date: string;
-  timerType: 'interval' | 'sequence' | 'flowtime' | 'chime' | 'tomato';
+  timerType: 'interval' | 'sequence' | 'flowtime' | 'chime' | 'tomato' | 'hierarchical-interval';
+}
+
+// Hierarchical Interval Timer Types
+export interface IntervalStep {
+  id: string;
+  name: string;
+  duration: number; // seconds
+  color?: string;
+  isComplete: boolean;
+}
+
+export interface HierarchicalInterval {
+  id: string;
+  name: string;
+  steps: IntervalStep[];
+  currentStepIndex: number;
+  taskId?: string; // optional link to existing Task
+  totalDuration: number; // computed from steps (seconds)
+  elapsedDuration: number; // total elapsed across all steps (seconds)
 }
 
 export interface PlaybookStep {

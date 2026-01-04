@@ -165,7 +165,7 @@ export function DailyPlanningDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Target className="h-5 w-5 text-primary" />
@@ -224,7 +224,7 @@ export function DailyPlanningDialog({
         </div>
 
         {/* Task Lists */}
-        <ScrollArea className="flex-1 min-h-0 max-h-[50vh] -mx-6 px-6">
+        <ScrollArea className="flex-1 min-h-0 -mx-6 px-6" style={{ maxHeight: 'calc(90vh - 280px)' }}>
           <div className="space-y-4 pr-4 pb-4">
             {/* Priority Tasks */}
             {priorityTasks.length > 0 && (

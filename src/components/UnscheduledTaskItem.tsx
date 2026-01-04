@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, forwardRef } from 'react';
-import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText, Target, ListTodo, Pencil, GripVertical, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, BookOpen, Briefcase, Home, Calendar, Phone, FileText, Target, ListTodo, Pencil, GripVertical, Clock, Timer, Layers } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ interface UnscheduledTaskItemProps {
   onAskAI?: (message: string) => void;
   onBreakdownTask?: (task: Task) => void;
   onStartIntention?: (task: Task) => void;
+  onBreakIntoIntervals?: (task: Task) => void; // Open Timer Hub with task pre-linked
   isActiveIntention?: boolean;
   showQuickActions?: boolean;
   // Optional drag handle props for when used inside a Draggable
@@ -36,6 +37,7 @@ export function UnscheduledTaskItem({
   onAskAI,
   onBreakdownTask,
   onStartIntention,
+  onBreakIntoIntervals,
   isActiveIntention = false,
   showQuickActions = true,
   dragHandleProps,
@@ -370,6 +372,16 @@ export function UnscheduledTaskItem({
                 {progress.completed}/{progress.total} done
               </span>
             )}
+            {/* Has timer plan indicator */}
+            {task.linkedIntervalTemplateId && (
+              <Badge
+                variant="outline"
+                className="text-xs px-1.5 py-0 bg-primary/10 text-primary border-primary/30 gap-1"
+              >
+                <Layers className="h-2.5 w-2.5" />
+                Timer Plan
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -414,6 +426,26 @@ export function UnscheduledTaskItem({
             aria-label="Break down task"
           >
             <ListTodo className="h-3.5 w-3.5 text-primary" />
+          </Button>
+        )}
+
+        {showQuickActions && onBreakIntoIntervals && !task.completed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBreakIntoIntervals(task);
+            }}
+            className={`h-6 w-6 p-0 transition-opacity ${
+              task.linkedIntervalTemplateId
+                ? 'opacity-100 text-primary'
+                : isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+            title={task.linkedIntervalTemplateId ? "Run saved timer plan" : "Break into timed intervals"}
+            aria-label="Break into intervals"
+          >
+            <Timer className="h-3.5 w-3.5 text-primary" />
           </Button>
         )}
 
