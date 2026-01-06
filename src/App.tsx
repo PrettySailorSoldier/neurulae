@@ -15,6 +15,7 @@ import Auth from "./pages/Auth";
 
 // Lazy load all other pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
+const Tasks = lazy(() => import("./pages/Tasks"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Success = lazy(() => import("./pages/Success"));
@@ -63,6 +64,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
                 <Route path="/app" element={<RequireAuth><Index /></RequireAuth>} />
+                <Route path="/tasks" element={<RequireAuth><Tasks /></RequireAuth>} />
                 <Route path="/auth" element={<PublicOnly><Auth /></PublicOnly>} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
