@@ -1930,8 +1930,6 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6" role="main">
         <StatsOverview
           onOpenScheduler={() => setSchedulerOpen(true)}
-          tasks={tasks}
-          playbooks={playbooks}
         />
 
         {/* Tabbed Content */}
