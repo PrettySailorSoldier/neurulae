@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useEffect, useCallback, useRef } from 'react';
 import { Play, Pause, RotateCcw, Clock, Maximize2, PlusCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { TimerHub } from './TimerHub';
 import { TimerSession, Task, Playbook } from '@/types';
 import { CircularTimer } from './CircularTimer';
 import { EstimationComparisonCard } from './EstimationComparisonCard';
-import { useGlobalTimer } from '@/hooks/useGlobalTimer';
+import { useTimerContext } from '@/contexts/TimerContext';
 import { toast } from 'sonner';
 
 const PRESETS = [
@@ -37,7 +37,20 @@ export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [],
   // Completed task info for comparison card
   const [completedTaskInfo, setCompletedTaskInfo] = useState<CompletedTaskInfo | null>(null);
 
-  // Use global timer for state synchronization across components
+  // Use timer context for state synchronization across components
+  const {
+    activeTimerState,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    stopTimer,
+    addTime,
+    completeEarly,
+    getActualMinutes,
+    sessions,
+  } = useTimerContext();
+
+  // Extract values from activeTimerState for easier access
   const {
     isRunning,
     isPaused,
@@ -46,38 +59,60 @@ export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [],
     taskId: activeTaskId,
     taskTitle: activeTaskTitle,
     hasActiveTimer,
-    sessions,
-    startTimer,
-    pauseTimer,
-    resumeTimer,
-    stopTimer,
-    addTime,
-    completeEarly,
-    getActualMinutes,
-  } = useGlobalTimer({
-    onComplete: (taskId, actualMinutes) => {
-      const task = taskId ? tasks.find(t => t.id === taskId) : null;
+  } = activeTimerState;
 
-      if (task) {
-        // Show completion card with estimation comparison
-        setCompletedTaskInfo({
-          title: task.title,
-          estimatedMinutes: task.estimatedMinutes || null,
-          actualMinutes,
-          taskId: task.id,
+  // Handle timer completion - update task with actual time
+  const handleTimerComplete = useCallback((taskId: string | null, actualMinutes: number) => {
+    const task = taskId ? tasks.find(t => t.id === taskId) : null;
+
+    if (task) {
+      // Show completion card with estimation comparison
+      setCompletedTaskInfo({
+        title: task.title,
+        estimatedMinutes: task.estimatedMinutes || null,
+        actualMinutes,
+        taskId: task.id,
+      });
+
+      // Update task with actual time
+      if (onUpdateTask) {
+        onUpdateTask(task.id, {
+          actualMinutes: (task.actualMinutes || 0) + actualMinutes,
         });
-
-        // Update task with actual time
-        if (onUpdateTask) {
-          onUpdateTask(task.id, {
-            actualMinutes: (task.actualMinutes || 0) + actualMinutes,
-          });
-        }
-      } else {
-        toast.success('Timer complete!', { icon: '🎉' });
       }
-    },
+    } else if (actualMinutes > 0) {
+      toast.success('Timer complete!', { icon: '🎉' });
+    }
+  }, [tasks, onUpdateTask]);
+
+  // Track previous timer state to detect completion
+  const prevTimerStateRef = useRef<{
+    hasActiveTimer: boolean;
+    taskId: string | null;
+    totalTime: number;
+  }>({
+    hasActiveTimer: false,
+    taskId: null,
+    totalTime: 0,
   });
+
+  // Watch for timer completion
+  useEffect(() => {
+    const prev = prevTimerStateRef.current;
+    
+    // Detect completion: was running, now not running, and had some time elapsed
+    if (prev.hasActiveTimer && !hasActiveTimer && prev.totalTime > 0) {
+      const actualMinutes = Math.max(1, Math.ceil(prev.totalTime / 60));
+      handleTimerComplete(prev.taskId, actualMinutes);
+    }
+    
+    // Update ref for next comparison
+    prevTimerStateRef.current = {
+      hasActiveTimer,
+      taskId: activeTaskId,
+      totalTime,
+    };
+  }, [hasActiveTimer, activeTaskId, totalTime, handleTimerComplete]);
 
   // Memoize task/playbook options to prevent recalculation on every render
   const taskOptions = useMemo(() => {

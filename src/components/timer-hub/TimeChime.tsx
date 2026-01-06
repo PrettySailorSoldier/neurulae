@@ -1,11 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Play, Square, Volume2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Play, Square, Volume2, Upload, Trash2, Music } from 'lucide-react';
+
+interface CustomSound {
+  id: string;
+  name: string;
+  dataUrl: string;
+}
 
 export function TimeChime() {
   const { toast } = useToast();
@@ -14,8 +21,33 @@ export function TimeChime() {
   const [chimeCount, setChimeCount] = useLocalStorage('neurulae-chime-count', 0);
   const [nextChimeIn, setNextChimeIn] = useLocalStorage('neurulae-chime-countdown', 0);
   const [volume, setVolume] = useLocalStorage('neurulae-chime-volume', 30);
-  const [tone, setTone] = useLocalStorage<OscillatorType>('neurulae-chime-tone', 'sine');
+  const [tone, setTone] = useLocalStorage<OscillatorType | 'custom'>('neurulae-chime-tone', 'sine');
   const [frequency, setFrequency] = useLocalStorage('neurulae-chime-frequency', 800);
+  const [customSounds, setCustomSounds] = useLocalStorage<CustomSound[]>('neurulae-custom-sounds', []);
+  const [selectedCustomSound, setSelectedCustomSound] = useLocalStorage<string | null>('neurulae-selected-custom-sound', null);
+
+  // Refs for debounced preview
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounced preview function - plays sound after user stops adjusting
+  const schedulePreview = useCallback(() => {
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+    }
+    previewTimeoutRef.current = setTimeout(() => {
+      playChime(true); // Play a short preview
+    }, 300); // Wait 300ms after last change
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isRunning || nextChimeIn <= 0) return;
@@ -39,24 +71,62 @@ export function TimeChime() {
     return () => clearInterval(countdown);
   }, [isRunning, chimeInterval, nextChimeIn]);
 
-  const playChime = () => {
-    // Create a customizable beep sound
-    const audioContext = new AudioContext();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+  const playChime = (isPreview = false) => {
+    // If using custom sound
+    if (tone === 'custom' && selectedCustomSound) {
+      const customSound = customSounds.find(s => s.id === selectedCustomSound);
+      if (customSound) {
+        const audio = new Audio(customSound.dataUrl);
+        audio.volume = volume / 100;
+        audio.play().catch(e => console.warn('Failed to play custom sound:', e));
+        return;
+      }
+    }
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    // Create a customizable beep sound using oscillator
+    try {
+      const audioContext = new AudioContext();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
 
-    oscillator.frequency.value = frequency;
-    oscillator.type = tone;
-    
-    const volumeValue = volume / 100;
-    gainNode.gain.setValueAtTime(volumeValue, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
 
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
+      oscillator.frequency.value = frequency;
+      oscillator.type = tone === 'custom' ? 'sine' : tone;
+      
+      const volumeValue = volume / 100;
+      const duration = isPreview ? 0.2 : 0.5; // Shorter duration for previews
+      
+      gainNode.gain.setValueAtTime(volumeValue, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch (e) {
+      console.warn('Failed to play oscillator:', e);
+    }
+  };
+
+  const handleFrequencyChange = (value: number[]) => {
+    setFrequency(value[0]);
+    if (!isRunning && tone !== 'custom') {
+      schedulePreview();
+    }
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    setVolume(value[0]);
+    if (!isRunning) {
+      schedulePreview();
+    }
+  };
+
+  const handleToneChange = (value: string) => {
+    setTone(value as OscillatorType | 'custom');
+    if (!isRunning) {
+      schedulePreview();
+    }
   };
 
   const handleStart = () => {
@@ -68,6 +138,78 @@ export function TimeChime() {
   const handleStop = () => {
     setIsRunning(false);
     setNextChimeIn(0);
+  };
+
+  // Handle custom sound upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an audio file (MP3, WAV, OGG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file size (max 1MB)
+    if (file.size > 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an audio file smaller than 1MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const newSound: CustomSound = {
+        id: crypto.randomUUID(),
+        name: file.name.replace(/\.[^.]+$/, ''), // Remove extension
+        dataUrl,
+      };
+      
+      setCustomSounds(prev => [...prev, newSound]);
+      setSelectedCustomSound(newSound.id);
+      setTone('custom');
+      
+      toast({
+        title: "Sound uploaded",
+        description: `"${newSound.name}" is now available as a chime sound`,
+      });
+    } catch (e) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to process the audio file",
+        variant: "destructive",
+      });
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDeleteCustomSound = (soundId: string) => {
+    setCustomSounds(prev => prev.filter(s => s.id !== soundId));
+    if (selectedCustomSound === soundId) {
+      setSelectedCustomSound(null);
+      setTone('sine');
+    }
   };
 
   const minutes = Math.floor(nextChimeIn / 60);
@@ -101,7 +243,7 @@ export function TimeChime() {
           <Label className="block text-sm font-medium mb-2">Chime Tone</Label>
           <Select
             value={tone}
-            onValueChange={(v) => setTone(v as OscillatorType)}
+            onValueChange={handleToneChange}
             disabled={isRunning}
           >
             <SelectTrigger className="bg-input border-border">
@@ -112,28 +254,131 @@ export function TimeChime() {
               <SelectItem value="square">Square (Sharp)</SelectItem>
               <SelectItem value="triangle">Triangle (Soft)</SelectItem>
               <SelectItem value="sawtooth">Sawtooth (Buzzy)</SelectItem>
+              {customSounds.length > 0 && (
+                <SelectItem value="custom">🎵 Custom Sound</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
 
-        <div>
-          <Label className="block text-sm font-medium mb-2">
-            Frequency: {frequency}Hz
-          </Label>
-          <Slider
-            value={[frequency]}
-            onValueChange={(v) => setFrequency(v[0])}
-            min={200}
-            max={2000}
-            step={50}
-            disabled={isRunning}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-            <span>Low</span>
-            <span>High</span>
+        {/* Custom sound selector - shown when custom is selected */}
+        {tone === 'custom' && customSounds.length > 0 && (
+          <div>
+            <Label className="block text-sm font-medium mb-2">Custom Sound</Label>
+            <Select
+              value={selectedCustomSound || ''}
+              onValueChange={(v) => {
+                setSelectedCustomSound(v);
+                if (!isRunning) schedulePreview();
+              }}
+              disabled={isRunning}
+            >
+              <SelectTrigger className="bg-input border-border">
+                <SelectValue placeholder="Select a custom sound" />
+              </SelectTrigger>
+              <SelectContent>
+                {customSounds.map(sound => (
+                  <SelectItem key={sound.id} value={sound.id}>
+                    <div className="flex items-center gap-2">
+                      <Music className="h-3 w-3" />
+                      {sound.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+        )}
+
+        {/* Custom sound upload and management */}
+        <div className="space-y-3">
+          <Label className="block text-sm font-medium">Custom Sounds</Label>
+          <div className="flex gap-2">
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="custom-sound-upload"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isRunning}
+              className="flex-1"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Custom Sound
+            </Button>
+          </div>
+          
+          {/* List of custom sounds */}
+          {customSounds.length > 0 && (
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {customSounds.map(sound => (
+                <div 
+                  key={sound.id}
+                  className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Music className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{sound.name}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => {
+                        const audio = new Audio(sound.dataUrl);
+                        audio.volume = volume / 100;
+                        audio.play();
+                      }}
+                    >
+                      <Play className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteCustomSound(sound.id)}
+                      disabled={isRunning}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Upload MP3, WAV, or OGG files (max 1MB) to use as notification sounds
+          </p>
         </div>
+
+        {/* Frequency slider - only show for oscillator tones */}
+        {tone !== 'custom' && (
+          <div>
+            <Label className="block text-sm font-medium mb-2">
+              Frequency: {frequency}Hz
+            </Label>
+            <Slider
+              value={[frequency]}
+              onValueChange={handleFrequencyChange}
+              min={200}
+              max={2000}
+              step={50}
+              disabled={isRunning}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>Low</span>
+              <span>High</span>
+            </div>
+          </div>
+        )}
 
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -144,7 +389,7 @@ export function TimeChime() {
           </div>
           <Slider
             value={[volume]}
-            onValueChange={(v) => setVolume(v[0])}
+            onValueChange={handleVolumeChange}
             min={0}
             max={100}
             step={5}
@@ -158,7 +403,7 @@ export function TimeChime() {
         </div>
 
         <Button
-          onClick={playChime}
+          onClick={() => playChime()}
           variant="outline"
           size="sm"
           className="w-full"

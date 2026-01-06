@@ -1,6 +1,6 @@
 import { useState, useMemo, memo } from 'react';
 import { Task } from '@/types';
-import { Plus, MoreHorizontal, Sparkles, TrendingUp, Clock, ListPlus, CalendarClock, Check, Play } from 'lucide-react';
+import { Plus, MoreHorizontal, Sparkles, TrendingUp, Clock, ListPlus, CalendarClock, Check, Play, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface MobileTaskViewProps {
   tasks: Task[];
@@ -115,6 +122,44 @@ const MobileTaskViewComponent = ({
   const [newTaskType, setNewTaskType] = useState<'school' | 'work' | 'home' | 'appointment' | 'call' | 'other'>('work');
   const [bulkText, setBulkText] = useState('');
   const [bulkAddLoading, setBulkAddLoading] = useState(false);
+  
+  // Edit task state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [editTaskMinutes, setEditTaskMinutes] = useState('');
+  const [editTaskType, setEditTaskType] = useState<'school' | 'work' | 'home' | 'appointment' | 'call' | 'other'>('other');
+
+  // Handle opening edit dialog
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setEditTaskTitle(task.title);
+    setEditTaskMinutes(task.estimatedMinutes?.toString() || '');
+    setEditTaskType(task.taskType || 'other');
+    setEditDialogOpen(true);
+  };
+
+  // Handle saving edited task
+  const handleSaveEditedTask = () => {
+    if (editingTask && editTaskTitle.trim()) {
+      const updatedTask: Task = {
+        ...editingTask,
+        title: editTaskTitle.trim(),
+        estimatedMinutes: editTaskMinutes ? parseInt(editTaskMinutes) : undefined,
+        taskType: editTaskType,
+      };
+      onUpdateTask(updatedTask);
+      setEditDialogOpen(false);
+      setEditingTask(null);
+    }
+  };
+
+  // Handle deleting a task
+  const handleDeleteTaskClick = (taskId: string) => {
+    if (confirm('Are you sure you want to delete this task?')) {
+      onDeleteTask(taskId);
+    }
+  };
 
   // Group tasks by category
   const tasksByCategory = useMemo(() => {
@@ -318,10 +363,39 @@ const MobileTaskViewComponent = ({
                   )}
                 >
                   {/* More Options Button */}
-                  <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="bg-muted/50 backdrop-blur rounded-full p-1.5 text-muted-foreground cursor-pointer hover:bg-muted hover:text-foreground transition-colors">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
+                  <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity z-10">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="bg-muted/50 backdrop-blur rounded-full p-1.5 text-muted-foreground cursor-pointer hover:bg-muted hover:text-foreground transition-colors">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            incompleteTasks.forEach(task => onToggleComplete(task.id));
+                          }}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Mark all complete
+                        </DropdownMenuItem>
+                        {completedCount > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                const completedInCategory = categoryTasks.filter(t => t.completed);
+                                completedInCategory.forEach(task => onDeleteTask(task.id));
+                              }}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete completed ({completedCount})
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   {/* Urgent Badge */}
@@ -359,50 +433,77 @@ const MobileTaskViewComponent = ({
                     {incompleteTasks.slice(0, isFullWidth ? undefined : 2).map(task => {
                       const isActiveTask = activeTaskId === task.id;
                       return (
-                        <label 
+                        <div 
                           key={task.id} 
                           className={cn(
-                            "flex gap-x-3 items-center group/item cursor-pointer p-2 -mx-2 rounded-xl transition-all",
+                            "flex gap-x-3 items-center group/item p-2 -mx-2 rounded-xl transition-all",
                             isActiveTask && "bg-primary/10 ring-2 ring-primary/50",
                             isActiveTask && isTimerRunning && "animate-pulse"
                           )}
                         >
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={() => onToggleComplete(task.id)}
-                            className={cn(
-                              "h-5 w-5 rounded-md border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary",
-                              isActiveTask ? "border-primary" : "border-border"
-                            )}
-                          />
-                          <div className="flex-1 flex items-center gap-2 min-w-0">
-                            {/* Active indicator */}
-                            {isActiveTask && (
-                              <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/20 px-1.5 py-0.5 rounded-full">
-                                <Play className="h-2.5 w-2.5 fill-current" />
-                                ACTIVE
+                          <label className="flex gap-x-3 items-center flex-1 cursor-pointer min-w-0">
+                            <Checkbox
+                              checked={task.completed}
+                              onCheckedChange={() => onToggleComplete(task.id)}
+                              className={cn(
+                                "h-5 w-5 rounded-md border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary",
+                                isActiveTask ? "border-primary" : "border-border"
+                              )}
+                            />
+                            <div className="flex-1 flex items-center gap-2 min-w-0">
+                              {/* Active indicator */}
+                              {isActiveTask && (
+                                <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/20 px-1.5 py-0.5 rounded-full">
+                                  <Play className="h-2.5 w-2.5 fill-current" />
+                                  ACTIVE
+                                </span>
+                              )}
+                              <span className={cn(
+                                "font-medium transition-colors group-hover/item:text-primary truncate",
+                                isFullWidth ? 'text-[15px]' : 'text-xs leading-snug',
+                                isActiveTask ? 'text-primary font-semibold' : 'text-card-foreground',
+                                task.completed && 'text-muted-foreground line-through'
+                              )}>
+                                {task.title}
                               </span>
-                            )}
-                            <span className={cn(
-                              "font-medium transition-colors group-hover/item:text-primary truncate",
-                              isFullWidth ? 'text-[15px]' : 'text-xs leading-snug',
-                              isActiveTask ? 'text-primary font-semibold' : 'text-card-foreground',
-                              task.completed && 'text-muted-foreground line-through'
-                            )}>
-                              {task.title}
-                            </span>
-                            {/* Estimated time badge */}
-                            {task.estimatedMinutes && !task.completed && !isActiveTask && (
-                              <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
-                                <Clock className="h-2.5 w-2.5" />
-                                {task.estimatedMinutes < 60
-                                  ? `${task.estimatedMinutes}m`
-                                  : `${Math.floor(task.estimatedMinutes / 60)}h${task.estimatedMinutes % 60 > 0 ? ` ${task.estimatedMinutes % 60}m` : ''}`
-                                }
-                              </span>
-                            )}
-                          </div>
-                        </label>
+                              {/* Estimated time badge */}
+                              {task.estimatedMinutes && !task.completed && !isActiveTask && (
+                                <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {task.estimatedMinutes < 60
+                                    ? `${task.estimatedMinutes}m`
+                                    : `${Math.floor(task.estimatedMinutes / 60)}h${task.estimatedMinutes % 60 > 0 ? ` ${task.estimatedMinutes % 60}m` : ''}`
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          </label>
+                          {/* Task Actions Dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button 
+                                className="opacity-0 group-hover/item:opacity-100 focus:opacity-100 bg-muted/50 backdrop-blur rounded-full p-1.5 text-muted-foreground cursor-pointer hover:bg-muted hover:text-foreground transition-all"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => handleEditTask(task)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit Task
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteTaskClick(task.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Task
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       );
                     })}
                   </div>
@@ -617,6 +718,64 @@ const MobileTaskViewComponent = ({
             </Button>
             <Button onClick={handleBulkAdd} disabled={!bulkText.trim() || bulkAddLoading} className="rounded-xl">
               {bulkAddLoading ? 'Adding...' : 'Add All Tasks'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-task-title">Task Title</Label>
+              <Input
+                id="edit-task-title"
+                placeholder="e.g., Finish Q3 Report"
+                value={editTaskTitle}
+                onChange={(e) => setEditTaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveEditedTask()}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-task-type">Category</Label>
+              <Select value={editTaskType} onValueChange={(value: any) => setEditTaskType(value)}>
+                <SelectTrigger id="edit-task-type" className="rounded-xl">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="work">💼 Work</SelectItem>
+                  <SelectItem value="school">📚 School</SelectItem>
+                  <SelectItem value="home">🏠 Home / Health</SelectItem>
+                  <SelectItem value="appointment">📅 Appointment</SelectItem>
+                  <SelectItem value="call">📞 Call</SelectItem>
+                  <SelectItem value="other">👤 Personal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-estimated-minutes">Estimated Minutes (optional)</Label>
+              <Input
+                id="edit-estimated-minutes"
+                type="number"
+                placeholder="e.g., 30"
+                value={editTaskMinutes}
+                onChange={(e) => setEditTaskMinutes(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveEditedTask()}
+                className="rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} className="rounded-xl">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditedTask} disabled={!editTaskTitle.trim()} className="rounded-xl">
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
