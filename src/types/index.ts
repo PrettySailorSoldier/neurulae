@@ -814,6 +814,21 @@ export interface TransitionPrompt {
   linkedRoutineId?: string;
 }
 
+// Tomorrow's Intentions - from Daily Review "Plan Tomorrow" feature
+export interface TomorrowIntention {
+  id: string;
+  title: string;
+  taskId?: string; // If linked to an existing task
+  completed: boolean;
+  order: number;
+}
+
+export interface TomorrowIntentions {
+  date: string; // YYYY-MM-DD - the date these intentions are FOR (tomorrow when set)
+  intentions: TomorrowIntention[];
+  createdAt: string; // When the user set these intentions
+}
+
 // Storage keys for neurodivergent features
 export const ND_STORAGE_KEYS = {
   ANCHOR_POINTS: 'neurulae-anchor-points',

@@ -357,13 +357,25 @@ const MobileTaskViewComponent = ({
                           onCheckedChange={() => onToggleComplete(task.id)}
                           className="h-5 w-5 rounded-md border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
-                        <span className={cn(
-                          "text-card-foreground font-medium transition-colors group-hover/item:text-primary",
-                          isFullWidth ? 'text-[15px]' : 'text-xs leading-snug',
-                          task.completed && 'text-muted-foreground line-through'
-                        )}>
-                          {task.title}
-                        </span>
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                          <span className={cn(
+                            "text-card-foreground font-medium transition-colors group-hover/item:text-primary truncate",
+                            isFullWidth ? 'text-[15px]' : 'text-xs leading-snug',
+                            task.completed && 'text-muted-foreground line-through'
+                          )}>
+                            {task.title}
+                          </span>
+                          {/* Estimated time badge */}
+                          {task.estimatedMinutes && !task.completed && (
+                            <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
+                              <Clock className="h-2.5 w-2.5" />
+                              {task.estimatedMinutes < 60
+                                ? `${task.estimatedMinutes}m`
+                                : `${Math.floor(task.estimatedMinutes / 60)}h${task.estimatedMinutes % 60 > 0 ? ` ${task.estimatedMinutes % 60}m` : ''}`
+                              }
+                            </span>
+                          )}
+                        </div>
                       </label>
                     ))}
                   </div>

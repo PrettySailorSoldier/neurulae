@@ -1,13 +1,13 @@
-import { useState, useEffect, memo, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Play, Pause, RotateCcw, Clock, Maximize2, PlusCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimerHub } from './TimerHub';
-import { TimerState, TimerSession, Task, Playbook } from '@/types';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { TimerSession, Task, Playbook } from '@/types';
 import { CircularTimer } from './CircularTimer';
 import { EstimationComparisonCard } from './EstimationComparisonCard';
+import { useGlobalTimer } from '@/hooks/useGlobalTimer';
 import { toast } from 'sonner';
 
 const PRESETS = [
@@ -30,21 +30,54 @@ interface CompletedTaskInfo {
 }
 
 export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [], onUpdateTask }: FocusTimerProps) {
-  const [timer, setTimer] = useState<TimerState>({
-    isRunning: false,
-    timeRemaining: 25 * 60,
-    totalTime: 25 * 60,
-  });
   const [hubOpen, setHubOpen] = useState(false);
-  const [sessions, setSessions] = useLocalStorage<TimerSession[]>('neurulae-timer-sessions', []);
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(undefined);
-
-  // Track actual elapsed time
-  const [taskStartTime, setTaskStartTime] = useState<number | null>(null);
-  const [elapsedBeforePause, setElapsedBeforePause] = useState(0);
+  const [presetDuration, setPresetDuration] = useState(25 * 60); // Default 25 minutes in seconds
 
   // Completed task info for comparison card
   const [completedTaskInfo, setCompletedTaskInfo] = useState<CompletedTaskInfo | null>(null);
+
+  // Use global timer for state synchronization across components
+  const {
+    isRunning,
+    isPaused,
+    timeRemaining,
+    totalTime,
+    taskId: activeTaskId,
+    taskTitle: activeTaskTitle,
+    hasActiveTimer,
+    sessions,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    stopTimer,
+    addTime,
+    completeEarly,
+    getActualMinutes,
+  } = useGlobalTimer({
+    onComplete: (taskId, actualMinutes) => {
+      const task = taskId ? tasks.find(t => t.id === taskId) : null;
+
+      if (task) {
+        // Show completion card with estimation comparison
+        setCompletedTaskInfo({
+          title: task.title,
+          estimatedMinutes: task.estimatedMinutes || null,
+          actualMinutes,
+          taskId: task.id,
+        });
+
+        // Update task with actual time
+        if (onUpdateTask) {
+          onUpdateTask(task.id, {
+            actualMinutes: (task.actualMinutes || 0) + actualMinutes,
+          });
+        }
+      } else {
+        toast.success('Timer complete!', { icon: '🎉' });
+      }
+    },
+  });
 
   // Memoize task/playbook options to prevent recalculation on every render
   const taskOptions = useMemo(() => {
@@ -59,145 +92,72 @@ export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [],
     return tasks.find(t => t.id === selectedTaskId) || null;
   }, [selectedTaskId, tasks]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (timer.isRunning && timer.timeRemaining > 0) {
-      interval = setInterval(() => {
-        setTimer(prev => ({
-          ...prev,
-          timeRemaining: Math.max(0, prev.timeRemaining - 1),
-        }));
-      }, 1000);
-    }
-
-    // Handle timer complete
-    if (timer.isRunning && timer.timeRemaining === 0) {
-      handleTimerComplete();
-    }
-
-    return () => clearInterval(interval);
-  }, [timer.isRunning, timer.timeRemaining]);
-
-  const getActualMinutes = () => {
-    if (!taskStartTime) return Math.ceil((timer.totalTime - timer.timeRemaining) / 60);
-    const totalElapsed = elapsedBeforePause + (timer.isRunning ? Date.now() - taskStartTime : 0);
-    return Math.max(1, Math.ceil(totalElapsed / 60000));
-  };
-
-  const handleTimerComplete = () => {
-    const actualMinutes = getActualMinutes();
-
-    // Save session
-    const session: TimerSession = {
-      id: crypto.randomUUID(),
-      taskId: selectedTaskId && selectedTaskId !== 'none' ? selectedTaskId : undefined,
-      startTime: new Date(Date.now() - actualMinutes * 60000).toISOString(),
-      endTime: new Date().toISOString(),
-      actualMinutes,
-      date: new Date().toISOString().split('T')[0],
-      timerType: 'interval',
-    };
-    setSessions([session, ...sessions]);
-
-    // Show completion card if task was selected
-    if (selectedTask) {
-      setCompletedTaskInfo({
-        title: selectedTask.title,
-        estimatedMinutes: selectedTask.estimatedMinutes || null,
-        actualMinutes,
-        taskId: selectedTask.id,
-      });
-
-      // Update task with actual time
-      if (onUpdateTask) {
-        onUpdateTask(selectedTask.id, {
-          actualMinutes: (selectedTask.actualMinutes || 0) + actualMinutes,
-        });
-      }
-    } else {
-      toast.success('Timer complete!', { icon: '🎉' });
-    }
-
-    // Reset timer state
-    setTimer(prev => ({ ...prev, isRunning: false }));
-    setTaskStartTime(null);
-    setElapsedBeforePause(0);
-  };
+  // Determine display values - use global timer state if running, otherwise use local preset
+  const displayTimeRemaining = hasActiveTimer ? timeRemaining : presetDuration;
+  const displayTotalTime = hasActiveTimer ? totalTime : presetDuration;
+  const displayIsRunning = hasActiveTimer && isRunning && !isPaused;
 
   const toggleTimer = () => {
-    if (timer.isRunning) {
-      // Pausing
-      if (taskStartTime) {
-        setElapsedBeforePause(prev => prev + (Date.now() - taskStartTime));
+    if (hasActiveTimer) {
+      if (isPaused) {
+        resumeTimer();
+      } else {
+        pauseTimer();
       }
-      setTimer(prev => ({ ...prev, isRunning: false }));
     } else {
-      // Starting
-      setTaskStartTime(Date.now());
-      setTimer(prev => ({ ...prev, isRunning: true }));
+      // Start a new timer
+      const task = selectedTask ? { id: selectedTask.id, title: selectedTask.title } : null;
+      startTimer(presetDuration, 'focus', task);
     }
   };
 
   const resetTimer = () => {
-    setTimer(prev => ({
-      ...prev,
-      isRunning: false,
-      timeRemaining: prev.totalTime,
-    }));
-    setTaskStartTime(null);
-    setElapsedBeforePause(0);
+    if (hasActiveTimer) {
+      stopTimer();
+    }
+    setPresetDuration(25 * 60); // Reset to default
   };
 
   const setPreset = (minutes: number) => {
     const seconds = minutes * 60;
-    setTimer({
-      isRunning: false,
-      timeRemaining: seconds,
-      totalTime: seconds,
-    });
-    setTaskStartTime(null);
-    setElapsedBeforePause(0);
+    setPresetDuration(seconds);
+    // If timer is running, stop it first
+    if (hasActiveTimer) {
+      stopTimer();
+    }
   };
 
   const handleAddTime = (extraMinutes: number) => {
-    setTimer(prev => ({
-      ...prev,
-      timeRemaining: prev.timeRemaining + extraMinutes * 60,
-      totalTime: prev.totalTime + extraMinutes * 60,
-    }));
-    toast.success(`+${extraMinutes} minutes added`);
+    if (hasActiveTimer) {
+      addTime(extraMinutes * 60);
+      toast.success(`+${extraMinutes} minutes added`);
+    }
   };
 
   const handleDoneEarly = () => {
-    if (timer.isRunning || timer.timeRemaining < timer.totalTime) {
-      handleTimerComplete();
+    if (hasActiveTimer) {
+      completeEarly();
     }
   };
 
   const handleSaveSession = (session: TimerSession) => {
-    const enhancedSession = { ...session, taskId: selectedTaskId };
-    setSessions([enhancedSession, ...sessions]);
+    // Sessions are automatically saved by useGlobalTimer
+    // This callback is for compatibility with TimerHub
   };
 
   const handleDismissComparison = () => {
     setCompletedTaskInfo(null);
-    resetTimer();
+    setPresetDuration(25 * 60);
   };
 
   // When selecting a task with an estimate, use that as the timer duration
   const handleTaskSelect = (taskId: string) => {
     setSelectedTaskId(taskId);
 
-    if (taskId && taskId !== 'none' && !timer.isRunning) {
+    if (taskId && taskId !== 'none' && !hasActiveTimer) {
       const task = tasks.find(t => t.id === taskId);
       if (task?.estimatedMinutes && task.estimatedMinutes > 0) {
-        const seconds = task.estimatedMinutes * 60;
-        setTimer({
-          isRunning: false,
-          timeRemaining: seconds,
-          totalTime: seconds,
-        });
+        setPresetDuration(task.estimatedMinutes * 60);
       }
     }
   };
@@ -221,21 +181,30 @@ export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [],
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             <span className="text-base">Focus Timer</span>
+            {hasActiveTimer && activeTaskTitle && (
+              <span className="text-xs font-normal text-muted-foreground truncate max-w-[150px]">
+                - {activeTaskTitle}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Circular Timer */}
           <div className="flex justify-center py-2">
             <CircularTimer
-              timeRemaining={timer.timeRemaining}
-              totalTime={timer.totalTime}
+              timeRemaining={displayTimeRemaining}
+              totalTime={displayTotalTime}
               size="lg"
-              isPaused={!timer.isRunning}
+              isPaused={!displayIsRunning}
             />
           </div>
 
           {/* Task Selector */}
-          <Select value={selectedTaskId} onValueChange={handleTaskSelect} disabled={timer.isRunning}>
+          <Select
+            value={hasActiveTimer ? (activeTaskId || 'none') : selectedTaskId}
+            onValueChange={handleTaskSelect}
+            disabled={hasActiveTimer}
+          >
             <SelectTrigger className="w-full text-xs h-9">
               <SelectValue placeholder="Select task (optional)" />
             </SelectTrigger>
@@ -279,7 +248,7 @@ export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [],
                 variant="outline"
                 size="sm"
                 onClick={() => setPreset(preset.minutes)}
-                disabled={timer.isRunning}
+                disabled={hasActiveTimer}
                 className="text-xs h-8"
               >
                 {preset.label}
@@ -293,10 +262,15 @@ export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [],
               onClick={toggleTimer}
               className="btn-primary"
             >
-              {timer.isRunning ? (
+              {hasActiveTimer && !isPaused ? (
                 <>
                   <Pause className="h-4 w-4 mr-2" />
                   Pause
+                </>
+              ) : hasActiveTimer && isPaused ? (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Resume
                 </>
               ) : (
                 <>
@@ -314,7 +288,7 @@ export const FocusTimer = memo(function FocusTimer({ tasks = [], playbooks = [],
           </div>
 
           {/* Running Controls */}
-          {timer.isRunning && (
+          {hasActiveTimer && (
             <div className="flex gap-2 justify-center">
               <Button
                 onClick={() => handleAddTime(5)}

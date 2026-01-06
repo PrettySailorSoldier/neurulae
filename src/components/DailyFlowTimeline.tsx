@@ -55,6 +55,16 @@ interface ScheduleEntry {
   source?: string;
 }
 
+// Active timer state for visual integration
+interface ActiveTimerState {
+  isRunning: boolean;
+  isPaused: boolean;
+  taskId: string | null;
+  taskTitle: string | null;
+  timeRemaining: number; // seconds
+  totalTime: number; // seconds
+}
+
 interface DailyFlowTimelineProps {
   timeBlocks: TimeBlock[];
   scheduledTasks: ScheduledTask[];
@@ -68,6 +78,8 @@ interface DailyFlowTimelineProps {
   useExternalDragContext?: boolean;
   // Callback for handling drag end events (used when useExternalDragContext is true)
   onExternalDragEnd?: (result: DropResult) => void;
+  // Active timer state for showing timer progress in timeline
+  activeTimerState?: ActiveTimerState;
 }
 
 export function DailyFlowTimeline({
@@ -81,6 +93,7 @@ export function DailyFlowTimeline({
   onScheduleTask,
   useExternalDragContext = false,
   onExternalDragEnd,
+  activeTimerState,
 }: DailyFlowTimelineProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -341,7 +354,7 @@ export function DailyFlowTimeline({
     const topPercentage = timeToPercentage(block.startTime);
     const bottomPercentage = timeToPercentage(block.endTime);
     const height = bottomPercentage - topPercentage;
-    
+
     // Get tasks scheduled to this block today
     const today = format(new Date(), 'yyyy-MM-dd');
     const scheduledToBlock = scheduledTasks.filter(
@@ -351,6 +364,14 @@ export function DailyFlowTimeline({
       .map(st => tasks.find(t => t.id === st.taskId))
       .filter(Boolean);
 
+    // Check if this block contains the actively timed task
+    const hasActiveTimerTask = activeTimerState?.taskId &&
+      scheduledToBlock.some(st => st.taskId === activeTimerState.taskId);
+    const isTimerRunning = activeTimerState?.isRunning && !activeTimerState?.isPaused;
+    const timerProgress = activeTimerState?.totalTime
+      ? ((activeTimerState.totalTime - activeTimerState.timeRemaining) / activeTimerState.totalTime) * 100
+      : 0;
+
     return (
       <Droppable key={block.id} droppableId={`timeblock-${block.id}`} type="TASK">
         {(provided, snapshot) => (
@@ -358,20 +379,22 @@ export function DailyFlowTimeline({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "absolute border rounded-lg p-1.5 cursor-pointer transition-all hover:shadow-lg",
+              "absolute border rounded-lg p-1.5 cursor-pointer transition-all hover:shadow-lg overflow-hidden",
               isActive ? 'bg-primary/20 border-primary ring-2 ring-primary/50' : 'bg-card/80 border-border',
-              snapshot.isDraggingOver && 'ring-2 ring-green-500/50 bg-green-500/10 border-green-500'
+              snapshot.isDraggingOver && 'ring-2 ring-green-500/50 bg-green-500/10 border-green-500',
+              // Active timer styling - pulsing border when timer is running
+              hasActiveTimerTask && isTimerRunning && 'ring-2 ring-primary animate-pulse border-primary'
             )}
             style={{
               top: `${topPercentage}%`,
               height: `${height}%`,
               left: '80px',
               right: '8px',
-              backgroundColor: snapshot.isDraggingOver 
+              backgroundColor: snapshot.isDraggingOver
                 ? undefined // Let the className handle it
                 : (block.color ? `${block.color}20` : undefined),
-              borderColor: snapshot.isDraggingOver ? undefined : (block.color || undefined),
-              zIndex: snapshot.isDraggingOver ? 10 : 3,
+              borderColor: snapshot.isDraggingOver ? undefined : (hasActiveTimerTask ? undefined : (block.color || undefined)),
+              zIndex: snapshot.isDraggingOver ? 10 : (hasActiveTimerTask ? 5 : 3),
             }}
             onClick={() => {
               setEditingBlock(block);
@@ -380,18 +403,43 @@ export function DailyFlowTimeline({
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-xs truncate">{block.title}</h4>
+                <div className="flex items-center gap-1">
+                  <h4 className="font-semibold text-xs truncate">{block.title}</h4>
+                  {/* Active timer badge */}
+                  {hasActiveTimerTask && (
+                    <Badge
+                      variant="default"
+                      className={cn(
+                        "text-[8px] px-1 py-0 h-4",
+                        isTimerRunning ? "bg-green-500 animate-pulse" : "bg-yellow-500"
+                      )}
+                    >
+                      {isTimerRunning ? 'Active' : 'Paused'}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-[10px] text-muted-foreground">
                   {block.startTime} - {block.endTime}
                 </p>
-                {/* Show scheduled tasks count */}
+                {/* Show scheduled tasks with active indicator */}
                 {scheduledTaskDetails.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-0.5">
-                    {scheduledTaskDetails.slice(0, 3).map((t, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-[9px] px-1 py-0 truncate max-w-[80px]">
-                        {t?.title}
-                      </Badge>
-                    ))}
+                    {scheduledTaskDetails.slice(0, 3).map((t, idx) => {
+                      const isActiveTask = t?.id === activeTimerState?.taskId;
+                      return (
+                        <Badge
+                          key={idx}
+                          variant={isActiveTask ? "default" : "secondary"}
+                          className={cn(
+                            "text-[9px] px-1 py-0 truncate max-w-[80px]",
+                            isActiveTask && isTimerRunning && "bg-primary animate-pulse"
+                          )}
+                        >
+                          {isActiveTask && <Clock className="h-2 w-2 mr-0.5 inline" />}
+                          {t?.title}
+                        </Badge>
+                      );
+                    })}
                     {scheduledTaskDetails.length > 3 && (
                       <Badge variant="outline" className="text-[9px] px-1 py-0">
                         +{scheduledTaskDetails.length - 3}
@@ -406,6 +454,20 @@ export function DailyFlowTimeline({
                 </div>
               )}
             </div>
+
+            {/* Timer progress bar at bottom of block */}
+            {hasActiveTimerTask && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/50 rounded-b">
+                <div
+                  className={cn(
+                    "h-full rounded-b transition-all duration-1000",
+                    isTimerRunning ? "bg-primary" : "bg-yellow-500"
+                  )}
+                  style={{ width: `${timerProgress}%` }}
+                />
+              </div>
+            )}
+
             {provided.placeholder}
           </div>
         )}

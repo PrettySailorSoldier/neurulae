@@ -27,6 +27,8 @@ interface UnscheduledTaskItemProps {
   isDraggable?: boolean;
   // Whether currently being dragged
   isDragging?: boolean;
+  // Whether a timer is actively running on this task
+  timerIsRunning?: boolean;
 }
 
 export function UnscheduledTaskItem({
@@ -43,6 +45,7 @@ export function UnscheduledTaskItem({
   dragHandleProps,
   isDraggable = false,
   isDragging = false,
+  timerIsRunning = false,
 }: UnscheduledTaskItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [newSubtask, setNewSubtask] = useState('');
@@ -125,6 +128,19 @@ export function UnscheduledTaskItem({
   };
 
   const priorityColors = getPriorityColors();
+
+  // Format estimated minutes as readable time (e.g., "30m" or "1h 15m")
+  const formatEstimatedTime = (minutes: number): string => {
+    if (minutes < 60) {
+      return `${minutes}m`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes === 0) {
+      return `${hours}h`;
+    }
+    return `${hours}h ${remainingMinutes}m`;
+  };
 
   // Handle completion with animation
   const handleToggleComplete = () => {
@@ -255,7 +271,9 @@ export function UnscheduledTaskItem({
           : 'border-border bg-card',
         !task.completed && "hover:shadow-md hover:scale-[1.01]",
         task.completed && "opacity-60",
-        isDragging && "shadow-lg ring-2 ring-primary/50 opacity-90"
+        isDragging && "shadow-lg ring-2 ring-primary/50 opacity-90",
+        // Enhanced glow when timer is actively running on this task
+        timerIsRunning && isActiveIntention && "ring-2 ring-primary/50 animate-pulse shadow-lg shadow-primary/20"
       )}
     >
       {/* Main row - always visible */}
@@ -371,6 +389,19 @@ export function UnscheduledTaskItem({
               <span className="text-xs text-muted-foreground">
                 {progress.completed}/{progress.total} done
               </span>
+            )}
+            {/* Estimated time badge */}
+            {task.estimatedMinutes && !task.completed && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs px-1.5 py-0 gap-1 bg-muted/50 border-muted-foreground/20",
+                  timerIsRunning && "bg-primary/10 border-primary/30 text-primary"
+                )}
+              >
+                <Clock className="h-2.5 w-2.5" />
+                {formatEstimatedTime(task.estimatedMinutes)}
+              </Badge>
             )}
             {/* Has timer plan indicator */}
             {task.linkedIntervalTemplateId && (

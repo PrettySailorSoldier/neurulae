@@ -38,6 +38,8 @@ interface UseGlobalTimerOptions {
   onTick?: (timeRemaining: number) => void;
   onStepComplete?: (completedStep: IntervalStep, nextStep: IntervalStep | null, stepIndex: number) => void;
   onHierarchicalComplete?: (interval: HierarchicalInterval, actualMinutes: number) => void;
+  // NEW: Sync with active intention system
+  onTimerStart?: (taskId: string, taskTitle: string) => void;
 }
 
 export function useGlobalTimer(options: UseGlobalTimerOptions = {}) {
@@ -277,6 +279,11 @@ export function useGlobalTimer(options: UseGlobalTimerOptions = {}) {
       elapsedBeforePause: 0,
       hierarchicalInterval: null,
     });
+
+    // Fire onTimerStart callback for active intention sync
+    if (task?.id && task?.title && optionsRef.current.onTimerStart) {
+      optionsRef.current.onTimerStart(task.id, task.title);
+    }
   }, [state.isRunning, stopTimer]);
 
   // Start a hierarchical interval timer with nested steps
@@ -306,19 +313,27 @@ export function useGlobalTimer(options: UseGlobalTimerOptions = {}) {
       steps: interval.steps.map(step => ({ ...step, isComplete: false })),
     };
 
+    const finalTaskId = task?.id || interval.taskId || null;
+    const finalTaskTitle = task?.title || interval.name;
+
     setState({
       isRunning: true,
       isPaused: false,
       timeRemaining: firstStep.duration,
       totalTime: firstStep.duration,
       timerType: 'hierarchical-interval',
-      taskId: task?.id || interval.taskId || null,
-      taskTitle: task?.title || interval.name,
+      taskId: finalTaskId,
+      taskTitle: finalTaskTitle,
       startedAt: new Date().toISOString(),
       pausedAt: null,
       elapsedBeforePause: 0,
       hierarchicalInterval: initializedInterval,
     });
+
+    // Fire onTimerStart callback for active intention sync
+    if (finalTaskId && finalTaskTitle && optionsRef.current.onTimerStart) {
+      optionsRef.current.onTimerStart(finalTaskId, finalTaskTitle);
+    }
   }, [state.isRunning, stopTimer]);
 
   const pauseTimer = useCallback(() => {

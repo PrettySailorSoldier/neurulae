@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSyncedStorage } from '@/hooks/useSyncedStorage';
 import { syncService } from '@/services/syncService';
-import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme, DashboardTab } from '@/types';
+import { Task, Project, Theme, TimeBlock, ScheduledTask, Playbook, ReminderWidget, EnergyTaskWidget, FutureSelfMessengerWidget, FutureSelfMessage, MoodGardenWidget, ParallelUniverseWidget, SoundSignatureWidget, BrainDumpWidget, PotionInventoryWidget, SunlightAnchorWidget, Plant, CustomTheme, DashboardTab, TomorrowIntentions } from '@/types';
 import { Plus, X, Settings2, ChevronUp, ChevronDown, Pencil, Flame, Trash2, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { getTodayString, getDateString } from '@/lib/timeUtils';
 import { autoOptimizeThemeColors } from '@/lib/colorUtils';
@@ -30,7 +30,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useActiveIntention } from '@/hooks/useActiveIntention';
+import { useGlobalTimer } from '@/hooks/useGlobalTimer';
 import { ActiveIntentionBanner } from '@/components/ActiveIntentionBanner';
+import { TomorrowIntentionsBar } from '@/components/TomorrowIntentionsBar';
 
 // Lazy load heavy components for better code splitting
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab').then(m => ({ default: m.ProjectsTab })));
@@ -177,6 +179,9 @@ const Index = () => {
   const [dailyPlanningOpen, setDailyPlanningOpen] = useState(false);
   const [lastPlanningDate, setLastPlanningDate] = useLocalStorage<string>('neurulae-last-planning-date', '');
 
+  // Tomorrow's Intentions (from Daily Review "Plan Tomorrow" feature)
+  const [tomorrowIntentions, setTomorrowIntentions] = useLocalStorage<TomorrowIntentions | null>('neurulae-tomorrow-intentions', null);
+
   // Analytics Dashboard (as a tab)
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -208,6 +213,26 @@ const Index = () => {
     tasks: allTasks,
     onTaskComplete: handleCompleteIntentionTask,
   });
+
+  // Global timer state for timeline integration
+  const {
+    isRunning: timerIsRunning,
+    isPaused: timerIsPaused,
+    timeRemaining: timerTimeRemaining,
+    totalTime: timerTotalTime,
+    taskId: timerTaskId,
+    taskTitle: timerTaskTitle,
+  } = useGlobalTimer();
+
+  // Create activeTimerState object for DailyFlowTimeline
+  const activeTimerState = {
+    isRunning: timerIsRunning,
+    isPaused: timerIsPaused,
+    taskId: timerTaskId,
+    taskTitle: timerTaskTitle,
+    timeRemaining: timerTimeRemaining,
+    totalTime: timerTotalTime,
+  };
 
   // Check if banner should be shown (default: true)
   const showIntentionBanner = preferences.enableActiveIntentionBanner !== false;
@@ -1044,6 +1069,36 @@ const Index = () => {
     toast({
       title: "Day planned!",
       description: `You've selected ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''} to focus on today.`,
+    });
+  };
+
+  // Handle saving tomorrow's intentions from Daily Review
+  const handleSaveTomorrowIntentions = (intentions: TomorrowIntentions) => {
+    setTomorrowIntentions(intentions);
+    toast({
+      title: "Tomorrow planned!",
+      description: `You've set ${intentions.intentions.length} intention${intentions.intentions.length > 1 ? 's' : ''} for tomorrow.`,
+    });
+  };
+
+  // Handle toggling an intention as complete
+  const handleToggleIntention = (intentionId: string) => {
+    if (!tomorrowIntentions) return;
+
+    setTomorrowIntentions({
+      ...tomorrowIntentions,
+      intentions: tomorrowIntentions.intentions.map((i) =>
+        i.id === intentionId ? { ...i, completed: !i.completed } : i
+      ),
+    });
+  };
+
+  // Handle clearing all intentions
+  const handleClearIntentions = () => {
+    setTomorrowIntentions(null);
+    toast({
+      title: "Intentions cleared",
+      description: "Your daily intentions have been cleared.",
     });
   };
 
@@ -1966,6 +2021,13 @@ const Index = () => {
           </div>
 
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Tomorrow's Intentions Bar - shown at top when intentions are set */}
+            <TomorrowIntentionsBar
+              intentions={tomorrowIntentions}
+              onToggleIntention={handleToggleIntention}
+              onClearIntentions={handleClearIntentions}
+            />
+
             {/* Main Workflow - Visual Timeline & Unified To-Do List */}
             {isMobile ? (
               <div className="pb-20">
@@ -1985,6 +2047,7 @@ const Index = () => {
                     onUpdateTimeBlock={handleUpdateTimeBlock}
                     onDeleteTimeBlock={handleDeleteTimeBlock}
                     onAddTask={handleAddTask}
+                    activeTimerState={activeTimerState}
                   />
                 )}
                 {mobileTab === 'tasks' && (
@@ -2015,18 +2078,26 @@ const Index = () => {
             ) : (
               <DragDropContext onDragEnd={handleDashboardDragEnd}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column: Time Blocks */}
-                  <ScheduleSection
-                    timeBlocks={timeBlocks}
-                    scheduledTasks={scheduledTasks}
-                    tasks={tasks}
-                    onAddTimeBlock={handleAddTimeBlock}
-                    onUpdateTimeBlock={handleUpdateTimeBlock}
-                    onDeleteTimeBlock={handleDeleteTimeBlock}
-                    onAddTask={handleAddTask}
-                    onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
-                    useExternalDragContext={true}
-                  />
+                  {/* Left Column: Focus Timer + Time Blocks */}
+                  <div className="space-y-6">
+                    {/* Focus Timer */}
+                    <Suspense fallback={<ComponentLoader />}>
+                      <FocusTimer tasks={tasks} playbooks={playbooks} />
+                    </Suspense>
+                    {/* Schedule/Timeline */}
+                    <ScheduleSection
+                      timeBlocks={timeBlocks}
+                      scheduledTasks={scheduledTasks}
+                      tasks={tasks}
+                      onAddTimeBlock={handleAddTimeBlock}
+                      onUpdateTimeBlock={handleUpdateTimeBlock}
+                      onDeleteTimeBlock={handleDeleteTimeBlock}
+                      onAddTask={handleAddTask}
+                      onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
+                      useExternalDragContext={true}
+                      activeTimerState={activeTimerState}
+                    />
+                  </div>
                   {/* Right Column: Task List */}
                   <TaskSection
                     tasks={tasks}
@@ -2682,6 +2753,7 @@ const Index = () => {
                 toast({ title: "Review saved", description: "Good night! See you tomorrow." });
               }
             }}
+            onSaveTomorrowIntentions={handleSaveTomorrowIntentions}
           />
         </Suspense>
       )}

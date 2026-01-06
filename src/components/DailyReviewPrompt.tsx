@@ -20,7 +20,7 @@ import {
   ArrowRight,
   X,
 } from 'lucide-react';
-import { Task } from '@/types';
+import { Task, TomorrowIntentions, TomorrowIntention } from '@/types';
 import { format, startOfDay, endOfDay, isWithinInterval, addDays } from 'date-fns';
 
 interface DailyReviewPromptProps {
@@ -29,6 +29,7 @@ interface DailyReviewPromptProps {
   onAddTask?: (title: string) => void;
   lastReviewDate?: string;
   onSaveReview?: (date: string, notes: string) => void;
+  onSaveTomorrowIntentions?: (intentions: TomorrowIntentions) => void;
 }
 
 export function DailyReviewPrompt({
@@ -37,6 +38,7 @@ export function DailyReviewPrompt({
   onAddTask,
   lastReviewDate,
   onSaveReview,
+  onSaveTomorrowIntentions,
 }: DailyReviewPromptProps) {
   const [step, setStep] = useState<'review' | 'plan' | 'done'>('review');
   const [reviewNotes, setReviewNotes] = useState('');
@@ -71,13 +73,33 @@ export function DailyReviewPrompt({
       : 0;
 
   const handleAddTomorrowTasks = () => {
-    if (onAddTask) {
-      tomorrowTasks
-        .filter((t) => t.trim())
-        .forEach((title) => {
-          onAddTask(title.trim());
-        });
+    const validTasks = tomorrowTasks.filter((t) => t.trim());
+
+    // Create tomorrow's intentions
+    if (onSaveTomorrowIntentions && validTasks.length > 0) {
+      const intentions: TomorrowIntention[] = validTasks.map((title, index) => ({
+        id: crypto.randomUUID(),
+        title: title.trim(),
+        completed: false,
+        order: index,
+      }));
+
+      const tomorrowIntentions: TomorrowIntentions = {
+        date: format(tomorrow, 'yyyy-MM-dd'),
+        intentions,
+        createdAt: new Date().toISOString(),
+      };
+
+      onSaveTomorrowIntentions(tomorrowIntentions);
     }
+
+    // Also add as regular tasks if callback provided
+    if (onAddTask) {
+      validTasks.forEach((title) => {
+        onAddTask(title.trim());
+      });
+    }
+
     setStep('done');
   };
 

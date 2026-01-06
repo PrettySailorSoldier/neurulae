@@ -1,6 +1,16 @@
 import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { Task, TimeBlock, ScheduledTask } from '@/types';
 
+// Active timer state for visual integration with timeline
+interface ActiveTimerState {
+  isRunning: boolean;
+  isPaused: boolean;
+  taskId: string | null;
+  taskTitle: string | null;
+  timeRemaining: number; // seconds
+  totalTime: number; // seconds
+}
+
 interface ScheduleSectionProps {
   timeBlocks: TimeBlock[];
   scheduledTasks: ScheduledTask[];
@@ -12,6 +22,8 @@ interface ScheduleSectionProps {
   onScheduleTask?: (scheduledTask: Omit<ScheduledTask, 'id'>) => void;
   // When true, expects an external DragDropContext to be provided by parent
   useExternalDragContext?: boolean;
+  // Active timer state for showing timer progress in timeline
+  activeTimerState?: ActiveTimerState;
 }
 
 export function ScheduleSection({
@@ -24,6 +36,7 @@ export function ScheduleSection({
   onAddTask,
   onScheduleTask,
   useExternalDragContext = false,
+  activeTimerState,
 }: ScheduleSectionProps) {
   return (
     <div data-tutorial="timeline">
@@ -37,6 +50,7 @@ export function ScheduleSection({
         onAddTask={onAddTask}
         onScheduleTask={onScheduleTask}
         useExternalDragContext={useExternalDragContext}
+        activeTimerState={activeTimerState}
       />
     </div>
   );
