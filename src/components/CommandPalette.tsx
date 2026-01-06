@@ -36,6 +36,7 @@ interface CommandPaletteProps {
   onOpenAIChat?: () => void;
   onOpenTimer?: () => void;
   onOpenFocusMode?: () => void;
+  onOpenDailyReview?: () => void;
   onToggleTheme?: () => void;
   tasks: Task[];
   currentTab?: string;
@@ -49,6 +50,7 @@ export function CommandPalette({
   onOpenAIChat,
   onOpenTimer,
   onOpenFocusMode,
+  onOpenDailyReview,
   onToggleTheme,
   tasks,
   currentTab,
@@ -170,6 +172,13 @@ export function CommandPalette({
               <Zap className="mr-2 h-4 w-4" />
               <span>Enter Focus Mode</span>
               <CommandShortcut>F</CommandShortcut>
+            </CommandItem>
+          )}
+          {onOpenDailyReview && (
+            <CommandItem onSelect={() => { onOpenDailyReview(); onOpenChange(false); }}>
+              <Moon className="mr-2 h-4 w-4" />
+              <span>Plan Tomorrow / Daily Review</span>
+              <CommandShortcut>R</CommandShortcut>
             </CommandItem>
           )}
         </CommandGroup>

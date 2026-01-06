@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TomorrowIntentions, TomorrowIntention } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,29 @@ export function TomorrowIntentionsBar({
 }: TomorrowIntentionsBarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
+  // Debug logging
+  useEffect(() => {
+    if (intentions) {
+      console.log('[TomorrowIntentionsBar] Intentions received:', {
+        date: intentions.date,
+        intentionsCount: intentions.intentions.length,
+        createdAt: intentions.createdAt,
+      });
+      
+      const intentionsDate = parseISO(intentions.date);
+      const today = new Date();
+      console.log('[TomorrowIntentionsBar] Date comparison:', {
+        intentionsDate: intentionsDate.toISOString(),
+        today: today.toISOString(),
+        isTodayResult: isToday(intentionsDate),
+        todayFormatted: format(today, 'yyyy-MM-dd'),
+        intentionsDateFormatted: intentions.date,
+      });
+    } else {
+      console.log('[TomorrowIntentionsBar] No intentions received');
+    }
+  }, [intentions]);
+
   // Don't render if no intentions or if intentions are not for today
   if (!intentions || !intentions.intentions.length) {
     return null;
@@ -29,6 +52,10 @@ export function TomorrowIntentionsBar({
   // Check if these intentions are for today
   const intentionsDate = parseISO(intentions.date);
   if (!isToday(intentionsDate)) {
+    console.log('[TomorrowIntentionsBar] Hiding - intentions date is not today:', {
+      intentionsDate: intentions.date,
+      today: format(new Date(), 'yyyy-MM-dd'),
+    });
     return null;
   }
 

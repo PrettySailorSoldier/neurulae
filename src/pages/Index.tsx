@@ -30,7 +30,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useActiveIntention } from '@/hooks/useActiveIntention';
-import { useGlobalTimer } from '@/hooks/useGlobalTimer';
 import { ActiveIntentionBanner } from '@/components/ActiveIntentionBanner';
 import { TomorrowIntentionsBar } from '@/components/TomorrowIntentionsBar';
 
@@ -214,25 +213,7 @@ const Index = () => {
     onTaskComplete: handleCompleteIntentionTask,
   });
 
-  // Global timer state for timeline integration
-  const {
-    isRunning: timerIsRunning,
-    isPaused: timerIsPaused,
-    timeRemaining: timerTimeRemaining,
-    totalTime: timerTotalTime,
-    taskId: timerTaskId,
-    taskTitle: timerTaskTitle,
-  } = useGlobalTimer();
-
-  // Create activeTimerState object for DailyFlowTimeline
-  const activeTimerState = {
-    isRunning: timerIsRunning,
-    isPaused: timerIsPaused,
-    taskId: timerTaskId,
-    taskTitle: timerTaskTitle,
-    timeRemaining: timerTimeRemaining,
-    totalTime: timerTotalTime,
-  };
+  // Timer state is now managed via TimerContext - ScheduleSection and TaskSection get it from context directly
 
   // Check if banner should be shown (default: true)
   const showIntentionBanner = preferences.enableActiveIntentionBanner !== false;
@@ -2045,7 +2026,6 @@ const Index = () => {
                     onUpdateTimeBlock={handleUpdateTimeBlock}
                     onDeleteTimeBlock={handleDeleteTimeBlock}
                     onAddTask={handleAddTask}
-                    activeTimerState={activeTimerState}
                   />
                 )}
                 {mobileTab === 'tasks' && (
@@ -2093,7 +2073,6 @@ const Index = () => {
                       onAddTask={handleAddTask}
                       onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
                       useExternalDragContext={true}
-                      activeTimerState={activeTimerState}
                     />
                   </div>
                   {/* Right Column: Task List */}
@@ -2699,6 +2678,7 @@ const Index = () => {
           onOpenAIChat={() => setIsAIAssistantOpen(true)}
           onOpenTimer={() => setMobileTab('timeline')}
           onOpenFocusMode={() => setFocusModeOpen(true)}
+          onOpenDailyReview={() => setDailyReviewOpen(true)}
           onToggleTheme={() => setCustomThemeBuilderOpen(true)}
           tasks={tasks}
           currentTab={activeTab}
