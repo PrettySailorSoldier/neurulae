@@ -1,5 +1,5 @@
-import { TaskList } from '@/components/TaskList';
-import { Task, TimeBlock, ScheduledTask } from '@/types';
+import { MobileTaskView } from '@/components/MobileTaskView';
+import { Task, TimeBlock } from '@/types';
 
 interface BulkTaskInput {
   title: string;
@@ -10,6 +10,8 @@ interface TaskSectionProps {
   tasks: Task[];
   timeBlocks: TimeBlock[];
   userId?: string;
+  userName?: string;
+  userAvatar?: string;
   onAddTask: (taskOrTitle: string | Omit<Task, 'id' | 'createdAt'>, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => void;
   onBulkAddTasks?: (tasks: BulkTaskInput[]) => Promise<void>;
   onToggleComplete: (id: string) => void;
@@ -39,6 +41,8 @@ export function TaskSection({
   tasks,
   timeBlocks,
   userId,
+  userName,
+  userAvatar,
   onAddTask,
   onBulkAddTasks,
   onToggleComplete,
@@ -57,29 +61,25 @@ export function TaskSection({
   onOpenDailyPlanning,
   enableDragDrop = false,
 }: TaskSectionProps) {
+  // Wrapper to handle the different function signature
+  const handleAddTask = (title: string, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
+    onAddTask(title, estimatedMinutes, taskType);
+  };
+
   return (
-    <div className="lg:col-span-2" data-tutorial="tasks">
-      <TaskList
+    <div className="lg:col-span-2 h-[700px]" data-tutorial="tasks">
+      <MobileTaskView
         tasks={tasks}
-        timeBlocks={timeBlocks}
-        userId={userId}
-        onAddTask={onAddTask}
-        onBulkAddTasks={onBulkAddTasks}
+        userName={userName}
+        userAvatar={userAvatar}
         onToggleComplete={onToggleComplete}
+        onAddTask={handleAddTask}
+        onBulkAddTasks={onBulkAddTasks}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
-        onPrioritize={onPrioritize}
-        onScheduleTasks={onScheduleTasks}
         onAskAI={showQuickActions ? onAskAI : undefined}
-        onBreakdownTask={showQuickActions ? onBreakdownTask : undefined}
         onOpenAIChat={onOpenAIChat}
-        onStartIntention={onStartIntention}
-        activeIntentionId={activeIntentionId}
-        showQuickActions={showQuickActions}
-        onClearCompleted={onClearCompleted}
-        onClearAll={onClearAll}
         onOpenDailyPlanning={onOpenDailyPlanning}
-        enableDragDrop={enableDragDrop}
       />
     </div>
   );

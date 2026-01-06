@@ -1992,6 +1992,7 @@ const Index = () => {
                     tasks={tasks}
                     timeBlocks={timeBlocks}
                     userId={user?.id}
+                    userName={user?.email?.split('@')[0] || 'User'}
                     onAddTask={handleAddTask}
                     onBulkAddTasks={handleBulkAddTasks}
                     onToggleComplete={handleToggleComplete}
@@ -2029,6 +2030,7 @@ const Index = () => {
                     tasks={tasks}
                     timeBlocks={timeBlocks}
                     userId={user?.id}
+                    userName={user?.email?.split('@')[0] || 'User'}
                     onAddTask={handleAddTask}
                     onBulkAddTasks={handleBulkAddTasks}
                     onToggleComplete={handleToggleComplete}

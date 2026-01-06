@@ -23,6 +23,10 @@ interface MobileTaskViewProps {
   onAskAI?: (message: string) => void;
   onOpenDailyPlanning?: () => void;
   onOpenAIChat?: (context: string) => void;
+  /** Hide bottom navigation when embedded in dashboard (default: false) */
+  showBottomNav?: boolean;
+  /** Hide header when embedded in dashboard (default: true) */
+  showHeader?: boolean;
 }
 
 interface CategoryConfig {
@@ -94,6 +98,8 @@ const MobileTaskViewComponent = ({
   onAskAI,
   onOpenDailyPlanning,
   onOpenAIChat,
+  showBottomNav = false,
+  showHeader = true,
 }: MobileTaskViewProps) => {
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -209,40 +215,42 @@ const MobileTaskViewComponent = ({
   return (
     <div className="relative flex h-full w-full flex-col bg-background overflow-hidden rounded-3xl shadow-2xl border border-border">
       {/* Status bar area */}
-      <div className="w-full h-6 shrink-0 bg-transparent z-20" />
+      <div className="w-full h-4 shrink-0 bg-transparent z-20" />
 
       {/* Main content */}
-      <ScrollArea className="flex-1 pb-28">
+      <ScrollArea className={cn("flex-1", showBottomNav ? "pb-28" : "pb-6")}>
         <div className="px-5 pt-2 pb-6">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    {getFormattedDate()}
+          {/* Header - only show if showHeader is true */}
+          {showHeader && (
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      {getFormattedDate()}
+                    </span>
                   </span>
-                </span>
+                </div>
+                <h2 className="text-foreground tracking-tight text-3xl font-bold leading-[1.1]">
+                  {getGreeting()},<br />
+                  <span className="text-muted-foreground">{userName}</span>
+                </h2>
               </div>
-              <h2 className="text-foreground tracking-tight text-3xl font-bold leading-[1.1]">
-                {getGreeting()},<br />
-                <span className="text-muted-foreground">{userName}</span>
-              </h2>
-            </div>
-            <div className="relative group cursor-pointer">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-secondary rounded-full opacity-30 group-hover:opacity-50 blur transition duration-200" />
-              <div className="relative h-12 w-12 rounded-full border-2 border-background overflow-hidden">
-                {userAvatar ? (
-                  <img alt="User profile" className="h-full w-full object-cover" src={userAvatar} />
-                ) : (
-                  <div className="h-full w-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-bold text-lg">
-                    {userName.charAt(0).toUpperCase()}
-                  </div>
-                )}
+              <div className="relative group cursor-pointer">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-secondary rounded-full opacity-30 group-hover:opacity-50 blur transition duration-200" />
+                <div className="relative h-12 w-12 rounded-full border-2 border-background overflow-hidden">
+                  {userAvatar ? (
+                    <img alt="User profile" className="h-full w-full object-cover" src={userAvatar} />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                      {userName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Daily Goals Progress Card */}
           <div className="bg-card p-5 rounded-3xl shadow-lg border border-border mb-6">
@@ -393,7 +401,10 @@ const MobileTaskViewComponent = ({
       </ScrollArea>
 
       {/* Floating Action Buttons */}
-      <div className="absolute bottom-24 right-5 z-40 flex flex-col items-end gap-3 pointer-events-auto">
+      <div className={cn(
+        "absolute right-5 z-40 flex flex-col items-end gap-3 pointer-events-auto",
+        showBottomNav ? "bottom-24" : "bottom-6"
+      )}>
         {/* FAB Menu Items */}
         <div className={cn(
           "flex flex-col items-end gap-3 transition-all duration-300",
@@ -434,7 +445,7 @@ const MobileTaskViewComponent = ({
         <button
           onClick={() => fabMenuOpen ? handleOpenAddTask() : setFabMenuOpen(true)}
           className={cn(
-            "h-16 w-16 rounded-full shadow-xl flex items-center justify-center transition-all mt-3 active:scale-95 group",
+            "h-14 w-14 rounded-full shadow-xl flex items-center justify-center transition-all mt-2 active:scale-95 group",
             fabMenuOpen
               ? "bg-primary text-primary-foreground"
               : "bg-foreground text-background"
@@ -442,7 +453,7 @@ const MobileTaskViewComponent = ({
         >
           <Plus 
             className={cn(
-              "h-8 w-8 transition-transform duration-300",
+              "h-7 w-7 transition-transform duration-300",
               fabMenuOpen && "rotate-45"
             )} 
           />
@@ -458,28 +469,30 @@ const MobileTaskViewComponent = ({
         onClick={() => setFabMenuOpen(false)}
       />
 
-      {/* Bottom Navigation */}
-      <div className="absolute bottom-0 left-0 w-full bg-card/90 backdrop-blur-xl border-t border-border z-30">
-        <div className="flex justify-around items-center h-20 pb-4 px-4">
-          <button className="flex flex-col items-center gap-1.5 p-2 text-primary w-16 transition-transform active:scale-95">
-            <span className="text-xl">🏠</span>
-            <span className="text-[10px] font-bold">Home</span>
-          </button>
-          <button className="flex flex-col items-center gap-1.5 p-2 text-muted-foreground hover:text-foreground transition-colors w-16 active:scale-95">
-            <span className="text-xl">📅</span>
-            <span className="text-[10px] font-medium">Calendar</span>
-          </button>
-          <div className="w-12" />
-          <button className="flex flex-col items-center gap-1.5 p-2 text-muted-foreground hover:text-foreground transition-colors w-16 active:scale-95">
-            <span className="text-xl">📊</span>
-            <span className="text-[10px] font-medium">Stats</span>
-          </button>
-          <button className="flex flex-col items-center gap-1.5 p-2 text-muted-foreground hover:text-foreground transition-colors w-16 active:scale-95">
-            <span className="text-xl">⚙️</span>
-            <span className="text-[10px] font-medium">Settings</span>
-          </button>
+      {/* Bottom Navigation - only show if showBottomNav is true */}
+      {showBottomNav && (
+        <div className="absolute bottom-0 left-0 w-full bg-card/90 backdrop-blur-xl border-t border-border z-30">
+          <div className="flex justify-around items-center h-20 pb-4 px-4">
+            <button className="flex flex-col items-center gap-1.5 p-2 text-primary w-16 transition-transform active:scale-95">
+              <span className="text-xl">🏠</span>
+              <span className="text-[10px] font-bold">Home</span>
+            </button>
+            <button className="flex flex-col items-center gap-1.5 p-2 text-muted-foreground hover:text-foreground transition-colors w-16 active:scale-95">
+              <span className="text-xl">📅</span>
+              <span className="text-[10px] font-medium">Calendar</span>
+            </button>
+            <div className="w-12" />
+            <button className="flex flex-col items-center gap-1.5 p-2 text-muted-foreground hover:text-foreground transition-colors w-16 active:scale-95">
+              <span className="text-xl">📊</span>
+              <span className="text-[10px] font-medium">Stats</span>
+            </button>
+            <button className="flex flex-col items-center gap-1.5 p-2 text-muted-foreground hover:text-foreground transition-colors w-16 active:scale-95">
+              <span className="text-xl">⚙️</span>
+              <span className="text-[10px] font-medium">Settings</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Add Task Dialog */}
       <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
