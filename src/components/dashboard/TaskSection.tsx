@@ -1,5 +1,6 @@
 import { MobileTaskView } from '@/components/MobileTaskView';
 import { Task, TimeBlock } from '@/types';
+import { useActiveTimerState } from '@/contexts/TimerContext';
 
 interface BulkTaskInput {
   title: string;
@@ -61,6 +62,9 @@ export function TaskSection({
   onOpenDailyPlanning,
   enableDragDrop = false,
 }: TaskSectionProps) {
+  // Get active timer state to highlight the currently running task
+  const activeTimerState = useActiveTimerState();
+  
   // Wrapper to handle the different function signature
   const handleAddTask = (title: string, estimatedMinutes?: number, taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other') => {
     onAddTask(title, estimatedMinutes, taskType);
@@ -80,6 +84,8 @@ export function TaskSection({
         onAskAI={showQuickActions ? onAskAI : undefined}
         onOpenAIChat={onOpenAIChat}
         onOpenDailyPlanning={onOpenDailyPlanning}
+        activeTaskId={activeTimerState?.taskId}
+        isTimerRunning={activeTimerState?.isRunning && !activeTimerState?.isPaused}
       />
     </div>
   );

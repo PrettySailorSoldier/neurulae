@@ -1,6 +1,6 @@
 import { useState, useMemo, memo } from 'react';
 import { Task } from '@/types';
-import { Plus, MoreHorizontal, Sparkles, TrendingUp, Clock, ListPlus, CalendarClock, Check } from 'lucide-react';
+import { Plus, MoreHorizontal, Sparkles, TrendingUp, Clock, ListPlus, CalendarClock, Check, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,10 @@ interface MobileTaskViewProps {
   showBottomNav?: boolean;
   /** Hide header when embedded in dashboard (default: true) */
   showHeader?: boolean;
+  /** ID of the currently active task in the timer (for highlighting) */
+  activeTaskId?: string | null;
+  /** Whether the timer is currently running (for animation) */
+  isTimerRunning?: boolean;
 }
 
 interface CategoryConfig {
@@ -100,6 +104,8 @@ const MobileTaskViewComponent = ({
   onOpenAIChat,
   showBottomNav = false,
   showHeader = true,
+  activeTaskId,
+  isTimerRunning = false,
 }: MobileTaskViewProps) => {
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -350,34 +356,55 @@ const MobileTaskViewComponent = ({
 
                   {/* Task List */}
                   <div className={cn("space-y-3", isFullWidth ? '' : 'flex-1')}>
-                    {incompleteTasks.slice(0, isFullWidth ? undefined : 2).map(task => (
-                      <label key={task.id} className="flex gap-x-3 items-center group/item cursor-pointer">
-                        <Checkbox
-                          checked={task.completed}
-                          onCheckedChange={() => onToggleComplete(task.id)}
-                          className="h-5 w-5 rounded-md border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                        />
-                        <div className="flex-1 flex items-center gap-2 min-w-0">
-                          <span className={cn(
-                            "text-card-foreground font-medium transition-colors group-hover/item:text-primary truncate",
-                            isFullWidth ? 'text-[15px]' : 'text-xs leading-snug',
-                            task.completed && 'text-muted-foreground line-through'
-                          )}>
-                            {task.title}
-                          </span>
-                          {/* Estimated time badge */}
-                          {task.estimatedMinutes && !task.completed && (
-                            <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
-                              <Clock className="h-2.5 w-2.5" />
-                              {task.estimatedMinutes < 60
-                                ? `${task.estimatedMinutes}m`
-                                : `${Math.floor(task.estimatedMinutes / 60)}h${task.estimatedMinutes % 60 > 0 ? ` ${task.estimatedMinutes % 60}m` : ''}`
-                              }
-                            </span>
+                    {incompleteTasks.slice(0, isFullWidth ? undefined : 2).map(task => {
+                      const isActiveTask = activeTaskId === task.id;
+                      return (
+                        <label 
+                          key={task.id} 
+                          className={cn(
+                            "flex gap-x-3 items-center group/item cursor-pointer p-2 -mx-2 rounded-xl transition-all",
+                            isActiveTask && "bg-primary/10 ring-2 ring-primary/50",
+                            isActiveTask && isTimerRunning && "animate-pulse"
                           )}
-                        </div>
-                      </label>
-                    ))}
+                        >
+                          <Checkbox
+                            checked={task.completed}
+                            onCheckedChange={() => onToggleComplete(task.id)}
+                            className={cn(
+                              "h-5 w-5 rounded-md border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary",
+                              isActiveTask ? "border-primary" : "border-border"
+                            )}
+                          />
+                          <div className="flex-1 flex items-center gap-2 min-w-0">
+                            {/* Active indicator */}
+                            {isActiveTask && (
+                              <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/20 px-1.5 py-0.5 rounded-full">
+                                <Play className="h-2.5 w-2.5 fill-current" />
+                                ACTIVE
+                              </span>
+                            )}
+                            <span className={cn(
+                              "font-medium transition-colors group-hover/item:text-primary truncate",
+                              isFullWidth ? 'text-[15px]' : 'text-xs leading-snug',
+                              isActiveTask ? 'text-primary font-semibold' : 'text-card-foreground',
+                              task.completed && 'text-muted-foreground line-through'
+                            )}>
+                              {task.title}
+                            </span>
+                            {/* Estimated time badge */}
+                            {task.estimatedMinutes && !task.completed && !isActiveTask && (
+                              <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
+                                <Clock className="h-2.5 w-2.5" />
+                                {task.estimatedMinutes < 60
+                                  ? `${task.estimatedMinutes}m`
+                                  : `${Math.floor(task.estimatedMinutes / 60)}h${task.estimatedMinutes % 60 > 0 ? ` ${task.estimatedMinutes % 60}m` : ''}`
+                                }
+                              </span>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
 
                   {/* Footer for full-width cards */}
