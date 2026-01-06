@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS: TimeZoneSettings = {
 
 export function useTimeZoneSettings() {
   const [settings, setSettings] = useLocalStorage<TimeZoneSettings>(
-    'focusflow-timeZoneSettings',
+    'neurulae-timeZoneSettings',
     DEFAULT_SETTINGS
   );
 

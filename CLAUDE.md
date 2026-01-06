@@ -1,4 +1,4 @@
-# CLAUDE.md - AI Assistant Guide for Neurulae (FocusFlow)
+# CLAUDE.md - AI Assistant Guide for Neurulae
 
 **Last Updated:** December 20, 2025
 **Project:** Neurulae - AI-Powered Productivity Platform
@@ -26,7 +26,7 @@
 
 ## Project Overview
 
-**Neurulae** (branded as FocusFlow) is an AI-powered productivity and time management application designed for college students, working professionals, and anyone managing complex schedules with variable commitments.
+**Neurulae** is an AI-powered productivity and time management application designed for college students, working professionals, and anyone managing complex schedules with variable commitments.
 
 ### Core Value Proposition
 
@@ -313,15 +313,15 @@ interface PlaybookStep {
 
 **Rationale**: Core user data stored client-side for instant UI updates. Backend sync for authenticated users.
 
-**Keys** (all prefixed with `focusflow-`):
-- `focusflow-tasks` → Array<Task>
-- `focusflow-projects` → Array<Project>
-- `focusflow-timeBlocks` → Array<TimeBlock>
-- `focusflow-widgets` → Array<Widget>
-- `focusflow-playbooks` → Array<Playbook>
-- `focusflow-theme` → Theme name or 'custom'
-- `focusflow-customTheme` → CustomTheme object
-- `focusflow-onboarding-completed` → boolean
+**Keys** (all prefixed with `neurulae-`):
+- `neurulae-tasks` → Array<Task>
+- `neurulae-projects` → Array<Project>
+- `neurulae-timeBlocks` → Array<TimeBlock>
+- `neurulae-widgets` → Array<Widget>
+- `neurulae-playbooks` → Array<Playbook>
+- `neurulae-theme` → Theme name or 'custom'
+- `neurulae-customTheme` → CustomTheme object
+- `neurulae-onboarding-completed` → boolean
 
 ---
 
@@ -1035,7 +1035,7 @@ Debug via browser DevTools + console logs.
 
 ### localStorage Inspection
 1. Open DevTools → Application → localStorage
-2. Look for keys starting with `focusflow-`
+2. Look for keys starting with `neurulae-`
 3. Data is JSON-stringified
 
 ### Supabase Logs

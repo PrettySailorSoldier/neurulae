@@ -1,4 +1,4 @@
-# FocusFlow - Product Requirements Document
+# Neurulae - Product Requirements Document
 
 **Version:** 1.0.0  
 **Last Updated:** October 20, 2025  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-**FocusFlow** is an AI-powered productivity and time management application designed for college students, working professionals, and anyone managing complex schedules with variable commitments. Unlike traditional productivity tools that treat all time as equal, FocusFlow recognizes that people have fixed obligations (work, classes) alongside flexible tasks, and provides intelligent, context-aware assistance to optimize their day.
+**Neurulae** is an AI-powered productivity and time management application designed for college students, working professionals, and anyone managing complex schedules with variable commitments. Unlike traditional productivity tools that treat all time as equal, Neurulae recognizes that people have fixed obligations (work, classes) alongside flexible tasks, and provides intelligent, context-aware assistance to optimize their day.
 
 ### Core Value Proposition
 
@@ -154,7 +154,7 @@ One-time events (homework deadlines, meetings, variable shifts).
 
 **Purpose:** Represents non-recurring obligations and deadlines.
 
-#### 4. **Tasks** (localStorage: `focusflow-tasks`)
+#### 4. **Tasks** (localStorage: `neurulae-tasks`)
 User's to-do items, can be scheduled or unscheduled.
 
 **Fields:**
@@ -575,7 +575,7 @@ https://ai.gateway.lovable.dev/v1/chat/completions
 
 **Supported Models:**
 - `google/gemini-2.5-pro` - Most capable, slower
-- `google/gemini-2.5-flash` - Balanced (used in FocusFlow)
+- `google/gemini-2.5-flash` - Balanced (used in Neurulae)
 - `google/gemini-2.5-flash-lite` - Fastest, simpler tasks
 - `openai/gpt-5`, `gpt-5-mini`, `gpt-5-nano` - Available alternatives
 
@@ -617,13 +617,13 @@ while (true) {
 **Rationale:** Core user data (tasks, projects, widgets) stored client-side for instant UI updates. Backend sync planned for premium tier.
 
 **Keys:**
-- `focusflow-tasks` - Array<Task>
-- `focusflow-projects` - Array<Project>
-- `focusflow-timeBlocks` - Array<TimeBlock>
-- `focusflow-widgets` - Array<Widget>
-- `focusflow-playbooks` - Array<Playbook>
-- `focusflow-theme` - "light" | "dark" | "system"
-- `focusflow-onboarding-completed` - boolean
+- `neurulae-tasks` - Array<Task>
+- `neurulae-projects` - Array<Project>
+- `neurulae-timeBlocks` - Array<TimeBlock>
+- `neurulae-widgets` - Array<Widget>
+- `neurulae-playbooks` - Array<Playbook>
+- `neurulae-theme` - "light" | "dark" | "system"
+- `neurulae-onboarding-completed` - boolean
 
 **Data Sync Service** (`syncService.ts`):
 - Planned: Sync localStorage to Supabase `user_data` table
@@ -832,7 +832,7 @@ docs/
 
 ## Conclusion
 
-FocusFlow aims to be the **first productivity app that truly understands your constraints**. By combining AI coaching with schedule-aware task management, it helps users make realistic plans that actually fit their lives.
+Neurulae aims to be the **first productivity app that truly understands your constraints**. By combining AI coaching with schedule-aware task management, it helps users make realistic plans that actually fit their lives.
 
 **Key Differentiators:**
 1. Import schedules via PDF (no manual data entry)
@@ -846,7 +846,7 @@ FocusFlow aims to be the **first productivity app that truly understands your co
 - Implement multi-device sync
 - Mobile app development
 
-For technical questions or feature requests, contact: [support@focusflow.app](mailto:support@focusflow.app)
+For technical questions or feature requests, contact: [support@neurulae.app](mailto:support@neurulae.app)
 
 ---
 
