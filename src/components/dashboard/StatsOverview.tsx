@@ -1,6 +1,7 @@
 import { FocusTimer } from '@/components/FocusTimer';
-import { CalendarWidget } from '@/components/CalendarWidget';
 import { Task, Playbook } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Calendar } from 'lucide-react';
 
 interface StatsOverviewProps {
   onOpenScheduler: () => void;
@@ -10,12 +11,21 @@ interface StatsOverviewProps {
 
 export function StatsOverview({ onOpenScheduler, tasks, playbooks }: StatsOverviewProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
-      <div className="md:col-span-6" data-tutorial="focus-timer">
-        <FocusTimer tasks={tasks} playbooks={playbooks} />
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onOpenScheduler}
+          className="gap-2"
+        >
+          <Calendar className="h-4 w-4" />
+          Open Calendar
+        </Button>
       </div>
-      <div className="md:col-span-6">
-        <CalendarWidget onOpenScheduler={onOpenScheduler} />
+      <div data-tutorial="focus-timer">
+        <FocusTimer tasks={tasks} playbooks={playbooks} />
       </div>
     </div>
   );

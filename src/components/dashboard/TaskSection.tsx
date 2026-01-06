@@ -67,7 +67,7 @@ export function TaskSection({
   };
 
   return (
-    <div className="lg:col-span-2 h-[700px]" data-tutorial="tasks">
+    <div className="h-full min-h-[600px]" data-tutorial="tasks">
       <MobileTaskView
         tasks={tasks}
         userName={userName}

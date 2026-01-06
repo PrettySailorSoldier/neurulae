@@ -26,7 +26,7 @@ export function ScheduleSection({
   useExternalDragContext = false,
 }: ScheduleSectionProps) {
   return (
-    <div className="lg:col-span-3" data-tutorial="timeline">
+    <div data-tutorial="timeline">
       <DailyFlowTimeline
         timeBlocks={timeBlocks}
         scheduledTasks={scheduledTasks}
