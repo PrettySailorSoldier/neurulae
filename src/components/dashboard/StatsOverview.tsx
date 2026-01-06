@@ -9,11 +9,14 @@ interface StatsOverviewProps {
   playbooks?: Playbook[];
 }
 
-export function StatsOverview({ onOpenScheduler, tasks, playbooks }: StatsOverviewProps) {
+export function StatsOverview({ 
+  onOpenScheduler, 
+  tasks = [], 
+  playbooks,
+}: StatsOverviewProps) {
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <div />
+      <div className="flex items-center justify-end mb-4">
         <Button
           variant="outline"
           size="sm"
@@ -24,6 +27,8 @@ export function StatsOverview({ onOpenScheduler, tasks, playbooks }: StatsOvervi
           Open Calendar
         </Button>
       </div>
+      
+      {/* Just the Focus Timer */}
       <div data-tutorial="focus-timer">
         <FocusTimer tasks={tasks} playbooks={playbooks} />
       </div>

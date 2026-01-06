@@ -2015,20 +2015,18 @@ const Index = () => {
             ) : (
               <DragDropContext onDragEnd={handleDashboardDragEnd}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column: Timer + Time Blocks */}
-                  <div className="space-y-6">
-                    <ScheduleSection
-                      timeBlocks={timeBlocks}
-                      scheduledTasks={scheduledTasks}
-                      tasks={tasks}
-                      onAddTimeBlock={handleAddTimeBlock}
-                      onUpdateTimeBlock={handleUpdateTimeBlock}
-                      onDeleteTimeBlock={handleDeleteTimeBlock}
-                      onAddTask={handleAddTask}
-                      onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
-                      useExternalDragContext={true}
-                    />
-                  </div>
+                  {/* Left Column: Time Blocks */}
+                  <ScheduleSection
+                    timeBlocks={timeBlocks}
+                    scheduledTasks={scheduledTasks}
+                    tasks={tasks}
+                    onAddTimeBlock={handleAddTimeBlock}
+                    onUpdateTimeBlock={handleUpdateTimeBlock}
+                    onDeleteTimeBlock={handleDeleteTimeBlock}
+                    onAddTask={handleAddTask}
+                    onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
+                    useExternalDragContext={true}
+                  />
                   {/* Right Column: Task List */}
                   <TaskSection
                     tasks={tasks}
