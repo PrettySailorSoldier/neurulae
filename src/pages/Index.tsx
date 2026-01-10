@@ -226,6 +226,16 @@ const Index = () => {
     }
   }, [hasSeenTutorial, setHasSeenTutorial]);
 
+  // Check for URL parameters to open specific dialogs
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dailyReview') === 'true') {
+      setDailyReviewOpen(true);
+      // Clean up the URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -257,6 +267,11 @@ const Index = () => {
       if (e.key === '?' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault();
         setKeyboardShortcutsOpen(true);
+      }
+      // R for daily review / plan tomorrow
+      if (e.key === 'r' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setDailyReviewOpen(true);
       }
     };
 
@@ -2050,6 +2065,7 @@ const Index = () => {
                     onClearCompleted={handleClearCompletedTasks}
                     onClearAll={handleClearAllTasks}
                     onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
+                    onOpenDailyReview={() => setDailyReviewOpen(true)}
                   />
                 )}
               </div>
@@ -2097,6 +2113,7 @@ const Index = () => {
                     onClearCompleted={handleClearCompletedTasks}
                     onClearAll={handleClearAllTasks}
                     onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
+                    onOpenDailyReview={() => setDailyReviewOpen(true)}
                     enableDragDrop={true}
                   />
                 </div>

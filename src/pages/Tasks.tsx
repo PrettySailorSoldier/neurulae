@@ -215,6 +215,10 @@ const Tasks = () => {
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
           onOpenAIChat={handleOpenAIChat}
+          onOpenDailyReview={() => {
+            // Navigate to main dashboard with daily review open
+            window.location.href = '/?dailyReview=true';
+          }}
         />
       </div>
     </div>

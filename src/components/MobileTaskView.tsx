@@ -30,6 +30,7 @@ interface MobileTaskViewProps {
   onAskAI?: (message: string) => void;
   onOpenDailyPlanning?: () => void;
   onOpenAIChat?: (context: string) => void;
+  onOpenDailyReview?: () => void;
   /** Hide bottom navigation when embedded in dashboard (default: false) */
   showBottomNav?: boolean;
   /** Hide header when embedded in dashboard (default: true) */
@@ -109,6 +110,7 @@ const MobileTaskViewComponent = ({
   onAskAI,
   onOpenDailyPlanning,
   onOpenAIChat,
+  onOpenDailyReview,
   showBottomNav = false,
   showHeader = true,
   activeTaskId,
@@ -288,9 +290,13 @@ const MobileTaskViewComponent = ({
                   <span className="text-muted-foreground">{userName}</span>
                 </h2>
               </div>
-              <div className="relative group cursor-pointer">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-secondary rounded-full opacity-30 group-hover:opacity-50 blur transition duration-200" />
-                <div className="relative h-12 w-12 rounded-full border-2 border-background overflow-hidden">
+              <div 
+                className="relative group cursor-pointer"
+                onClick={() => onOpenDailyReview?.()}
+                title="Open Daily Review"
+              >
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-secondary rounded-full opacity-30 group-hover:opacity-70 blur transition duration-200" />
+                <div className="relative h-12 w-12 rounded-full border-2 border-background overflow-hidden group-hover:scale-105 transition-transform">
                   {userAvatar ? (
                     <img alt="User profile" className="h-full w-full object-cover" src={userAvatar} />
                   ) : (

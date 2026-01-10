@@ -34,6 +34,7 @@ interface TaskSectionProps {
   onClearCompleted?: () => void;
   onClearAll?: () => void;
   onOpenDailyPlanning?: () => void;
+  onOpenDailyReview?: () => void;
   // When true, tasks are draggable and can be dropped on time blocks
   enableDragDrop?: boolean;
 }
@@ -60,6 +61,7 @@ export function TaskSection({
   onClearCompleted,
   onClearAll,
   onOpenDailyPlanning,
+  onOpenDailyReview,
   enableDragDrop = false,
 }: TaskSectionProps) {
   // Get active timer state to highlight the currently running task
@@ -84,6 +86,7 @@ export function TaskSection({
         onAskAI={showQuickActions ? onAskAI : undefined}
         onOpenAIChat={onOpenAIChat}
         onOpenDailyPlanning={onOpenDailyPlanning}
+        onOpenDailyReview={onOpenDailyReview}
         activeTaskId={activeTimerState?.taskId}
         isTimerRunning={activeTimerState?.isRunning && !activeTimerState?.isPaused}
       />
