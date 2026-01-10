@@ -559,8 +559,8 @@ export function DailyFlowTimeline({
       <div
         key={zone.id}
         className={cn(
-          "absolute left-0 right-0 transition-all duration-300",
-          zone.isActive && "ring-1 ring-inset ring-primary/30"
+          "absolute left-0 right-0 transition-all duration-300 group/zone",
+          zone.isActive && "ring-1 ring-inset ring-primary/20"
         )}
         style={{
           top: `${zone.startPercentage}%`,
@@ -569,17 +569,19 @@ export function DailyFlowTimeline({
           zIndex: 1,
         }}
       >
-        {/* Zone label on the right edge */}
+        {/* Zone label - very subtle, only icon by default */}
         <div
           className={cn(
-            "absolute right-1 top-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium",
+            "absolute right-1 top-1 flex items-center gap-1 px-1 py-0.5 rounded text-[9px]",
+            "opacity-40 group-hover/zone:opacity-80 transition-opacity",
             zone.isActive
-              ? "bg-primary/20 text-primary"
-              : "bg-background/60 text-muted-foreground"
+              ? "text-primary"
+              : "text-muted-foreground"
           )}
         >
           {getZoneIcon(zone.name)}
-          <span className="hidden sm:inline">{zone.name}</span>
+          {/* Only show full name on hover */}
+          <span className="hidden group-hover/zone:inline text-[9px]">{zone.name}</span>
         </div>
       </div>
     );
