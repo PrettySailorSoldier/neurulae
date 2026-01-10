@@ -862,3 +862,33 @@ export const AI_PERSONALITIES: AIPersonalityOption[] = [
     sampleResponse: "Ooh, coffee as an anchor! Your brain already knows what's up. Let's sneak a tiny win in there."
   }
 ];
+
+// ============ STRUCTURE SETTINGS ============
+
+export interface StructureSettings {
+  enableCoaching: boolean;
+  coachingIntensity: 'gentle' | 'moderate' | 'active';
+  showPhaseBackgrounds: boolean;
+  showGhostSuggestions: boolean;
+  showStructureScore: boolean;
+  notifyPhaseTransitions: boolean;
+  notifyEmptySchedule: boolean;
+  trackPatterns: boolean;
+}
+
+export const DEFAULT_STRUCTURE_SETTINGS: StructureSettings = {
+  enableCoaching: true,
+  coachingIntensity: 'moderate',
+  showPhaseBackgrounds: true,
+  showGhostSuggestions: true,
+  showStructureScore: true,
+  notifyPhaseTransitions: false,
+  notifyEmptySchedule: false,
+  trackPatterns: true
+};
+
+export const STRUCTURE_STORAGE_KEYS = {
+  SETTINGS: 'neurulae-structure-settings',
+  PATTERNS: 'neurulae-structure-patterns',
+  HISTORY: 'neurulae-structure-history',
+} as const;

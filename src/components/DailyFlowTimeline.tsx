@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, ReactNode } from 'react';
-import { TimeBlock, ScheduledTask, Task } from '@/types';
+import { TimeBlock, ScheduledTask, Task, DayTemplate, StructureSettings, DEFAULT_STRUCTURE_SETTINGS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
-import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2 } from 'lucide-react';
+import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, Sparkles, Layers } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 import {
@@ -15,6 +15,7 @@ import {
   formatTimeDisplay,
   type TimeZoneConfig
 } from '@/lib/timeUtils';
+import { timeToMinutes as temporalTimeToMinutes } from '@/lib/temporalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,9 @@ import { Card } from '@/components/ui/card';
 import { useTimeZoneSettings } from '@/hooks/useTimeZoneSettings';
 import { cn } from '@/lib/utils';
 import { TimeZoneSettingsDialog } from './TimeZoneSettingsDialog';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useStructureAnalysis, StructureSuggestion } from '@/hooks/useStructureAnalysis';
+import { PhaseBackgrounds, StructureCoach, GhostSuggestionBlock, DayTemplateManager } from './structure';
 
 // Wrapper component that conditionally applies DragDropContext
 function DragDropContextWrapper({
@@ -112,6 +116,31 @@ export function DailyFlowTimeline({
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [clearScheduleDialogOpen, setClearScheduleDialogOpen] = useState(false);
   const [showTimeZoneSettings, setShowTimeZoneSettings] = useState(false);
+  const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
+  
+  // Structure coaching state
+  const [structureSettings, setStructureSettings] = useLocalStorage<StructureSettings>(
+    'neurulae-structure-settings',
+    DEFAULT_STRUCTURE_SETTINGS
+  );
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  
+  // User profile defaults (could be fetched from user settings)
+  const userProfileDefaults = useMemo(() => ({
+    wakeTime: '07:00',
+    sleepTime: '23:00',
+    workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    workStartTime: '09:00',
+    workEndTime: '17:00'
+  }), []);
+  
+  // Structure Analysis - provides coaching insights
+  const structureAnalysis = useStructureAnalysis(
+    timeBlocks,
+    [], // scheduleEntries would go here if typed
+    timeZoneSettings,
+    userProfileDefaults
+  );
 
   // Update time every minute
   useEffect(() => {
@@ -249,6 +278,49 @@ export function DailyFlowTimeline({
         });
       }
     }
+  };
+
+  // Structure coaching handlers
+  const handleAcceptSuggestion = (suggestion: StructureSuggestion) => {
+    const newBlock: Omit<TimeBlock, 'id' | 'createdAt'> = {
+      title: suggestion.title,
+      startTime: suggestion.suggestedTime.start,
+      endTime: suggestion.suggestedTime.end,
+      type: suggestion.type === 'deep-work' ? 'dedicated' : 'main',
+      scheduleType: suggestion.weekdayOnly ? 'weekday' : suggestion.weekendOnly ? 'weekend' : 'everyday',
+    };
+    
+    onAddTimeBlock(newBlock);
+    setDismissedSuggestions(prev => new Set([...prev, suggestion.id]));
+    toast({
+      title: 'Block Added',
+      description: `"${suggestion.title}" has been added to your schedule.`,
+    });
+  };
+
+  const handleDismissSuggestion = (suggestionId: string) => {
+    setDismissedSuggestions(prev => new Set([...prev, suggestionId]));
+  };
+
+  const handleApplyTemplate = (template: DayTemplate) => {
+    // Clear existing blocks of the same schedule type and add template blocks
+    const newBlocks: Omit<TimeBlock, 'id' | 'createdAt'>[] = template.timeBlocks.map(tb => ({
+      title: tb.blockName || 'Untitled Block',
+      startTime: tb.startTime,
+      endTime: tb.endTime,
+      type: tb.type === 'routine' ? 'main' as const : 'dedicated' as const,
+      scheduleType: template.suggestedFor === 'weekday' ? 'weekday' as const : 
+                    template.suggestedFor === 'weekend' ? 'weekend' as const : 'everyday' as const,
+      color: tb.color,
+    }));
+    
+    // Add each block
+    newBlocks.forEach(block => onAddTimeBlock(block));
+    
+    toast({
+      title: 'Template Applied',
+      description: `"${template.name}" has been applied with ${newBlocks.length} blocks.`,
+    });
   };
 
   const formatTime = (date: Date) => {
@@ -636,6 +708,17 @@ export function DailyFlowTimeline({
             <Plus className="mr-2 h-4 w-4" />
             Add Time Block
           </Button>
+          {/* Day Template Manager */}
+          {structureSettings.enableCoaching && (
+            <DayTemplateManager
+              currentBlocks={filteredBlocks}
+              currentDayType={scheduleType === 'weekend' ? 'weekend' : 'weekday'}
+              onApplyTemplate={handleApplyTemplate}
+              onSaveAsTemplate={(name, dayType) => {
+                toast({ title: 'Template Saved', description: `"${name}" saved successfully` });
+              }}
+            />
+          )}
           {scheduleEntries.length > 0 && (
             <Button
               variant="outline"
@@ -664,8 +747,41 @@ export function DailyFlowTimeline({
         <div className={cn("space-y-3", viewMode === 'timeline' ? 'lg:col-span-4' : 'lg:col-span-4')}>
           {viewMode === 'timeline' ? (
             <div className="relative h-[600px] bg-card/50 border border-border rounded-lg overflow-hidden">
+              {/* Phase Backgrounds - render first, behind everything */}
+              {structureSettings.showPhaseBackgrounds && (
+                <PhaseBackgrounds
+                  wakeTime={userProfileDefaults.wakeTime}
+                  sleepTime={userProfileDefaults.sleepTime}
+                  currentPhase={structureAnalysis.context.currentPhase}
+                  showLabels={true}
+                />
+              )}
+
               {/* Time Zone Background Regions */}
               {computedZones.map(zone => renderTimeZone(zone))}
+
+              {/* Ghost Suggestion Blocks */}
+              {structureSettings.showGhostSuggestions && structureAnalysis.suggestions
+                .filter(s => !dismissedSuggestions.has(s.id))
+                .slice(0, 3)
+                .map(suggestion => {
+                  const startMinutes = temporalTimeToMinutes(suggestion.suggestedTime.start);
+                  const endMinutes = temporalTimeToMinutes(suggestion.suggestedTime.end);
+                  const topPercent = (startMinutes / (24 * 60)) * 100;
+                  const heightPercent = ((endMinutes - startMinutes) / (24 * 60)) * 100;
+                  
+                  return (
+                    <GhostSuggestionBlock
+                      key={suggestion.id}
+                      suggestion={suggestion}
+                      topPercent={topPercent}
+                      heightPercent={heightPercent}
+                      onAccept={handleAcceptSuggestion}
+                      onDismiss={handleDismissSuggestion}
+                    />
+                  );
+                })
+              }
 
               {/* Hour markers */}
               <div className="absolute left-0 top-0 bottom-0 w-16 text-xs text-muted-foreground z-10 bg-gradient-to-r from-background/80 to-transparent">
@@ -766,6 +882,17 @@ export function DailyFlowTimeline({
             </div>
           )}
         </div>
+
+        {/* Structure Coach - below timeline */}
+        {structureSettings.enableCoaching && viewMode === 'timeline' && (
+          <StructureCoach
+            analysis={structureAnalysis}
+            onAcceptSuggestion={handleAcceptSuggestion}
+            onDismissSuggestion={handleDismissSuggestion}
+            onOpenTemplates={() => setShowTemplatesDialog(true)}
+            className="mt-4"
+          />
+        )}
       </DragDropContextWrapper>
 
       {/* Category Filters (only show if there are schedule entries) */}
