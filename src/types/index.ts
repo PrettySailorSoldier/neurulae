@@ -891,4 +891,41 @@ export const STRUCTURE_STORAGE_KEYS = {
   SETTINGS: 'neurulae-structure-settings',
   PATTERNS: 'neurulae-structure-patterns',
   HISTORY: 'neurulae-structure-history',
+  DISMISSED_SUGGESTIONS: 'neurulae-dismissed-suggestions',
+  STREAK: 'neurulae-structure-streak',
 } as const;
+
+// ============ DISMISSED SUGGESTIONS ============
+
+export interface DismissedSuggestion {
+  suggestionId: string;
+  dismissType: 'not-today' | 'never';
+  dismissedAt: string; // ISO timestamp
+  expiresAt?: string; // For 'not-today', set to end of day
+}
+
+// ============ STRUCTURE STREAK ============
+
+export interface StructureDayRecord {
+  date: string; // YYYY-MM-DD
+  score: number; // 0-100
+  hadMorningRoutine: boolean;
+  hadEveningRoutine: boolean;
+  blocksCompleted: number;
+  totalBlocks: number;
+}
+
+export interface StructureStreak {
+  currentStreak: number; // Days in a row with good structure
+  longestStreak: number;
+  lastStructuredDay: string; // YYYY-MM-DD
+  history: StructureDayRecord[];
+}
+
+export const DEFAULT_STRUCTURE_STREAK: StructureStreak = {
+  currentStreak: 0,
+  longestStreak: 0,
+  lastStructuredDay: '',
+  history: []
+};
+

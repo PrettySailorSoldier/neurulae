@@ -298,7 +298,7 @@ export function DailyFlowTimeline({
     });
   };
 
-  const handleDismissSuggestion = (suggestionId: string) => {
+  const handleDismissSuggestion = (suggestionId: string, _dismissType?: 'not-today' | 'never') => {
     setDismissedSuggestions(prev => new Set([...prev, suggestionId]));
   };
 

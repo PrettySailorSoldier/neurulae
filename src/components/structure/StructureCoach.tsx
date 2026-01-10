@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Sparkles, 
   ChevronDown, 
@@ -17,15 +23,19 @@ import {
   Sunrise,
   Moon,
   UtensilsCrossed,
-  Briefcase
+  Briefcase,
+  Flame,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { DismissedSuggestion, StructureStreak, DEFAULT_STRUCTURE_STREAK, STRUCTURE_STORAGE_KEYS } from '@/types';
 import { StructureAnalysis, StructureSuggestion } from '@/hooks/useStructureAnalysis';
 
 interface StructureCoachProps {
   analysis: StructureAnalysis;
   onAcceptSuggestion: (suggestion: StructureSuggestion) => void;
-  onDismissSuggestion: (suggestionId: string) => void;
+  onDismissSuggestion: (suggestionId: string, dismissType: 'not-today' | 'never') => void;
   onOpenTemplates: () => void;
   className?: string;
 }
@@ -38,13 +48,49 @@ export function StructureCoach({
   className
 }: StructureCoachProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  
+  // Persistent dismissed suggestions
+  const [dismissedSuggestions, setDismissedSuggestions] = useLocalStorage<DismissedSuggestion[]>(
+    STRUCTURE_STORAGE_KEYS.DISMISSED_SUGGESTIONS,
+    []
+  );
+  
+  // Streak tracking
+  const [streak, setStreak] = useLocalStorage<StructureStreak>(
+    STRUCTURE_STORAGE_KEYS.STREAK,
+    DEFAULT_STRUCTURE_STREAK
+  );
 
-  const visibleSuggestions = analysis.suggestions.filter(s => !dismissedSuggestions.has(s.id));
+  // Clean up expired 'not-today' dismissals on load
+  useEffect(() => {
+    const now = new Date().toISOString();
+    const filtered = dismissedSuggestions.filter(d => 
+      d.dismissType === 'never' || (d.expiresAt && d.expiresAt > now)
+    );
+    if (filtered.length !== dismissedSuggestions.length) {
+      setDismissedSuggestions(filtered);
+    }
+  }, []);
 
-  const handleDismiss = (id: string) => {
-    setDismissedSuggestions(prev => new Set([...prev, id]));
-    onDismissSuggestion(id);
+  // Filter out dismissed suggestions
+  const visibleSuggestions = analysis.suggestions.filter(s => 
+    !dismissedSuggestions.some(d => d.suggestionId === s.id)
+  );
+
+  const handleDismiss = (id: string, dismissType: 'not-today' | 'never') => {
+    const now = new Date();
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const newDismissal: DismissedSuggestion = {
+      suggestionId: id,
+      dismissType,
+      dismissedAt: now.toISOString(),
+      expiresAt: dismissType === 'not-today' ? endOfDay.toISOString() : undefined
+    };
+    
+    setDismissedSuggestions(prev => [...prev.filter(d => d.suggestionId !== id), newDismissal]);
+    onDismissSuggestion(id, dismissType);
   };
 
   const getStatusColor = (status: StructureAnalysis['status']) => {
@@ -68,6 +114,19 @@ export function StructureCoach({
     }
   };
 
+  const getStreakMessage = () => {
+    if (streak.currentStreak === 0) return null;
+    if (streak.currentStreak === 1) return '1 day of structure! 🌱';
+    if (streak.currentStreak === 3) return 'Building momentum! 🔥';
+    if (streak.currentStreak === 7) return 'One week of structure! 🌟';
+    if (streak.currentStreak === streak.longestStreak && streak.currentStreak > 1) {
+      return `${streak.currentStreak} days - Personal best! 🏆`;
+    }
+    return `${streak.currentStreak} day streak!`;
+  };
+
+  const streakMessage = getStreakMessage();
+
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <Card className={cn('border-dashed', className)}>
@@ -84,6 +143,12 @@ export function StructureCoach({
                     <Badge variant="outline" className={cn('text-xs', getStatusColor(analysis.status))}>
                       {analysis.statusEmoji} {analysis.score.overall}%
                     </Badge>
+                    {streak.currentStreak > 0 && (
+                      <Badge variant="secondary" className="text-xs bg-amber-500/10 text-amber-600">
+                        <Flame className="h-3 w-3 mr-0.5" />
+                        {streak.currentStreak}
+                      </Badge>
+                    )}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">{analysis.statusMessage}</p>
                 </div>
@@ -95,6 +160,14 @@ export function StructureCoach({
 
         <CollapsibleContent>
           <CardContent className="pt-0 space-y-4">
+            {/* Streak celebration */}
+            {streakMessage && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                <Flame className="h-4 w-4" />
+                <span className="text-sm font-medium">{streakMessage}</span>
+              </div>
+            )}
+
             {/* Progress Bar */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -144,14 +217,23 @@ export function StructureCoach({
                           </p>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2"
-                            onClick={() => handleDismiss(suggestion.id)}
-                          >
-                            Skip
-                          </Button>
+                          {/* Dismiss dropdown with options */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost" className="h-7 px-2">
+                                <X className="h-3 w-3 mr-1" />
+                                Skip
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleDismiss(suggestion.id, 'not-today')}>
+                                Not today
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDismiss(suggestion.id, 'never')}>
+                                Never suggest this
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Button
                             size="sm"
                             className="h-7 px-2"
@@ -211,3 +293,4 @@ export function StructureCoach({
     </Collapsible>
   );
 }
+

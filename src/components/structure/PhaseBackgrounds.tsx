@@ -50,7 +50,8 @@ export function PhaseBackgrounds({
   }, [phases, wakeTime, sleepTime, currentPhase]);
 
   const getPhaseGradient = (color: string, isCurrent: boolean) => {
-    const opacity = isCurrent ? '0.15' : '0.05';
+    // Increased opacity for current phase: 0.15 → 0.25
+    const opacity = isCurrent ? '0.25' : '0.05';
     const colorMap: Record<string, string> = {
       'amber': `rgba(245, 158, 11, ${opacity})`,
       'yellow': `rgba(234, 179, 8, ${opacity})`,
@@ -63,28 +64,48 @@ export function PhaseBackgrounds({
     return colorMap[color] || `rgba(100, 100, 100, ${opacity})`;
   };
 
+  const getPhaseAccentColor = (color: string) => {
+    const colorMap: Record<string, string> = {
+      'amber': 'rgb(245, 158, 11)',
+      'yellow': 'rgb(234, 179, 8)',
+      'orange': 'rgb(249, 115, 22)',
+      'blue': 'rgb(59, 130, 246)',
+      'purple': 'rgb(168, 85, 247)',
+      'indigo': 'rgb(99, 102, 241)',
+      'slate': 'rgb(100, 116, 139)'
+    };
+    return colorMap[color] || 'rgb(100, 100, 100)';
+  };
+
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {phaseRegions.map(region => (
         <div
           key={region.name}
           className={cn(
-            'absolute left-0 right-0 transition-colors duration-300',
-            region.isCurrent && 'ring-1 ring-inset ring-primary/20'
+            'absolute left-0 right-0 transition-all duration-300',
+            region.isCurrent && 'ring-1 ring-inset ring-primary/30'
           )}
           style={{
             top: `${region.startPercent}%`,
             height: `${region.heightPercent}%`,
-            backgroundColor: getPhaseGradient(region.color, region.isCurrent)
+            backgroundColor: getPhaseGradient(region.color, region.isCurrent),
+            // Add left border for current phase
+            borderLeft: region.isCurrent ? `4px solid ${getPhaseAccentColor(region.color)}` : undefined,
+            // Subtle glow for current phase
+            boxShadow: region.isCurrent ? `inset 8px 0 16px -8px ${getPhaseAccentColor(region.color)}40` : undefined
           }}
         >
-          {/* Phase label */}
+          {/* Phase label - enhanced for current phase */}
           {showLabels && region.isInWakingHours && (
             <div className={cn(
-              'absolute left-1 top-1 px-1.5 py-0.5 rounded text-[10px] font-medium',
-              'bg-background/80 backdrop-blur-sm',
-              region.isCurrent ? 'text-primary' : 'text-muted-foreground'
+              'absolute left-2 top-1 px-2 py-0.5 rounded text-[10px] font-medium',
+              'bg-background/90 backdrop-blur-sm border',
+              region.isCurrent 
+                ? 'text-primary border-primary/30 shadow-sm' 
+                : 'text-muted-foreground border-transparent'
             )}>
+              {region.isCurrent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse mr-1.5" />}
               {region.label}
             </div>
           )}
@@ -92,10 +113,11 @@ export function PhaseBackgrounds({
           {/* Phase divider line */}
           <div className={cn(
             'absolute bottom-0 left-0 right-0 h-px',
-            region.isCurrent ? 'bg-primary/30' : 'bg-border/50'
+            region.isCurrent ? 'bg-primary/40' : 'bg-border/50'
           )} />
         </div>
       ))}
     </div>
   );
 }
+
