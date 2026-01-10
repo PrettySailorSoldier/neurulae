@@ -335,12 +335,31 @@ const Index = () => {
           setPlaybooks(cloudData.playbooks);
         }
         if (cloudData.customTheme) {
-          // Ensure backgroundImage is properly loaded from cloud
-          console.log('[Theme] Loading customTheme from cloud:', {
-            name: cloudData.customTheme.name,
-            hasBackgroundImage: !!cloudData.customTheme.backgroundImage?.url,
-          });
-          setCustomTheme(cloudData.customTheme);
+          // Protect local theme: don't overwrite if local already has a theme with background
+          const localHasThemeWithBackground = customTheme?.backgroundImage?.url;
+          const cloudHasBackground = cloudData.customTheme.backgroundImage?.url;
+          
+          // Only apply cloud theme if:
+          // 1. Local has no theme OR
+          // 2. Local has no background image but cloud does OR  
+          // 3. Both have backgrounds with the same URL (likely same theme)
+          const shouldApplyCloud = 
+            !customTheme || 
+            (!localHasThemeWithBackground && cloudHasBackground) ||
+            (localHasThemeWithBackground === cloudHasBackground);
+            
+          if (shouldApplyCloud) {
+            console.log('[Theme] Loading customTheme from cloud:', {
+              name: cloudData.customTheme.name,
+              hasBackgroundImage: !!cloudHasBackground,
+            });
+            setCustomTheme(cloudData.customTheme);
+          } else {
+            console.log('[Theme] Keeping local customTheme (has background that differs from cloud):', {
+              localBg: localHasThemeWithBackground?.substring(0, 50),
+              cloudBg: cloudHasBackground?.substring(0, 50),
+            });
+          }
         }
 
         toast({
@@ -901,15 +920,29 @@ const Index = () => {
     setPriorities([...priorities, newPriority]);
   };
 
-  const handleAddProject = () => {
-    // In a full implementation, this would open a dialog
+  const handleAddProject = (projectData?: Omit<Project, 'id' | 'createdAt'>) => {
     const newProject: Project = {
       id: crypto.randomUUID(),
-      title: 'New Project',
-      tasks: [],
+      title: projectData?.title || 'New Project',
+      description: projectData?.description,
+      tasks: projectData?.tasks || [],
       createdAt: new Date().toISOString(),
     };
     setProjects([...projects, newProject]);
+  };
+
+  const handleUpdateProject = (projectId: string, updates: Partial<Project>) => {
+    setProjects(projects.map(project => 
+      project.id === projectId ? { ...project, ...updates } : project
+    ));
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    setProjects(projects.filter(project => project.id !== projectId));
+    toast({
+      title: "Project deleted",
+      description: "Your project has been removed.",
+    });
   };
 
   const handleAddTimeBlock = (blockData: Omit<TimeBlock, 'id' | 'createdAt'>) => {
@@ -2123,7 +2156,12 @@ const Index = () => {
 
           <TabsContent value="projects">
             <Suspense fallback={<ComponentLoader />}>
-              <ProjectsTab projects={projects} onAddProject={handleAddProject} />
+              <ProjectsTab 
+                projects={projects} 
+                onAddProject={handleAddProject}
+                onUpdateProject={handleUpdateProject}
+                onDeleteProject={handleDeleteProject}
+              />
             </Suspense>
           </TabsContent>
 
