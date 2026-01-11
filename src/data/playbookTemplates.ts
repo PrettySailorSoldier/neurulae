@@ -1,9 +1,12 @@
 import { Playbook } from '@/types';
 import { cleaningPlaybookTemplates } from './cleaningPlaybookTemplates';
+import { additionalPlaybookTemplates } from './additionalPlaybookTemplates';
 
 export const playbookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'linkedTaskIds'>[] = [
   // Include all cleaning playbook templates
   ...cleaningPlaybookTemplates,
+  // Include additional playbook templates (16-27)
+  ...additionalPlaybookTemplates,
   {
     title: 'Clean the Entire House',
     description: 'A comprehensive cleaning routine broken into manageable steps',

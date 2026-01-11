@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Playbook } from '@/types';
 import { PlaybookEditor } from './PlaybookEditor';
 import { PlaybookViewer } from './PlaybookViewer';
-import { Plus, BookOpen, Play, Sparkles, GripVertical } from 'lucide-react';
+import { PlaybookFilters } from './PlaybookFilters';
+import { Plus, BookOpen, Play, Sparkles, GripVertical, Star } from 'lucide-react';
 import { playbookTemplates } from '@/data/playbookTemplates';
+import { 
+  type PrimaryFilter, 
+  TEMPLATE_SECTIONS,
+  getDurationCategory 
+} from '@/data/playbookFilterOptions';
 
 interface PlaybooksTabProps {
   playbooks: Playbook[];
@@ -18,16 +23,11 @@ interface PlaybooksTabProps {
   onStartTimer?: (stepTitle: string, minutes: number) => void;
 }
 
-const CATEGORIES = [
-  'All', 
-  // Cleaning by room
-  'Bathroom', 'Bedroom', 'Kitchen', 'Living Room', 'Office', 'Entrance & Dining', 'Vehicle', 'Whole Home',
-  // Other categories
-  'Cleaning', 'Cooking', 'Learning', 'Self-Care', 'Creative', 'Work', 'Health', 'Social', 'Other'
-];
-
 export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDeletePlaybook, onReorderPlaybooks, onStartTimer }: PlaybooksTabProps) {
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  // New filter state
+  const [primaryFilter, setPrimaryFilter] = useState<PrimaryFilter>('all');
+  const [secondaryFilter, setSecondaryFilter] = useState<string | null>(null);
+  
   const [editorOpen, setEditorOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [editingPlaybook, setEditingPlaybook] = useState<Playbook | undefined>();
@@ -38,7 +38,7 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
   const sortedPlaybooks = [...playbooks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   // Combine user playbooks with templates
-  const allPlaybooks = [
+  const allPlaybooks: Playbook[] = useMemo(() => [
     ...sortedPlaybooks,
     ...playbookTemplates.map(template => ({
       ...template,
@@ -46,11 +46,82 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
       createdAt: new Date().toISOString(),
       linkedTaskIds: [],
     }))
-  ];
+  ], [sortedPlaybooks]);
 
-  const filteredPlaybooks = selectedCategory === 'All'
-    ? allPlaybooks
-    : allPlaybooks.filter(p => p.category === selectedCategory);
+  // Calculate total time for a playbook
+  const getTotalTime = (playbook: Playbook) => 
+    playbook.steps.reduce((sum, step) => sum + (step.estimatedMinutes || 0), 0);
+
+  // Filter playbooks based on primary and secondary filters
+  const filteredPlaybooks = useMemo(() => {
+    let filtered = allPlaybooks;
+
+    switch (primaryFilter) {
+      case 'templates':
+        filtered = filtered.filter(p => p.isTemplate);
+        break;
+      
+      case 'by-room':
+        if (secondaryFilter) {
+          filtered = filtered.filter(p => 
+            p.tags?.rooms?.includes(secondaryFilter as any) ||
+            // Fallback: match category for templates without tags yet
+            p.category.toLowerCase().replace(/\s+/g, '-').includes(secondaryFilter)
+          );
+        }
+        break;
+      
+      case 'by-activity':
+        if (secondaryFilter) {
+          filtered = filtered.filter(p => 
+            p.tags?.activityType?.includes(secondaryFilter as any) ||
+            // Fallback category matching
+            (secondaryFilter === 'deep-clean' && p.title.toLowerCase().includes('deep clean')) ||
+            (secondaryFilter === 'quick-clean' && (p.title.toLowerCase().includes('quick') || p.title.toLowerCase().includes('express'))) ||
+            (secondaryFilter === 'declutter' && p.title.toLowerCase().includes('declutter')) ||
+            (secondaryFilter === 'maintenance' && p.title.toLowerCase().includes('maintenance')) ||
+            (secondaryFilter === 'seasonal' && (p.title.toLowerCase().includes('spring') || p.title.toLowerCase().includes('fall'))) ||
+            (secondaryFilter === 'self-care' && p.category === 'Self-Care') ||
+            (secondaryFilter === 'cooking' && p.category === 'Cooking') ||
+            (secondaryFilter === 'daily-routine' && (p.title.toLowerCase().includes('morning') || p.title.toLowerCase().includes('evening')))
+          );
+        }
+        break;
+      
+      case 'by-time':
+        if (secondaryFilter) {
+          filtered = filtered.filter(p => {
+            const totalTime = getTotalTime(p);
+            const duration = getDurationCategory(totalTime);
+            return duration === secondaryFilter;
+          });
+        }
+        break;
+      
+      case 'all':
+      default:
+        // Show all playbooks
+        break;
+    }
+
+    return filtered;
+  }, [allPlaybooks, primaryFilter, secondaryFilter]);
+
+  // Group playbooks by tier for template view
+  const playbooksByTier = useMemo(() => {
+    if (primaryFilter !== 'templates') return null;
+    
+    const grouped: Record<number, Playbook[]> = { 1: [], 2: [], 3: [], 4: [] };
+    
+    filteredPlaybooks.forEach(p => {
+      const tier = p.tier || 3; // Default to tier 3 if not specified
+      if (grouped[tier]) {
+        grouped[tier].push(p);
+      }
+    });
+    
+    return grouped;
+  }, [filteredPlaybooks, primaryFilter]);
 
   const handleCreateNew = () => {
     setEditingPlaybook(undefined);
@@ -109,7 +180,7 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
 
   const handleDragStart = (e: React.DragEvent, playbookId: string) => {
     if (playbookTemplates.some(t => `template-${t.title}` === playbookId)) {
-      e.preventDefault(); // Don't allow dragging templates
+      e.preventDefault();
       return;
     }
     setDraggedPlaybookId(playbookId);
@@ -137,7 +208,6 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
     const [draggedPlaybook] = newPlaybooks.splice(draggedIndex, 1);
     newPlaybooks.splice(targetIndex, 0, draggedPlaybook);
 
-    // Update order property
     const reorderedPlaybooks = newPlaybooks.map((playbook, index) => ({
       ...playbook,
       order: index,
@@ -149,6 +219,112 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
 
   const handleDragEnd = () => {
     setDraggedPlaybookId(null);
+  };
+
+  // Render a playbook card
+  const renderPlaybookCard = (playbook: Playbook, featured = false) => {
+    const completedSteps = playbook.steps.filter(s => s.completed).length;
+    const totalSteps = playbook.steps.length;
+    const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+    const isTemplate = playbook.isTemplate || playbook.id.startsWith('template-');
+    const isDraggable = !isTemplate;
+    const totalTime = getTotalTime(playbook);
+
+    return (
+      <Card 
+        key={playbook.id} 
+        className={`card-elevated hover:shadow-lg transition-shadow ${
+          isDraggable ? 'cursor-move' : 'cursor-pointer'
+        } ${draggedPlaybookId === playbook.id ? 'opacity-50' : ''} ${
+          featured ? 'border-primary/50 bg-primary/5' : ''
+        }`}
+        draggable={isDraggable}
+        onDragStart={(e) => handleDragStart(e, playbook.id)}
+        onDragOver={(e) => handleDragOver(e, playbook.id)}
+        onDrop={(e) => handleDrop(e, playbook.id)}
+        onDragEnd={handleDragEnd}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {isDraggable && (
+                <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
+              {featured && (
+                <Star className="h-4 w-4 text-primary shrink-0 fill-primary" />
+              )}
+              <CardTitle className="text-lg line-clamp-2 flex-1">{playbook.title}</CardTitle>
+            </div>
+            {isTemplate && (
+              <Badge variant="secondary" className="shrink-0 bg-primary/20 text-primary border-primary/30">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Template
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Badge variant="outline" className="w-fit text-xs">
+              {playbook.category}
+            </Badge>
+            {totalTime > 0 && (
+              <Badge variant="outline" className="w-fit text-xs">
+                {totalTime >= 60 ? `${Math.floor(totalTime / 60)}h ${totalTime % 60}m` : `${totalTime}m`}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {playbook.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {playbook.description}
+            </p>
+          )}
+          
+          <div className="flex items-center justify-between text-sm">
+            <span className={getProgressColor(completedSteps, totalSteps)}>
+              {completedSteps} / {totalSteps} steps
+            </span>
+            <span className="text-muted-foreground">{Math.round(progress)}%</span>
+          </div>
+          
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handleViewPlaybook(playbook)}
+              className="flex-1"
+              size="sm"
+            >
+              <Play className="h-3 w-3 mr-1" />
+              {progress > 0 && progress < 100 ? 'Continue' : progress === 100 ? 'Review' : 'Start'}
+            </Button>
+            {!playbook.isTemplate && (
+              <Button
+                onClick={() => handleEditPlaybook(playbook)}
+                variant="outline"
+                size="sm"
+              >
+                Edit
+              </Button>
+            )}
+            {playbook.isTemplate && (
+              <Button
+                onClick={() => handleEditPlaybook(playbook)}
+                variant="outline"
+                size="sm"
+              >
+                Use
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -165,127 +341,67 @@ export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDel
         </Button>
       </div>
 
-      {/* Category Filter */}
-      <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList className="flex-wrap h-auto">
-          {CATEGORIES.map(category => (
-            <TabsTrigger key={category} value={category}>
-              {category}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {/* New Two-Tier Filter System */}
+      <PlaybookFilters
+        primaryFilter={primaryFilter}
+        secondaryFilter={secondaryFilter}
+        onPrimaryChange={setPrimaryFilter}
+        onSecondaryChange={setSecondaryFilter}
+      />
 
-      {/* Playbooks Grid */}
+      {/* Playbooks Display */}
       {filteredPlaybooks.length === 0 ? (
         <Card className="card-elevated">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No playbooks yet</h3>
+            <h3 className="text-lg font-semibold mb-2">No playbooks found</h3>
             <p className="text-sm text-muted-foreground text-center mb-4">
-              {selectedCategory === 'All'
-                ? 'Create your first playbook or use a template below'
-                : `No playbooks in the ${selectedCategory} category`}
+              {primaryFilter === 'all'
+                ? 'Create your first playbook or browse templates'
+                : `No playbooks match the current filters`}
             </p>
-            <Button onClick={handleCreateNew} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Playbook
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleCreateNew} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Playbook
+              </Button>
+              {primaryFilter !== 'templates' && (
+                <Button onClick={() => setPrimaryFilter('templates')} variant="secondary">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Browse Templates
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredPlaybooks.map((playbook) => {
-            const completedSteps = playbook.steps.filter(s => s.completed).length;
-            const totalSteps = playbook.steps.length;
-            const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
-            const isTemplate = playbook.isTemplate || playbook.id.startsWith('template-');
-            const isDraggable = !isTemplate;
-
+      ) : primaryFilter === 'templates' && playbooksByTier ? (
+        /* Tiered Template Display */
+        <div className="space-y-8">
+          {TEMPLATE_SECTIONS.map(section => {
+            const tierPlaybooks = playbooksByTier[section.tier] || [];
+            if (tierPlaybooks.length === 0) return null;
+            
             return (
-              <Card 
-                key={playbook.id} 
-                className={`card-elevated hover:shadow-lg transition-shadow ${
-                  isDraggable ? 'cursor-move' : 'cursor-pointer'
-                } ${draggedPlaybookId === playbook.id ? 'opacity-50' : ''}`}
-                draggable={isDraggable}
-                onDragStart={(e) => handleDragStart(e, playbook.id)}
-                onDragOver={(e) => handleDragOver(e, playbook.id)}
-                onDrop={(e) => handleDrop(e, playbook.id)}
-                onDragEnd={handleDragEnd}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {isDraggable && (
-                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                      )}
-                      <CardTitle className="text-lg line-clamp-2 flex-1">{playbook.title}</CardTitle>
-                    </div>
-                    {isTemplate && (
-                      <Badge variant="secondary" className="shrink-0">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        Template
-                      </Badge>
-                    )}
-                  </div>
-                  <Badge variant="outline" className="w-fit">
-                    {playbook.category}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {playbook.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {playbook.description}
-                    </p>
-                  )}
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={getProgressColor(completedSteps, totalSteps)}>
-                      {completedSteps} / {totalSteps} steps
-                    </span>
-                    <span className="text-muted-foreground">{Math.round(progress)}%</span>
-                  </div>
-                  
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleViewPlaybook(playbook)}
-                      className="flex-1"
-                      size="sm"
-                    >
-                      <Play className="h-3 w-3 mr-1" />
-                      {progress > 0 && progress < 100 ? 'Continue' : progress === 100 ? 'Review' : 'Start'}
-                    </Button>
-                    {!playbook.isTemplate && (
-                      <Button
-                        onClick={() => handleEditPlaybook(playbook)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Edit
-                      </Button>
-                    )}
-                    {playbook.isTemplate && (
-                      <Button
-                        onClick={() => handleEditPlaybook(playbook)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Use
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={section.tier} className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold">{section.title}</h3>
+                  <p className="text-sm text-muted-foreground">{section.description}</p>
+                </div>
+                <div className={`grid gap-4 ${
+                  section.tier === 1 
+                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
+                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+                }`}>
+                  {tierPlaybooks.map(playbook => renderPlaybookCard(playbook, section.tier === 1))}
+                </div>
+              </div>
             );
           })}
+        </div>
+      ) : (
+        /* Regular Grid Display */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredPlaybooks.map(playbook => renderPlaybookCard(playbook))}
         </div>
       )}
 

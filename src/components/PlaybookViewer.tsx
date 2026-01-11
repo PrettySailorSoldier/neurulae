@@ -259,19 +259,73 @@ export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook,
                 <div className="space-y-3 pt-2">
                   <p className="text-sm">{step.description}</p>
                   
-                  {step.tips && step.tips.length > 0 && (
+                  {/* Subtasks - Checkable items within a step */}
+                                    {(step.subtasks && step.subtasks.length > 0) || (step.tips && step.tips.length > 0) ? (
                     <div className="bg-accent/10 rounded-lg p-3 space-y-2">
-                      <div className="text-xs font-semibold text-accent">💡 Tips:</div>
-                      <ul className="text-xs space-y-1">
-                        {step.tips.map((tip, i) => (
-                          <li key={i} className="flex gap-2">
-                            <span>•</span>
-                            <span>{tip}</span>
-                          </li>
+                      <div className="text-xs font-semibold text-accent flex items-center gap-1">
+                        📋 Subtasks:
+                      </div>
+                      <div className="space-y-1.5">
+                        {/* Render existing subtasks */}
+                        {step.subtasks?.map((subtask) => (
+                          <label 
+                            key={subtask.id} 
+                            className="flex items-start gap-2 cursor-pointer hover:bg-accent/5 rounded p-1 -m-1"
+                          >
+                            <Checkbox
+                              checked={subtask.completed}
+                              onCheckedChange={() => {
+                                const updatedSteps = playbook.steps.map((s, i) =>
+                                  i === index
+                                    ? {
+                                        ...s,
+                                        subtasks: s.subtasks?.map((st) =>
+                                          st.id === subtask.id
+                                            ? { ...st, completed: !st.completed }
+                                            : st
+                                        ),
+                                      }
+                                    : s
+                                );
+                                onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                              }}
+                              className="mt-0.5 border-border"
+                            />
+                            <span className={`text-xs ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
+                              {subtask.title}
+                            </span>
+                          </label>
                         ))}
-                      </ul>
+                        {/* Render tips as checkable items if no subtasks exist */}
+                        {(!step.subtasks || step.subtasks.length === 0) && step.tips?.map((tip, tipIndex) => (
+                          <label 
+                            key={tipIndex} 
+                            className="flex items-start gap-2 cursor-pointer hover:bg-accent/5 rounded p-1 -m-1"
+                          >
+                            <Checkbox
+                              checked={false}
+                              onCheckedChange={() => {
+                                // Convert tips to subtasks on first interaction
+                                const newSubtasks = step.tips?.map((t, i) => ({
+                                  id: crypto.randomUUID(),
+                                  title: t,
+                                  completed: i === tipIndex, // Mark this one as complete
+                                })) || [];
+                                const updatedSteps = playbook.steps.map((s, i) =>
+                                  i === index
+                                    ? { ...s, subtasks: newSubtasks, tips: [] }
+                                    : s
+                                );
+                                onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                              }}
+                              className="mt-0.5 border-border"
+                            />
+                            <span className="text-xs">{tip}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2">

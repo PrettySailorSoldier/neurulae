@@ -238,6 +238,23 @@ const Index = () => {
     });
   }, [timerContext, toast]);
 
+  // Start a timer for a playbook step
+  const handleStartPlaybookTimer = useCallback((stepTitle: string, minutes: number) => {
+    // Convert minutes to seconds
+    const durationSeconds = minutes * 60;
+    
+    // Start the timer (no task ID for playbook steps)
+    timerContext.startTimer(durationSeconds, 'pomodoro', {
+      id: `playbook-step-${Date.now()}`,
+      title: stepTitle,
+    });
+    
+    toast({
+      title: "⏱️ Timer Started",
+      description: `${stepTitle} (${minutes} minute${minutes !== 1 ? 's' : ''})`,
+    });
+  }, [timerContext, toast]);
+
   // Smart suggestion hook - determines what user should do next
   const { suggestion, dismiss: dismissSuggestion } = useSuggestedAction({
     tasks,
@@ -2309,6 +2326,7 @@ const Index = () => {
                 onUpdatePlaybook={handleUpdatePlaybook}
                 onDeletePlaybook={handleDeletePlaybook}
                 onReorderPlaybooks={handleReorderPlaybooks}
+                onStartTimer={handleStartPlaybookTimer}
               />
             </Suspense>
           </TabsContent>

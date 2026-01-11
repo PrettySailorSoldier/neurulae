@@ -190,6 +190,12 @@ export interface PlaybookStep {
   completed: boolean;
   order: number;
   tips?: string[];
+  // Subtasks within a step - checkable items
+  subtasks?: {
+    id: string;
+    title: string;
+    completed: boolean;
+  }[];
   // Routine-specific fields
   flexibility?: 'essential' | 'recommended' | 'optional'; // How flexible is this step?
   habitStack?: {
@@ -210,6 +216,10 @@ export interface Playbook {
   resetOnRecurrence: boolean;
   createdAt: string;
   order?: number;
+  // Tags for new two-tier filter system
+  tags?: PlaybookTags;
+  // Template tier for organization (1=Essential, 2=Room-specific, 3=Specialty, 4=Vehicle/Outdoor)
+  tier?: 1 | 2 | 3 | 4;
   // Routine-specific fields
   isRoutine?: boolean; // Is this a routine template?
   routineType?: 'morning' | 'evening' | 'work-start' | 'work-end' | 'custom';
@@ -219,6 +229,13 @@ export interface Playbook {
     lastCompletedDate?: string;
     completionHistory: { date: string; completed: boolean; skippedOptional: number }[];
   };
+}
+
+// Tags for playbook filtering
+export interface PlaybookTags {
+  rooms?: ('bathroom' | 'bedroom' | 'kitchen' | 'living-room' | 'office' | 'entryway' | 'garage' | 'whole-home' | 'vehicle')[];
+  activityType?: ('deep-clean' | 'quick-clean' | 'declutter' | 'organize' | 'maintenance' | 'seasonal' | 'daily-routine' | 'self-care' | 'cooking')[];
+  duration?: ('0-15' | '15-30' | '30-60' | '60-120' | '120+')[];
 }
 
 export interface ReminderWidget {

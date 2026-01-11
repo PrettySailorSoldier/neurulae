@@ -9,7 +9,13 @@ const corsHeaders = {
 const playbookSchema = z.object({
   goal: z.string().trim().min(1, "Goal is required").max(500, "Goal must be less than 500 characters"),
   details: z.string().trim().max(2000, "Details must be less than 2000 characters").optional(),
-  category: z.enum(['Cleaning', 'Cooking', 'Learning', 'Self-Care', 'Creative', 'Work', 'Health', 'Social', 'Other']).optional(),
+  // Accept all categories: room-based, activity-based, and original categories
+  category: z.enum([
+    // Room-based categories
+    'Bathroom', 'Bedroom', 'Kitchen', 'Living Room', 'Office', 'Entrance & Dining', 'Vehicle', 'Whole Home',
+    // Activity-based categories  
+    'Cleaning', 'Cooking', 'Learning', 'Self-Care', 'Creative', 'Work', 'Health', 'Social', 'Other'
+  ]).optional(),
 });
 
 interface PlaybookStep {

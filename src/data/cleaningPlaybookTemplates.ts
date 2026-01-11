@@ -21,6 +21,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Bathroom',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['bathroom'], activityType: ['deep-clean'], duration: ['120+'] },
     steps: [
       step('Assemble Your Cleaning Toolkit', 'Gather all supplies: bathroom cleaner, disinfectant, glass cleaner, toilet bowl cleaner, scrub brushes, microfiber cloths, gloves, trash bags.', 10, 0, ['Having everything ready prevents distraction', 'Put on gloves for protection']),
       step('Clear All Surfaces', 'Remove everything from countertops, shelves, shower, and tub. This gives you complete access and makes the space less overwhelming.', 15, 1, ['Sort items as you go: keep, toss, relocate', 'Check products for expiration dates']),
@@ -47,6 +49,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Bedroom',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 2,
+    tags: { rooms: ['bedroom'], activityType: ['deep-clean'], duration: ['120+'] },
     steps: [
       step('Gather Cleaning Supplies', 'Collect: dusting cloths, furniture polish, vacuum, mop, glass cleaner, all-purpose cleaner, trash bags, fresh linens.', 10, 0, ['Having everything ready keeps you in the zone', 'Prepare fresh sheets ahead of time']),
       step('Declutter Surfaces', 'Clear nightstands, dresser tops, desk areas. Sort items: keep, relocate, donate, discard. Put away clothes, books, and miscellaneous items.', 20, 1, ['A clear space is less overwhelming to clean', 'Use a basket to collect items for other rooms']),
@@ -74,6 +78,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Kitchen',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 2,
+    tags: { rooms: ['kitchen'], activityType: ['maintenance', 'quick-clean'], duration: ['60-120'] },
     steps: [
       step('Supply Check', 'Gather cleaners, sponges, cloths, trash bags.', 5, 0, ['Replace worn sponges', 'Stock up on favorites']),
       step('Appliance Quick Clean', 'Wipe down refrigerator exterior. Clean microwave inside and out. Wipe down other small appliances.', 20, 1, ['Handles get touched most', 'Steam microwave for easy cleaning']),
@@ -92,6 +98,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Kitchen',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['kitchen'], activityType: ['deep-clean'], duration: ['120+'] },
     steps: [
       step('Assemble Your Cleaning Arsenal', 'Gather all cleaning supplies in one location: all-purpose cleaner, degreaser, glass cleaner, microfiber cloths, scrub brushes, trash bags, and your favorite cleaning playlist.', 10, 0, ['Put on some energizing music to make this more fun', 'Having everything in one place prevents mid-task searching']),
       step('Clear & Declutter', 'Remove everything from countertops, tables, and visible surfaces. Sort items: keep, relocate, discard.', 15, 1, ['A clear space is less overwhelming and faster to clean', 'Use a laundry basket to collect items that belong elsewhere']),
@@ -117,6 +125,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Living Room',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 2,
+    tags: { rooms: ['living-room'], activityType: ['deep-clean'], duration: ['120+'] },
     steps: [
       step('Supply Prep', 'Gather furniture polish, dusting cloths, vacuum with attachments, glass cleaner, all-purpose cleaner, electronics cleaner. Prepare trash bags. Set up your cleaning soundtrack.', 10, 0, ['Music makes cleaning more enjoyable', 'Having supplies ready prevents interruptions']),
       step('Declutter Blitz', 'Remove items that don\'t belong in the living room. Sort magazines, newspapers, mail. Organize remote controls and cords. Create keep/toss/relocate piles.', 20, 1, ['Be ruthless - less stuff means easier cleaning', 'Find homes for wayward items']),
@@ -144,6 +154,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Office',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 3,
+    tags: { rooms: ['office'], activityType: ['declutter', 'organize'], duration: ['60-120'] },
     steps: [
       step('Paper Sorting Station Setup', 'Create piles: File, Action, Shred, Recycle. Get file folders, shredder, recycle bin ready.', 5, 0, ['Clear categories = faster sorting', 'Label each pile']),
       step('Desktop Paper Purge', 'Go through all papers on desk surface. Sort into designated piles. Be ruthless - when in doubt, it probably goes.', 20, 1, ['Touch each paper once', 'Action items need deadlines']),
@@ -160,6 +172,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Office',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 2,
+    tags: { rooms: ['office'], activityType: ['deep-clean'], duration: ['120+'] },
     steps: [
       step('Assemble Cleaning Tools', 'Gather: electronics-safe cleaner, dusting cloths, all-purpose cleaner, glass cleaner, organizing supplies, trash/recycle bags. Prepare for paper shredding if needed.', 10, 0, ['Electronics need special care', 'Have shredder ready for sensitive documents']),
       step('Desktop Declutter', 'Remove everything from desk surface. Sort papers into: file, action needed, shred, recycle. Identify items that don\'t belong in office.', 20, 1, ['Clear space = clear mind', 'Be ruthless with paper clutter']),
@@ -185,6 +199,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Entrance & Dining',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 2,
+    tags: { rooms: ['entryway'], activityType: ['deep-clean'], duration: ['60-120'] },
     steps: [
       step('Gather Zone Supplies', 'All-purpose cleaner, glass cleaner, dusting cloths, vacuum, mop, trash bag.', 5, 0, ['One caddy for easy transport', 'Check supplies before starting']),
       step('Entrance Declutter', 'Remove items that don\'t belong. Organize shoes and coats. Sort mail and papers.', 15, 1, ['Find homes for everything', 'No pile is too small to address']),
@@ -207,6 +223,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Vehicle',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 4,
+    tags: { rooms: ['vehicle'], activityType: ['deep-clean'], duration: ['60-120'] },
     steps: [
       step('Gather Car Cleaning Supplies', 'Interior cleaner, glass cleaner, microfiber cloths, trash bag, vacuum with attachments, armor-all or dashboard spray.', 5, 0, ['Portable vacuum works great', 'Trash bag for immediate use']),
       step('Complete Trash Removal', 'Remove all trash from every crevice. Check door pockets, cup holders, under seats. Use trash bag for collection.', 10, 1, ['Check every pocket and corner', 'Don\'t forget trunk']),
@@ -227,6 +245,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['whole-home'], activityType: ['quick-clean'], duration: ['0-15'] },
     steps: [
       step('Kitchen Counter Blitz', 'Wipe down all visible counters. Put dishes in sink or dishwasher.', 2, 0, ['Speed over perfection', 'Focus on what\'s visible']),
       step('Visible Pickup', 'Grab items that are out of place. Return them to proper locations quickly.', 2, 1, ['One quick lap around', 'Basket for wayward items']),
@@ -239,6 +259,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['whole-home'], activityType: ['quick-clean'], duration: ['15-30'] },
     steps: [
       step('Dish Dash', 'Load/unload dishwasher or hand-wash quickly. Wipe down sink area.', 4, 0, ['Nothing says "clean" like an empty sink', 'Hide dirty dishes if needed']),
       step('Surface Sprint', 'Wipe all visible surfaces (counters, tables). Focus on kitchen and living areas.', 3, 1, ['Speed wipe only', 'High-impact areas first']),
@@ -253,6 +275,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['whole-home'], activityType: ['quick-clean'], duration: ['30-60'] },
     steps: [
       step('Kitchen Command', 'Wipe counters and appliances. Do dishes or load dishwasher. Spot-clean floor around sink and stove.', 10, 0, ['Kitchen first - high impact', 'Cleans smells improve mood']),
       step('Bathroom Blitz', 'Clean toilet, sink, and mirror quickly. Wipe down counter and fixtures. Spot-mop floor if needed.', 7, 1, ['Disinfect high-touch spots', 'Fresh towels make a difference']),
@@ -267,6 +291,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['whole-home'], activityType: ['deep-clean', 'maintenance'], duration: ['60-120'] },
     steps: [
       step('Kitchen Deep-ish', 'Clean all appliances exteriors. Wipe counters and backsplash. Do all dishes. Sweep and mop floor.', 20, 0, ['More thorough than speed clean', 'Wipe inside microwave']),
       step('Bathroom Thorough', 'Scrub toilet, sink, and tub/shower. Clean mirrors. Wipe all surfaces. Sweep and mop floor.', 15, 1, ['Really scrub this time', 'Clean behind toilet']),
@@ -281,6 +307,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['whole-home'], activityType: ['maintenance'], duration: ['60-120'] },
     steps: [
       step('Change All Bed Sheets', 'Strip beds and start laundry. Make beds with fresh sheets.', 10, 0, ['Fresh sheets = better sleep', 'Start laundry first thing']),
       step('Empty All Trash & Replace Bags', 'Go room to room emptying trash cans. Replace liners. Take trash out to bin.', 5, 1, ['Don\'t forget bathroom trash', 'Stock up on extra bags']),
@@ -297,6 +325,8 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
     category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 3,
+    tags: { rooms: ['whole-home', 'bathroom', 'bedroom', 'office'], activityType: ['maintenance'], duration: ['120+'] },
     steps: [
       step('Prep All Zones', 'Gather supplies for all areas: bathroom cleaner, glass cleaner, dusting supplies, vacuum, mop, fresh towels and linens.', 10, 0, ['One trip for supplies', 'Check you have everything']),
       step('Bathroom Quick Clean', 'Clean mirrors and windows. Wipe down counters and sink. Scrub toilet bowl and wipe exterior. Quick shower/tub wipe-down.', 25, 1, ['Focus on high-impact areas', 'Daily wipes make this faster']),
