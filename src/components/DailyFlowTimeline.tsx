@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import { TimeBlock, ScheduledTask, Task, DayTemplate, StructureSettings, DEFAULT_STRUCTURE_SETTINGS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
-import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, Sparkles, Layers } from 'lucide-react';
+import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, Sparkles, Layers, Play } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 import {
@@ -84,6 +84,8 @@ interface DailyFlowTimelineProps {
   onExternalDragEnd?: (result: DropResult) => void;
   // Active timer state for showing timer progress in timeline
   activeTimerState?: ActiveTimerState;
+  // Callback to start a work session on a task
+  onStartWorkSession?: (task: Task) => void;
 }
 
 export function DailyFlowTimeline({
@@ -98,6 +100,7 @@ export function DailyFlowTimeline({
   useExternalDragContext = false,
   onExternalDragEnd,
   activeTimerState,
+  onStartWorkSession,
 }: DailyFlowTimelineProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -489,7 +492,7 @@ export function DailyFlowTimeline({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "absolute border rounded-lg p-1.5 cursor-pointer transition-all hover:shadow-lg overflow-hidden",
+              "absolute border rounded-lg p-1.5 cursor-pointer transition-all hover:shadow-lg overflow-hidden group",
               isActive ? 'bg-primary/20 border-primary ring-2 ring-primary/50' : 'bg-card/80 border-border',
               snapshot.isDraggingOver && 'ring-2 ring-green-500/50 bg-green-500/10 border-green-500',
               // Active timer styling - pulsing border when timer is running
@@ -562,6 +565,22 @@ export function DailyFlowTimeline({
                 <div className="flex-shrink-0 text-green-600">
                   <Plus className="h-4 w-4" />
                 </div>
+              )}
+              {/* Start Work button - shows when there are scheduled tasks and not actively running */}
+              {!snapshot.isDraggingOver && scheduledTaskDetails.length > 0 && !hasActiveTimerTask && onStartWorkSession && (
+                <button
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 bg-primary/10 hover:bg-primary/20 rounded-full p-1 text-primary hover:scale-110 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const firstTask = scheduledTaskDetails[0];
+                    if (firstTask) {
+                      onStartWorkSession(firstTask);
+                    }
+                  }}
+                  title={`Start working on ${scheduledTaskDetails[0]?.title}`}
+                >
+                  <Play className="h-3 w-3 fill-current" />
+                </button>
               )}
             </div>
 

@@ -30,8 +30,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useActiveIntention } from '@/hooks/useActiveIntention';
+import { useTimerContext } from '@/contexts/TimerContext';
 import { ActiveIntentionBanner } from '@/components/ActiveIntentionBanner';
 import { TomorrowIntentionsBar } from '@/components/TomorrowIntentionsBar';
+import { useSuggestedAction } from '@/hooks/useSuggestedAction';
 
 // Lazy load heavy components for better code splitting
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab').then(m => ({ default: m.ProjectsTab })));
@@ -59,6 +61,7 @@ const AnalyticsDashboard = lazy(() => import('@/components/AnalyticsDashboard').
 const DailyReviewPrompt = lazy(() => import('@/components/DailyReviewPrompt').then(m => ({ default: m.DailyReviewPrompt })));
 const DailyPlanningDialog = lazy(() => import('@/components/DailyPlanningDialog').then(m => ({ default: m.DailyPlanningDialog })));
 const NDDashboardPanel = lazy(() => import('@/components/nd/NDDashboardPanel').then(m => ({ default: m.NDDashboardPanel })));
+const SuggestedActionCard = lazy(() => import('@/components/SuggestedActionCard').then(m => ({ default: m.SuggestedActionCard })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -211,6 +214,34 @@ const Index = () => {
   } = useActiveIntention({
     tasks: allTasks,
     onTaskComplete: handleCompleteIntentionTask,
+  });
+
+  // Get timer context for starting work sessions
+  const timerContext = useTimerContext();
+
+  // Start a work session on a task (starts timer linked to the task)
+  const handleStartWorkSession = useCallback((task: Task) => {
+    // Calculate duration (use task's estimated time or default to 25 min)
+    const durationSeconds = task.estimatedMinutes ? task.estimatedMinutes * 60 : 25 * 60;
+    
+    // Start the timer with the task linked
+    timerContext.startTimer(durationSeconds, 'pomodoro', {
+      id: task.id,
+      title: task.title,
+    });
+    
+    toast({
+      title: "🎯 Work Session Started",
+      description: `Working on: ${task.title}`,
+    });
+  }, [timerContext, toast]);
+
+  // Smart suggestion hook - determines what user should do next
+  const { suggestion, dismiss: dismissSuggestion } = useSuggestedAction({
+    tasks,
+    timeBlocks,
+    scheduledTasks,
+    intentions: tomorrowIntentions,
   });
 
   // Timer state is now managed via TimerContext - ScheduleSection and TaskSection get it from context directly
@@ -1119,17 +1150,76 @@ const Index = () => {
     });
   };
 
-  // Handle toggling an intention as complete
+  // Handle toggling an intention as complete (bidirectional sync with tasks)
   const handleToggleIntention = (intentionId: string) => {
     if (!tomorrowIntentions) return;
 
+    const intention = tomorrowIntentions.intentions.find(i => i.id === intentionId);
+    if (!intention) return;
+
+    const newCompleted = !intention.completed;
+
+    // Update intention state
     setTomorrowIntentions({
       ...tomorrowIntentions,
       intentions: tomorrowIntentions.intentions.map((i) =>
-        i.id === intentionId ? { ...i, completed: !i.completed } : i
+        i.id === intentionId ? { ...i, completed: newCompleted } : i
       ),
     });
+
+    // Also toggle the linked task if it exists
+    if (intention.taskId) {
+      const linkedTask = tasks.find(t => t.id === intention.taskId);
+      if (linkedTask && linkedTask.completed !== newCompleted) {
+        handleToggleComplete(intention.taskId);
+      }
+    } else {
+      // If no taskId, try to find task by matching title
+      const matchingTask = tasks.find(t => 
+        t.title.toLowerCase().trim() === intention.title.toLowerCase().trim()
+      );
+      if (matchingTask && matchingTask.completed !== newCompleted) {
+        handleToggleComplete(matchingTask.id);
+        // Link the intention to the task for future syncs
+        setTomorrowIntentions(prev => prev ? {
+          ...prev,
+          intentions: prev.intentions.map((i) =>
+            i.id === intentionId ? { ...i, taskId: matchingTask.id } : i
+          ),
+        } : null);
+      }
+    }
   };
+
+  // Sync task completion status to intentions (when tasks are completed from elsewhere)
+  useEffect(() => {
+    if (!tomorrowIntentions) return;
+
+    let needsUpdate = false;
+    const updatedIntentions = tomorrowIntentions.intentions.map(intention => {
+      // Find linked task by ID or by title match
+      const linkedTask = intention.taskId 
+        ? tasks.find(t => t.id === intention.taskId)
+        : tasks.find(t => t.title.toLowerCase().trim() === intention.title.toLowerCase().trim());
+      
+      if (linkedTask) {
+        // Link the task if not already linked
+        const newTaskId = linkedTask.id;
+        if (intention.taskId !== newTaskId || intention.completed !== linkedTask.completed) {
+          needsUpdate = true;
+          return { ...intention, taskId: newTaskId, completed: linkedTask.completed };
+        }
+      }
+      return intention;
+    });
+
+    if (needsUpdate) {
+      setTomorrowIntentions({
+        ...tomorrowIntentions,
+        intentions: updatedIntentions,
+      });
+    }
+  }, [tasks]); // Run when tasks change
 
   // Handle clearing all intentions
   const handleClearIntentions = () => {
@@ -2073,6 +2163,18 @@ const Index = () => {
               onClearIntentions={handleClearIntentions}
             />
 
+            {/* Smart Suggestion Card - What should I do next? */}
+            {suggestion && (
+              <Suspense fallback={null}>
+                <SuggestedActionCard
+                  suggestion={suggestion}
+                  onStartWork={handleStartWorkSession}
+                  onDismiss={dismissSuggestion}
+                  onOpenDailyReview={() => setDailyReviewOpen(true)}
+                />
+              </Suspense>
+            )}
+
             {/* Main Workflow - Visual Timeline & Unified To-Do List */}
             {isMobile ? (
               <div className="pb-20">
@@ -2092,6 +2194,7 @@ const Index = () => {
                     onUpdateTimeBlock={handleUpdateTimeBlock}
                     onDeleteTimeBlock={handleDeleteTimeBlock}
                     onAddTask={handleAddTask}
+                    onStartWorkSession={handleStartWorkSession}
                   />
                 )}
                 {mobileTab === 'tasks' && (
@@ -2117,6 +2220,9 @@ const Index = () => {
                     onClearAll={handleClearAllTasks}
                     onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
                     onOpenDailyReview={() => setDailyReviewOpen(true)}
+                    intentions={tomorrowIntentions}
+                    onToggleIntention={handleToggleIntention}
+                    onStartWorkSession={handleStartWorkSession}
                   />
                 )}
               </div>
@@ -2140,6 +2246,7 @@ const Index = () => {
                       onAddTask={handleAddTask}
                       onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
                       useExternalDragContext={true}
+                      onStartWorkSession={handleStartWorkSession}
                     />
                   </div>
                   {/* Right Column: Task List */}
@@ -2166,6 +2273,9 @@ const Index = () => {
                     onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
                     onOpenDailyReview={() => setDailyReviewOpen(true)}
                     enableDragDrop={true}
+                    intentions={tomorrowIntentions}
+                    onToggleIntention={handleToggleIntention}
+                    onStartWorkSession={handleStartWorkSession}
                   />
                 </div>
               </DragDropContext>

@@ -1,6 +1,6 @@
-import { useState, useMemo, memo } from 'react';
-import { Task } from '@/types';
-import { Plus, MoreHorizontal, Sparkles, TrendingUp, Clock, ListPlus, CalendarClock, Check, Play, Pencil, Trash2 } from 'lucide-react';
+import { useState, useMemo, memo, useEffect } from 'react';
+import { Task, TomorrowIntentions, TomorrowIntention } from '@/types';
+import { Plus, MoreHorizontal, Sparkles, TrendingUp, Clock, ListPlus, CalendarClock, Check, Play, Pencil, Trash2, Target, Moon, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { format, isToday, parseISO } from 'date-fns';
 
 interface MobileTaskViewProps {
   tasks: Task[];
@@ -39,6 +40,14 @@ interface MobileTaskViewProps {
   activeTaskId?: string | null;
   /** Whether the timer is currently running (for animation) */
   isTimerRunning?: boolean;
+  /** Tomorrow's intentions from Daily Review */
+  intentions?: TomorrowIntentions | null;
+  /** Callback when an intention is toggled */
+  onToggleIntention?: (intentionId: string) => void;
+  /** Callback to open the Daily Review modal */
+  onOpenDailyReviewForIntentions?: () => void;
+  /** Callback to start a work session on a task */
+  onStartWorkSession?: (task: Task) => void;
 }
 
 interface CategoryConfig {
@@ -115,7 +124,13 @@ const MobileTaskViewComponent = ({
   showHeader = true,
   activeTaskId,
   isTimerRunning = false,
+  intentions,
+  onToggleIntention,
+  onOpenDailyReviewForIntentions,
+  onStartWorkSession,
 }: MobileTaskViewProps) => {
+  // Track recently completed intentions for celebration animation
+  const [celebratingId, setCelebratingId] = useState<string | null>(null);
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -309,6 +324,179 @@ const MobileTaskViewComponent = ({
             </div>
           )}
 
+          {/* Intentions Bar - Priority tasks from Daily Review */}
+          {showHeader && (
+            <div className="mb-4">
+              {(() => {
+                // Check if intentions are valid for today
+                const hasValidIntentions = intentions && 
+                  intentions.intentions.length > 0 && 
+                  isToday(parseISO(intentions.date));
+                
+                // Handler for toggling with celebration
+                const handleIntentionToggle = (intentionId: string, wasCompleted: boolean) => {
+                  if (!wasCompleted) {
+                    // Trigger celebration animation
+                    setCelebratingId(intentionId);
+                    setTimeout(() => setCelebratingId(null), 1500);
+                  }
+                  onToggleIntention?.(intentionId);
+                };
+                
+                if (hasValidIntentions && intentions) {
+                  const completedCount = intentions.intentions.filter(i => i.completed).length;
+                  const allCompleted = completedCount === intentions.intentions.length;
+                  
+                  return (
+                    <div className={cn(
+                      "relative p-4 rounded-2xl border overflow-hidden transition-all duration-300",
+                      allCompleted 
+                        ? "bg-gradient-to-br from-green-500/10 via-emerald-500/5 to-transparent border-green-500/30" 
+                        : "bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20"
+                    )}>
+                      {/* Subtle decorative element */}
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full pointer-events-none" />
+                      
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "flex items-center justify-center w-7 h-7 rounded-full transition-colors",
+                            allCompleted ? "bg-green-500/20" : "bg-primary/20"
+                          )}>
+                            <Target className={cn(
+                              "h-3.5 w-3.5",
+                              allCompleted ? "text-green-500" : "text-primary"
+                            )} />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground">Today's Intentions</h3>
+                            <p className="text-[10px] text-muted-foreground">
+                              {allCompleted ? "All done! 🎉" : `${completedCount}/${intentions.intentions.length} complete`}
+                            </p>
+                          </div>
+                        </div>
+                        {allCompleted && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+                            <Sparkles className="h-3 w-3" />
+                            Done!
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Intention Slots - Always show 3 */}
+                      <div className="space-y-2">
+                        {[0, 1, 2].map((index) => {
+                          const intention = intentions.intentions[index];
+                          const isCelebrating = celebratingId === intention?.id;
+                          
+                          if (!intention) {
+                            // Empty slot
+                            return (
+                              <div 
+                                key={`empty-${index}`}
+                                className="flex items-center gap-3 p-2 rounded-xl bg-muted/30 border border-dashed border-border/50"
+                              >
+                                <span className="text-[10px] font-medium text-muted-foreground/50 w-4 text-center">
+                                  {index + 1}.
+                                </span>
+                                <div className="h-4 w-4 rounded-md border-2 border-dashed border-muted-foreground/30" />
+                                <span className="text-xs text-muted-foreground/50 italic">
+                                  No intention set
+                                </span>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div 
+                              key={intention.id}
+                              className={cn(
+                                "relative flex items-center gap-3 p-2 rounded-xl transition-all duration-300 cursor-pointer group",
+                                intention.completed 
+                                  ? "bg-green-500/10" 
+                                  : "bg-background/60 hover:bg-background/90",
+                                isCelebrating && "ring-2 ring-green-500/50 scale-[1.02]",
+                                // Active work session indicator - pulsing ring when working on this intention
+                                !intention.completed && activeTaskId && intention.taskId === activeTaskId && isTimerRunning && 
+                                  "ring-2 ring-primary animate-pulse bg-primary/10"
+                              )}
+                              onClick={() => handleIntentionToggle(intention.id, intention.completed)}
+                            >
+                              {/* Celebration particles */}
+                              {isCelebrating && (
+                                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+                                  <div className="absolute -top-1 left-1/4 text-yellow-500 animate-bounce">✨</div>
+                                  <div className="absolute -top-1 right-1/4 text-green-500 animate-bounce delay-75">🎉</div>
+                                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                    <PartyPopper className="h-6 w-6 text-primary animate-ping opacity-50" />
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <span className="text-[10px] font-medium text-muted-foreground w-4 text-center">
+                                {index + 1}.
+                              </span>
+                              <Checkbox
+                                checked={intention.completed}
+                                onCheckedChange={() => handleIntentionToggle(intention.id, intention.completed)}
+                                className={cn(
+                                  "transition-all h-4 w-4",
+                                  intention.completed && "bg-green-500 border-green-500",
+                                  !intention.completed && "group-hover:border-primary",
+                                  // Active task checkbox styling
+                                  !intention.completed && activeTaskId && intention.taskId === activeTaskId && "border-primary"
+                                )}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <span className={cn(
+                                "flex-1 text-sm transition-all",
+                                intention.completed && "line-through text-muted-foreground",
+                                !intention.completed && "text-foreground",
+                                // Active task bold text
+                                !intention.completed && activeTaskId && intention.taskId === activeTaskId && "font-semibold text-primary"
+                              )}>
+                                {intention.title}
+                              </span>
+                              {/* Active work indicator badge */}
+                              {!intention.completed && activeTaskId && intention.taskId === activeTaskId && (
+                                <span className="flex-shrink-0 flex items-center gap-1 text-[9px] font-bold text-primary bg-primary/20 px-1.5 py-0.5 rounded-full">
+                                  <Play className="h-2 w-2 fill-current" />
+                                  Working
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Empty state - gentle prompt to set intentions
+                return (
+                  <div 
+                    className="p-4 rounded-2xl border border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent cursor-pointer hover:border-primary/50 hover:bg-primary/10 transition-all group"
+                    onClick={() => onOpenDailyReviewForIntentions?.() || onOpenDailyReview?.()}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                        <Moon className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-semibold text-foreground">Set Your Intentions</h3>
+                        <p className="text-xs text-muted-foreground">
+                          Open Daily Review to set your top 3 priorities
+                        </p>
+                      </div>
+                      <Target className="h-5 w-5 text-primary/50 group-hover:text-primary transition-colors" />
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {/* Daily Goals Progress Card */}
           <div className="bg-card p-5 rounded-3xl shadow-lg border border-border mb-6">
             <div className="flex justify-between items-center mb-4">
@@ -484,6 +672,19 @@ const MobileTaskViewComponent = ({
                               )}
                             </div>
                           </label>
+                          {/* Start Work Button - show when not active */}
+                          {!isActiveTask && onStartWorkSession && (
+                            <button
+                              className="opacity-0 group-hover/item:opacity-100 focus:opacity-100 bg-primary/10 backdrop-blur rounded-full p-1.5 text-primary cursor-pointer hover:bg-primary/20 hover:scale-110 transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStartWorkSession(task);
+                              }}
+                              title="Start working on this task"
+                            >
+                              <Play className="h-4 w-4 fill-current" />
+                            </button>
+                          )}
                           {/* Task Actions Dropdown */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -495,6 +696,19 @@ const MobileTaskViewComponent = ({
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40">
+                              {onStartWorkSession && (
+                                <>
+                                  <DropdownMenuItem 
+                                    onClick={() => onStartWorkSession(task)}
+                                    className={isActiveTask ? "text-muted-foreground" : "text-primary"}
+                                    disabled={isActiveTask}
+                                  >
+                                    <Play className="h-4 w-4 mr-2" />
+                                    {isActiveTask ? 'Currently Active' : 'Start Work'}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>                              
+                              )}
                               <DropdownMenuItem onClick={() => handleEditTask(task)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit Task

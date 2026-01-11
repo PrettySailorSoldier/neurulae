@@ -1,5 +1,5 @@
 import { MobileTaskView } from '@/components/MobileTaskView';
-import { Task, TimeBlock } from '@/types';
+import { Task, TimeBlock, TomorrowIntentions } from '@/types';
 import { useActiveTimerState } from '@/contexts/TimerContext';
 
 interface BulkTaskInput {
@@ -37,6 +37,11 @@ interface TaskSectionProps {
   onOpenDailyReview?: () => void;
   // When true, tasks are draggable and can be dropped on time blocks
   enableDragDrop?: boolean;
+  // Intentions data for the Intentions Bar
+  intentions?: TomorrowIntentions | null;
+  onToggleIntention?: (intentionId: string) => void;
+  // Start work session callback
+  onStartWorkSession?: (task: Task) => void;
 }
 
 export function TaskSection({
@@ -63,6 +68,9 @@ export function TaskSection({
   onOpenDailyPlanning,
   onOpenDailyReview,
   enableDragDrop = false,
+  intentions,
+  onToggleIntention,
+  onStartWorkSession,
 }: TaskSectionProps) {
   // Get active timer state to highlight the currently running task
   const activeTimerState = useActiveTimerState();
@@ -89,7 +97,12 @@ export function TaskSection({
         onOpenDailyReview={onOpenDailyReview}
         activeTaskId={activeTimerState?.taskId}
         isTimerRunning={activeTimerState?.isRunning && !activeTimerState?.isPaused}
+        intentions={intentions}
+        onToggleIntention={onToggleIntention}
+        onOpenDailyReviewForIntentions={onOpenDailyReview}
+        onStartWorkSession={onStartWorkSession}
       />
     </div>
   );
 }
+

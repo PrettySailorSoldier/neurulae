@@ -13,6 +13,8 @@ interface ScheduleSectionProps {
   onScheduleTask?: (scheduledTask: Omit<ScheduledTask, 'id'>) => void;
   // When true, expects an external DragDropContext to be provided by parent
   useExternalDragContext?: boolean;
+  // Callback to start a work session on a task
+  onStartWorkSession?: (task: Task) => void;
 }
 
 export function ScheduleSection({
@@ -25,6 +27,7 @@ export function ScheduleSection({
   onAddTask,
   onScheduleTask,
   useExternalDragContext = false,
+  onStartWorkSession,
 }: ScheduleSectionProps) {
   // Get active timer state from context to sync with timeline
   const activeTimerState = useActiveTimerState();
@@ -52,6 +55,7 @@ export function ScheduleSection({
         onScheduleTask={onScheduleTask}
         useExternalDragContext={useExternalDragContext}
         activeTimerState={timelineTimerState}
+        onStartWorkSession={onStartWorkSession}
       />
     </div>
   );
