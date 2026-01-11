@@ -13,129 +13,12 @@ const step = (title: string, description: string, minutes: number, order: number
 
 export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'linkedTaskIds'>[] = [
   // ============================================================
-  // SPEED CLEANING (Ascending by time: 5min → 15min → 30min → 1hr)
-  // ============================================================
-  {
-    title: '5-Minute Power Reset',
-    description: 'When you only have 5 minutes but want to make a visible difference. Perfect for quick resets between tasks or before guests arrive unexpectedly.',
-    category: 'Speed Cleaning',
-    isTemplate: true,
-    resetOnRecurrence: true,
-    steps: [
-      step('Kitchen Counter Blitz', 'Wipe down all visible counters. Put dishes in sink or dishwasher.', 2, 0, ['Speed over perfection', 'Focus on what\'s visible']),
-      step('Visible Pickup', 'Grab items that are out of place. Return them to proper locations quickly.', 2, 1, ['One quick lap around', 'Basket for wayward items']),
-      step('Quick Bathroom Check', 'Wipe down sink and counter. Quick toilet seat wipe.', 1, 2, ['Guest-ready in seconds', 'Close the shower curtain']),
-    ],
-  },
-  {
-    title: '15-Minute Express Clean',
-    description: 'A focused 15-minute cleaning session that tackles the most visible areas. Creates the illusion of a much longer cleaning session with strategic effort.',
-    category: 'Speed Cleaning',
-    isTemplate: true,
-    resetOnRecurrence: true,
-    steps: [
-      step('Dish Dash', 'Load/unload dishwasher or hand-wash quickly. Wipe down sink area.', 4, 0, ['Nothing says "clean" like an empty sink', 'Hide dirty dishes if needed']),
-      step('Surface Sprint', 'Wipe all visible surfaces (counters, tables). Focus on kitchen and living areas.', 3, 1, ['Speed wipe only', 'High-impact areas first']),
-      step('Bathroom Basics', 'Scrub and sanitize toilet quickly. Wipe sink and counter. Quick mirror wipe.', 3, 2, ['Close shower curtain to hide mess', 'Fresh hand towel']),
-      step('Floor Focus', 'Spot-clean high-traffic areas. Quick sweep or vacuum visible areas.', 3, 3, ['Main walkways only', 'Vacuum the most-seen spots']),
-      step('Visible Tidy', 'Make bed. Straighten pillows and throws. Put away obvious clutter.', 2, 4, ['Fluffed pillows look inviting', 'Toss clutter in a basket']),
-    ],
-  },
-  {
-    title: '30-Minute Home Refresh',
-    description: 'A solid half-hour cleaning session that covers the basics in all main areas. Leaves your home noticeably fresher without the commitment of a deep clean.',
-    category: 'Speed Cleaning',
-    isTemplate: true,
-    resetOnRecurrence: true,
-    steps: [
-      step('Kitchen Command', 'Wipe counters and appliances. Do dishes or load dishwasher. Spot-clean floor around sink and stove.', 10, 0, ['Kitchen first - high impact', 'Cleans smells improve mood']),
-      step('Bathroom Blitz', 'Clean toilet, sink, and mirror quickly. Wipe down counter and fixtures. Spot-mop floor if needed.', 7, 1, ['Disinfect high-touch spots', 'Fresh towels make a difference']),
-      step('Bedroom Quick', 'Make bed neatly. Straighten surfaces. Put away clothes.', 5, 2, ['Made bed transforms the room', 'Clothes put away = calm']),
-      step('Living Area', 'Dust visible surfaces. Fluff pillows and fold throws. Quick vacuum or sweep main walkways.', 6, 3, ['Focus on what guests see', 'Tidy beats spotless']),
-      step('Final Touches', 'Empty visible trash. Put away any remaining clutter.', 2, 4, ['One last sweep through', 'You did it!']),
-    ],
-  },
-  {
-    title: 'The 1-Hour Power Clean',
-    description: 'A comprehensive one-hour cleaning session that touches every major area. Perfect for weekly maintenance or pre-guest preparation.',
-    category: 'Speed Cleaning',
-    isTemplate: true,
-    resetOnRecurrence: true,
-    steps: [
-      step('Kitchen Deep-ish', 'Clean all appliances exteriors. Wipe counters and backsplash. Do all dishes. Sweep and mop floor.', 20, 0, ['More thorough than speed clean', 'Wipe inside microwave']),
-      step('Bathroom Thorough', 'Scrub toilet, sink, and tub/shower. Clean mirrors. Wipe all surfaces. Sweep and mop floor.', 15, 1, ['Really scrub this time', 'Clean behind toilet']),
-      step('Bedroom Care', 'Make bed with care. Dust all surfaces. Organize nightstands. Vacuum or sweep floor.', 12, 2, ['Fresh sheets if possible', 'Open windows briefly']),
-      step('Living Spaces', 'Dust furniture and electronics. Vacuum upholstery. Clean floors thoroughly.', 10, 3, ['Include oft-forgotten spots', 'Move cushions']),
-      step('Final Pass', 'Empty all trash bins. Do final straightening. Ensure everything is in place.', 3, 4, ['The last 5% matters', 'Enjoy your clean home!']),
-    ],
-  },
-
-  // ============================================================
-  // ZONE CLEANING (Weekly Rotation: Zone 1 → Zone 2 → Zone 3)
-  // ============================================================
-  {
-    title: 'Zone 1 - Entrance, Front Porch & Dining Room',
-    description: 'First impressions matter! This playbook helps you create a welcoming entry and organized dining space. Perfect for your weekly rotation.',
-    category: 'Zone Cleaning',
-    isTemplate: true,
-    resetOnRecurrence: true,
-    steps: [
-      step('Gather Zone Supplies', 'All-purpose cleaner, glass cleaner, dusting cloths, vacuum, mop, trash bag.', 5, 0, ['One caddy for easy transport', 'Check supplies before starting']),
-      step('Entrance Declutter', 'Remove items that don\'t belong. Organize shoes and coats. Sort mail and papers.', 15, 1, ['Find homes for everything', 'No pile is too small to address']),
-      step('Dust High to Low', 'Light fixtures, picture frames, decorative items. Work from ceiling down to prevent re-dusting.', 10, 2, ['Use extendable duster for high spots', 'Don\'t forget corners']),
-      step('Front Door & Hardware', 'Wipe down front door inside and out. Clean doorknob and handle until shiny. Wipe around door frame.', 10, 3, ['First impression for visitors', 'Check weather stripping']),
-      step('Windows & Glass', 'Clean all windows and glass surfaces. Wipe window sills and tracks.', 15, 4, ['Streak-free for max light', 'Clean inside and out']),
-      step('Dining Area Focus', 'Wipe down dining table and chairs. Clean chair legs and under-seat area. Polish table until it shines.', 15, 5, ['Check for crumbs in crevices', 'Condition wood if needed']),
-      step('Light Fixtures', 'Dust and clean all light fixtures. Replace burnt-out bulbs.', 10, 6, ['Good lighting matters', 'Consider energy-efficient bulbs']),
-      step('Cobweb Patrol', 'Check corners and ceiling for cobwebs. Remove with duster or vacuum attachment.', 5, 7, ['Often missed but important', 'Check behind furniture too']),
-      step('Floor Care', 'Vacuum or sweep thoroughly. Mop entrance and dining area. Shake out or vacuum entry mats.', 15, 8, ['Entry mats catch a lot of dirt', 'Mop toward the exit']),
-    ],
-  },
-  {
-    title: 'Zone 2 - Kitchen Weekly Maintenance',
-    description: 'Keep your kitchen functional and fresh with this weekly maintenance routine. Less intense than a deep clean but thorough enough to maintain your space.',
-    category: 'Zone Cleaning',
-    isTemplate: true,
-    resetOnRecurrence: true,
-    steps: [
-      step('Supply Check', 'Gather cleaners, sponges, cloths, trash bags.', 5, 0, ['Replace worn sponges', 'Stock up on favorites']),
-      step('Appliance Quick Clean', 'Wipe down refrigerator exterior. Clean microwave inside and out. Wipe down other small appliances.', 20, 1, ['Handles get touched most', 'Steam microwave for easy cleaning']),
-      step('Counter Reset', 'Clear and wipe all countertops. Disinfect cutting boards. Clean behind countertop appliances.', 15, 2, ['Move appliances weekly', 'Sanitize food prep areas']),
-      step('Sink Shine', 'Clean and disinfect sink. Polish faucet. Wipe down area around sink.', 10, 3, ['Baking soda freshens drain', 'Shiny faucet = clean feeling']),
-      step('Pantry & Shelves', 'Declutter and organize pantry. Check for expired items. Wipe down shelves as needed.', 20, 4, ['First in, first out', 'Group similar items']),
-      step('Fridge & Freezer Check', 'Remove expired items. Wipe down shelves if needed. Organize contents for easy access.', 15, 5, ['Check dates weekly', 'Clean spills immediately']),
-      step('Cabinet & Fixture Wipe', 'Wipe down visible cabinet fronts. Clean light fixtures.', 10, 6, ['Focus on high-touch areas', 'Don\'t forget handles']),
-      step('Wall & Window Wash', 'Spot clean any splatter on walls. Clean kitchen window.', 10, 7, ['Grease builds up near stove', 'Natural light helps']),
-      step('Floor Finish', 'Sweep thoroughly, including corners. Vacuum or mop floor. Clean under appliances if accessible.', 20, 8, ['Kitchen floors need weekly attention', 'Move trash can to clean behind']),
-    ],
-  },
-  {
-    title: 'Zone 3 - Bathroom, Bedroom, Office & Laundry',
-    description: 'A comprehensive zone covering multiple personal spaces. This weekly rotation keeps your most-used private areas fresh, organized, and functional.',
-    category: 'Zone Cleaning',
-    isTemplate: true,
-    resetOnRecurrence: true,
-    steps: [
-      step('Prep All Zones', 'Gather supplies for all areas: bathroom cleaner, glass cleaner, dusting supplies, vacuum, mop, fresh towels and linens.', 10, 0, ['One trip for supplies', 'Check you have everything']),
-      step('Bathroom Quick Clean', 'Clean mirrors and windows. Wipe down counters and sink. Scrub toilet bowl and wipe exterior. Quick shower/tub wipe-down.', 25, 1, ['Focus on high-impact areas', 'Daily wipes make this faster']),
-      step('Bathroom Textiles', 'Gather used towels and bath mats. Replace with fresh towels. Check for ripped or stained items to discard.', 10, 2, ['Fresh towels feel luxurious', 'Wash bath mats regularly']),
-      step('Bathroom Floors', 'Sweep or vacuum. Mop thoroughly, getting into corners.', 10, 3, ['Hair and dust collect quickly', 'Under the toilet base matters']),
-      step('Bedroom Surface Clear', 'Make bed with fresh sheets if it\'s sheet day. Clear nightstands and dresser. Put away any clothes or items.', 20, 4, ['Fresh sheets improve sleep', 'Clear surfaces = calm mind']),
-      step('Bedroom Dust & Wipe', 'Dust all furniture surfaces. Wipe down light fixtures.', 15, 5, ['Don\'t forget under the bed', 'Dust attracts more dust']),
-      step('Bedroom Floor Care', 'Vacuum or sweep and mop. Get under bed if accessible.', 15, 6, ['Move small furniture', 'Edge along baseboards']),
-      step('Office Desk Straighten', 'Clear desk surface. File or organize papers. Wipe down desk and computer area.', 15, 7, ['Clear desk = focused mind', 'Organize cables']),
-      step('Laundry Room Organize', 'Wipe down washer and dryer exteriors. Organize laundry supplies. Sweep and spot-mop floor. Check lint trap and clean if needed.', 15, 8, ['Clean lint trap = fire safety', 'Wipe door seals on front loaders']),
-      step('All Zone Touch-ups', 'Empty trash in all areas. Do final spot checks. Ensure everything is in its place.', 15, 9, ['Fresh trash bags in all bins', 'Quick final sweep']),
-    ],
-  },
-
-  // ============================================================
-  // ROOM-BASED DEEP CLEANS (Alphabetical: Bathroom, Bedroom, Kitchen, Living Room, Office)
+  // BATHROOM (Quick → Deep)
   // ============================================================
   {
     title: 'Bathroom Deep Clean Reset',
     description: 'A complete bathroom transformation system that tackles every surface, eliminates germs, and creates a spa-like sanctuary. Perfect for when you need a full bathroom refresh.',
-    category: 'Deep Clean',
+    category: 'Bathroom',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
@@ -154,10 +37,14 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
       step('Organize & Restock', 'Replace items neatly in their designated spots. Organize under-sink cabinet. Replace towels with fresh, clean ones. Restock toilet paper and toiletries.', 20, 12, ['Add a nice-smelling hand soap or air freshener', 'Arrange countertop with only essentials']),
     ],
   },
+
+  // ============================================================
+  // BEDROOM (Quick → Deep)
+  // ============================================================
   {
     title: 'Bedroom Deep Clean Reset',
     description: 'Create your perfect sleep sanctuary with this complete bedroom refresh. This playbook helps you deep clean every corner while maintaining focus and energy.',
-    category: 'Deep Clean',
+    category: 'Bedroom',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
@@ -177,10 +64,32 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
       step('Reward & Enjoy', 'Take a moment to appreciate your clean, calm space. Light a candle or add fresh flowers. Your bedroom is now a proper sanctuary.', 5, 13, ['CELEBRATE! You did an amazing job!', 'Take a photo to remember this feeling']),
     ],
   },
+
+  // ============================================================
+  // KITCHEN (Weekly Maintenance → Deep Clean)
+  // ============================================================
+  {
+    title: 'Kitchen Weekly Maintenance',
+    description: 'Keep your kitchen functional and fresh with this weekly maintenance routine. Less intense than a deep clean but thorough enough to maintain your space.',
+    category: 'Kitchen',
+    isTemplate: true,
+    resetOnRecurrence: true,
+    steps: [
+      step('Supply Check', 'Gather cleaners, sponges, cloths, trash bags.', 5, 0, ['Replace worn sponges', 'Stock up on favorites']),
+      step('Appliance Quick Clean', 'Wipe down refrigerator exterior. Clean microwave inside and out. Wipe down other small appliances.', 20, 1, ['Handles get touched most', 'Steam microwave for easy cleaning']),
+      step('Counter Reset', 'Clear and wipe all countertops. Disinfect cutting boards. Clean behind countertop appliances.', 15, 2, ['Move appliances weekly', 'Sanitize food prep areas']),
+      step('Sink Shine', 'Clean and disinfect sink. Polish faucet. Wipe down area around sink.', 10, 3, ['Baking soda freshens drain', 'Shiny faucet = clean feeling']),
+      step('Pantry & Shelves', 'Declutter and organize pantry. Check for expired items. Wipe down shelves as needed.', 20, 4, ['First in, first out', 'Group similar items']),
+      step('Fridge & Freezer Check', 'Remove expired items. Wipe down shelves if needed. Organize contents for easy access.', 15, 5, ['Check dates weekly', 'Clean spills immediately']),
+      step('Cabinet & Fixture Wipe', 'Wipe down visible cabinet fronts. Clean light fixtures.', 10, 6, ['Focus on high-touch areas', 'Don\'t forget handles']),
+      step('Wall & Window Wash', 'Spot clean any splatter on walls. Clean kitchen window.', 10, 7, ['Grease builds up near stove', 'Natural light helps']),
+      step('Floor Finish', 'Sweep thoroughly, including corners. Vacuum or mop floor. Clean under appliances if accessible.', 20, 8, ['Kitchen floors need weekly attention', 'Move trash can to clean behind']),
+    ],
+  },
   {
     title: 'Kitchen Deep Clean Reset',
     description: 'Transform your kitchen from chaos to calm with this comprehensive deep clean. This playbook breaks down the overwhelming task of deep cleaning your kitchen into manageable, timed steps.',
-    category: 'Deep Clean',
+    category: 'Kitchen',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
@@ -198,10 +107,14 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
       step('Final Touch & Restock', 'Return all items to their clean spaces. Arrange countertops intentionally with only essentials. Replace dish towels with fresh ones. Dispose of old sponges.', 15, 11, ['Stand back and admire your sparkling kitchen!', 'Light a candle or add fresh flowers']),
     ],
   },
+
+  // ============================================================
+  // LIVING ROOM
+  // ============================================================
   {
     title: 'Living Room Deep Clean Reset',
     description: 'Transform your living space into a welcoming, organized haven. This playbook tackles every surface and corner while keeping you focused.',
-    category: 'Deep Clean',
+    category: 'Living Room',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
@@ -221,10 +134,30 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
       step('Reorganize & Style', 'Return only essential, loved items to surfaces. Arrange furniture back to optimal layout. Fluff pillows and fold throws decoratively. Ensure everything has its place.', 15, 13, ['Less is more', 'Style like it\'s a magazine photo']),
     ],
   },
+
+  // ============================================================
+  // OFFICE (Declutter → Deep Clean)
+  // ============================================================
+  {
+    title: 'Declutter Master - Office Edition',
+    description: 'A focused decluttering session specifically for office spaces. Reduces paper chaos, organizes supplies, and creates a more productive work environment.',
+    category: 'Office',
+    isTemplate: true,
+    resetOnRecurrence: true,
+    steps: [
+      step('Paper Sorting Station Setup', 'Create piles: File, Action, Shred, Recycle. Get file folders, shredder, recycle bin ready.', 5, 0, ['Clear categories = faster sorting', 'Label each pile']),
+      step('Desktop Paper Purge', 'Go through all papers on desk surface. Sort into designated piles. Be ruthless - when in doubt, it probably goes.', 20, 1, ['Touch each paper once', 'Action items need deadlines']),
+      step('Drawer Paper Expedition', 'Empty each drawer of papers. Sort methodically. Shred sensitive documents immediately.', 25, 2, ['One drawer at a time', 'Check folders too']),
+      step('Filing Action', 'File all "keep" papers in organized system. Create new folders if needed. Label everything clearly.', 20, 3, ['Alphabetical or by project', 'Date-stamp if helpful']),
+      step('Supply Organization', 'Gather all pens, pencils, office supplies. Test pens - discard dried out ones. Organize by type in drawer dividers.', 15, 4, ['Only keep what works', 'Group similar items']),
+      step('Cord & Cable Control', 'Identify and label all cords. Remove unused adapters and old cables. Use cable organizers or ties.', 10, 5, ['Label both ends', 'Velcro ties are reusable']),
+      step('Final Sweep & Wipe', 'Wipe down all surfaces. Return only essential items. Admire your clear workspace.', 15, 6, ['Clear desk policy works', 'You did it!']),
+    ],
+  },
   {
     title: 'Office Deep Clean Reset',
     description: 'Create a productive, organized workspace that supports focus and creativity. This deep clean tackles every surface and helps you declutter both physically and mentally.',
-    category: 'Deep Clean',
+    category: 'Office',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
@@ -244,12 +177,34 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
   },
 
   // ============================================================
-  // SPECIALTY PLAYBOOKS
+  // ENTRANCE & DINING
+  // ============================================================
+  {
+    title: 'Entrance, Front Porch & Dining Room',
+    description: 'First impressions matter! This playbook helps you create a welcoming entry and organized dining space. Perfect for your weekly rotation.',
+    category: 'Entrance & Dining',
+    isTemplate: true,
+    resetOnRecurrence: true,
+    steps: [
+      step('Gather Zone Supplies', 'All-purpose cleaner, glass cleaner, dusting cloths, vacuum, mop, trash bag.', 5, 0, ['One caddy for easy transport', 'Check supplies before starting']),
+      step('Entrance Declutter', 'Remove items that don\'t belong. Organize shoes and coats. Sort mail and papers.', 15, 1, ['Find homes for everything', 'No pile is too small to address']),
+      step('Dust High to Low', 'Light fixtures, picture frames, decorative items. Work from ceiling down to prevent re-dusting.', 10, 2, ['Use extendable duster for high spots', 'Don\'t forget corners']),
+      step('Front Door & Hardware', 'Wipe down front door inside and out. Clean doorknob and handle until shiny. Wipe around door frame.', 10, 3, ['First impression for visitors', 'Check weather stripping']),
+      step('Windows & Glass', 'Clean all windows and glass surfaces. Wipe window sills and tracks.', 15, 4, ['Streak-free for max light', 'Clean inside and out']),
+      step('Dining Area Focus', 'Wipe down dining table and chairs. Clean chair legs and under-seat area. Polish table until it shines.', 15, 5, ['Check for crumbs in crevices', 'Condition wood if needed']),
+      step('Light Fixtures', 'Dust and clean all light fixtures. Replace burnt-out bulbs.', 10, 6, ['Good lighting matters', 'Consider energy-efficient bulbs']),
+      step('Cobweb Patrol', 'Check corners and ceiling for cobwebs. Remove with duster or vacuum attachment.', 5, 7, ['Often missed but important', 'Check behind furniture too']),
+      step('Floor Care', 'Vacuum or sweep thoroughly. Mop entrance and dining area. Shake out or vacuum entry mats.', 15, 8, ['Entry mats catch a lot of dirt', 'Mop toward the exit']),
+    ],
+  },
+
+  // ============================================================
+  // VEHICLE
   // ============================================================
   {
     title: 'The Car Reset - A Calmer Commute',
     description: 'Transform your car from chaotic to calm with this step-by-step vehicle cleaning guide. A clean car creates a more peaceful commute.',
-    category: 'Specialty',
+    category: 'Vehicle',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
@@ -262,26 +217,68 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
       step('Restock & Organize', 'Return only essential items to car. Organize glove box. Ensure emergency supplies are present. Place air freshener if desired.', 5, 6, ['Emergency kit: flashlight, first aid', 'Subtle scent is best']),
     ],
   },
+
+  // ============================================================
+  // WHOLE HOME - Speed Cleaning (5min → 15min → 30min → 1hr)
+  // ============================================================
   {
-    title: 'Declutter Master - Office Edition',
-    description: 'A focused decluttering session specifically for office spaces. Reduces paper chaos, organizes supplies, and creates a more productive work environment.',
-    category: 'Specialty',
+    title: '5-Minute Power Reset',
+    description: 'When you only have 5 minutes but want to make a visible difference. Perfect for quick resets between tasks or before guests arrive unexpectedly.',
+    category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
-      step('Paper Sorting Station Setup', 'Create piles: File, Action, Shred, Recycle. Get file folders, shredder, recycle bin ready.', 5, 0, ['Clear categories = faster sorting', 'Label each pile']),
-      step('Desktop Paper Purge', 'Go through all papers on desk surface. Sort into designated piles. Be ruthless - when in doubt, it probably goes.', 20, 1, ['Touch each paper once', 'Action items need deadlines']),
-      step('Drawer Paper Expedition', 'Empty each drawer of papers. Sort methodically. Shred sensitive documents immediately.', 25, 2, ['One drawer at a time', 'Check folders too']),
-      step('Filing Action', 'File all "keep" papers in organized system. Create new folders if needed. Label everything clearly.', 20, 3, ['Alphabetical or by project', 'Date-stamp if helpful']),
-      step('Supply Organization', 'Gather all pens, pencils, office supplies. Test pens - discard dried out ones. Organize by type in drawer dividers.', 15, 4, ['Only keep what works', 'Group similar items']),
-      step('Cord & Cable Control', 'Identify and label all cords. Remove unused adapters and old cables. Use cable organizers or ties.', 10, 5, ['Label both ends', 'Velcro ties are reusable']),
-      step('Final Sweep & Wipe', 'Wipe down all surfaces. Return only essential items. Admire your clear workspace.', 15, 6, ['Clear desk policy works', 'You did it!']),
+      step('Kitchen Counter Blitz', 'Wipe down all visible counters. Put dishes in sink or dishwasher.', 2, 0, ['Speed over perfection', 'Focus on what\'s visible']),
+      step('Visible Pickup', 'Grab items that are out of place. Return them to proper locations quickly.', 2, 1, ['One quick lap around', 'Basket for wayward items']),
+      step('Quick Bathroom Check', 'Wipe down sink and counter. Quick toilet seat wipe.', 1, 2, ['Guest-ready in seconds', 'Close the shower curtain']),
+    ],
+  },
+  {
+    title: '15-Minute Express Clean',
+    description: 'A focused 15-minute cleaning session that tackles the most visible areas. Creates the illusion of a much longer cleaning session with strategic effort.',
+    category: 'Whole Home',
+    isTemplate: true,
+    resetOnRecurrence: true,
+    steps: [
+      step('Dish Dash', 'Load/unload dishwasher or hand-wash quickly. Wipe down sink area.', 4, 0, ['Nothing says "clean" like an empty sink', 'Hide dirty dishes if needed']),
+      step('Surface Sprint', 'Wipe all visible surfaces (counters, tables). Focus on kitchen and living areas.', 3, 1, ['Speed wipe only', 'High-impact areas first']),
+      step('Bathroom Basics', 'Scrub and sanitize toilet quickly. Wipe sink and counter. Quick mirror wipe.', 3, 2, ['Close shower curtain to hide mess', 'Fresh hand towel']),
+      step('Floor Focus', 'Spot-clean high-traffic areas. Quick sweep or vacuum visible areas.', 3, 3, ['Main walkways only', 'Vacuum the most-seen spots']),
+      step('Visible Tidy', 'Make bed. Straighten pillows and throws. Put away obvious clutter.', 2, 4, ['Fluffed pillows look inviting', 'Toss clutter in a basket']),
+    ],
+  },
+  {
+    title: '30-Minute Home Refresh',
+    description: 'A solid half-hour cleaning session that covers the basics in all main areas. Leaves your home noticeably fresher without the commitment of a deep clean.',
+    category: 'Whole Home',
+    isTemplate: true,
+    resetOnRecurrence: true,
+    steps: [
+      step('Kitchen Command', 'Wipe counters and appliances. Do dishes or load dishwasher. Spot-clean floor around sink and stove.', 10, 0, ['Kitchen first - high impact', 'Cleans smells improve mood']),
+      step('Bathroom Blitz', 'Clean toilet, sink, and mirror quickly. Wipe down counter and fixtures. Spot-mop floor if needed.', 7, 1, ['Disinfect high-touch spots', 'Fresh towels make a difference']),
+      step('Bedroom Quick', 'Make bed neatly. Straighten surfaces. Put away clothes.', 5, 2, ['Made bed transforms the room', 'Clothes put away = calm']),
+      step('Living Area', 'Dust visible surfaces. Fluff pillows and fold throws. Quick vacuum or sweep main walkways.', 6, 3, ['Focus on what guests see', 'Tidy beats spotless']),
+      step('Final Touches', 'Empty visible trash. Put away any remaining clutter.', 2, 4, ['One last sweep through', 'You did it!']),
+    ],
+  },
+  {
+    title: 'The 1-Hour Power Clean',
+    description: 'A comprehensive one-hour cleaning session that touches every major area. Perfect for weekly maintenance or pre-guest preparation.',
+    category: 'Whole Home',
+    isTemplate: true,
+    resetOnRecurrence: true,
+    steps: [
+      step('Kitchen Deep-ish', 'Clean all appliances exteriors. Wipe counters and backsplash. Do all dishes. Sweep and mop floor.', 20, 0, ['More thorough than speed clean', 'Wipe inside microwave']),
+      step('Bathroom Thorough', 'Scrub toilet, sink, and tub/shower. Clean mirrors. Wipe all surfaces. Sweep and mop floor.', 15, 1, ['Really scrub this time', 'Clean behind toilet']),
+      step('Bedroom Care', 'Make bed with care. Dust all surfaces. Organize nightstands. Vacuum or sweep floor.', 12, 2, ['Fresh sheets if possible', 'Open windows briefly']),
+      step('Living Spaces', 'Dust furniture and electronics. Vacuum upholstery. Clean floors thoroughly.', 10, 3, ['Include oft-forgotten spots', 'Move cushions']),
+      step('Final Pass', 'Empty all trash bins. Do final straightening. Ensure everything is in place.', 3, 4, ['The last 5% matters', 'Enjoy your clean home!']),
     ],
   },
   {
     title: 'Weekly Home Blessing - The FlyLady Method',
     description: 'The famous FlyLady weekly home blessing routine adapted for Neurulae. A comprehensive 1-hour speed clean that touches every room for weekly maintenance.',
-    category: 'Specialty',
+    category: 'Whole Home',
     isTemplate: true,
     resetOnRecurrence: true,
     steps: [
@@ -292,6 +289,25 @@ export const cleaningPlaybookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'lin
       step('Mop All Hard Floors', 'Sweep first if needed. Mop kitchen, bathrooms, entryways. Let dry as you continue.', 10, 4, ['Work toward the exit', 'Fresh mop solution']),
       step('Clean Mirrors & Glass', 'All bathroom mirrors. Glass doors. Any other glass surfaces.', 5, 5, ['Streak-free with microfiber', 'Check in natural light']),
       step('Final Touch - Doors & Knobs', 'Wipe down all door knobs. Clean light switches. Wipe visible doors.', 5, 6, ['High-touch = high germ', 'Disinfect these weekly']),
+    ],
+  },
+  {
+    title: 'Multi-Room Zone Clean',
+    description: 'A comprehensive zone covering bathroom, bedroom, office, and laundry. This weekly rotation keeps your most-used private areas fresh, organized, and functional.',
+    category: 'Whole Home',
+    isTemplate: true,
+    resetOnRecurrence: true,
+    steps: [
+      step('Prep All Zones', 'Gather supplies for all areas: bathroom cleaner, glass cleaner, dusting supplies, vacuum, mop, fresh towels and linens.', 10, 0, ['One trip for supplies', 'Check you have everything']),
+      step('Bathroom Quick Clean', 'Clean mirrors and windows. Wipe down counters and sink. Scrub toilet bowl and wipe exterior. Quick shower/tub wipe-down.', 25, 1, ['Focus on high-impact areas', 'Daily wipes make this faster']),
+      step('Bathroom Textiles', 'Gather used towels and bath mats. Replace with fresh towels. Check for ripped or stained items to discard.', 10, 2, ['Fresh towels feel luxurious', 'Wash bath mats regularly']),
+      step('Bathroom Floors', 'Sweep or vacuum. Mop thoroughly, getting into corners.', 10, 3, ['Hair and dust collect quickly', 'Under the toilet base matters']),
+      step('Bedroom Surface Clear', 'Make bed with fresh sheets if it\'s sheet day. Clear nightstands and dresser. Put away any clothes or items.', 20, 4, ['Fresh sheets improve sleep', 'Clear surfaces = calm mind']),
+      step('Bedroom Dust & Wipe', 'Dust all furniture surfaces. Wipe down light fixtures.', 15, 5, ['Don\'t forget under the bed', 'Dust attracts more dust']),
+      step('Bedroom Floor Care', 'Vacuum or sweep and mop. Get under bed if accessible.', 15, 6, ['Move small furniture', 'Edge along baseboards']),
+      step('Office Desk Straighten', 'Clear desk surface. File or organize papers. Wipe down desk and computer area.', 15, 7, ['Clear desk = focused mind', 'Organize cables']),
+      step('Laundry Room Organize', 'Wipe down washer and dryer exteriors. Organize laundry supplies. Sweep and spot-mop floor. Check lint trap and clean if needed.', 15, 8, ['Clean lint trap = fire safety', 'Wipe door seals on front loaders']),
+      step('All Zone Touch-ups', 'Empty trash in all areas. Do final spot checks. Ensure everything is in its place.', 15, 9, ['Fresh trash bags in all bins', 'Quick final sweep']),
     ],
   },
 ];
