@@ -59,6 +59,7 @@ const CommandPalette = lazy(() => import('@/components/CommandPalette').then(m =
 const FocusMode = lazy(() => import('@/components/FocusMode').then(m => ({ default: m.FocusMode })));
 const AnalyticsDashboard = lazy(() => import('@/components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
 const DailyReviewPrompt = lazy(() => import('@/components/DailyReviewPrompt').then(m => ({ default: m.DailyReviewPrompt })));
+const DailyReviewHistory = lazy(() => import('@/components/DailyReviewHistory').then(m => ({ default: m.DailyReviewHistory })));
 const DailyPlanningDialog = lazy(() => import('@/components/DailyPlanningDialog').then(m => ({ default: m.DailyPlanningDialog })));
 const NDDashboardPanel = lazy(() => import('@/components/nd/NDDashboardPanel').then(m => ({ default: m.NDDashboardPanel })));
 const SuggestedActionCard = lazy(() => import('@/components/SuggestedActionCard').then(m => ({ default: m.SuggestedActionCard })));
@@ -175,6 +176,7 @@ const Index = () => {
 
   // Daily Review
   const [dailyReviewOpen, setDailyReviewOpen] = useState(false);
+  const [reviewHistoryOpen, setReviewHistoryOpen] = useState(false);
   const [lastReviewDate, setLastReviewDate] = useLocalStorage<string>('neurulae-last-review-date', '');
 
   // Daily Planning
@@ -303,6 +305,11 @@ const Index = () => {
       if (e.key === 'r' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault();
         setDailyReviewOpen(true);
+      }
+      // H for review history
+      if (e.key === 'h' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setReviewHistoryOpen(true);
       }
     };
 
@@ -2161,6 +2168,7 @@ const Index = () => {
               intentions={tomorrowIntentions}
               onToggleIntention={handleToggleIntention}
               onClearIntentions={handleClearIntentions}
+              onOpenDailyReview={() => setDailyReviewOpen(true)}
             />
 
             {/* Smart Suggestion Card - What should I do next? */}
@@ -2915,6 +2923,16 @@ const Index = () => {
               }
             }}
             onSaveTomorrowIntentions={handleSaveTomorrowIntentions}
+          />
+        </Suspense>
+      )}
+
+      {/* Daily Review History */}
+      {reviewHistoryOpen && (
+        <Suspense fallback={null}>
+          <DailyReviewHistory
+            open={reviewHistoryOpen}
+            onOpenChange={setReviewHistoryOpen}
           />
         </Suspense>
       )}
