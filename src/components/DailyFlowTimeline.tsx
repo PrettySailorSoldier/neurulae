@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import { TimeBlock, ScheduledTask, Task, DayTemplate, StructureSettings, DEFAULT_STRUCTURE_SETTINGS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { TimeZoneSettingsDialog } from './TimeZoneSettingsDialog';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useStructureAnalysis, StructureSuggestion } from '@/hooks/useStructureAnalysis';
-import { PhaseBackgrounds, StructureCoach, GhostSuggestionBlock, DayTemplateManager } from './structure';
+import { PhaseBackgrounds, StructureCoach, GhostSuggestionBlock, DayTemplateManager, StartMyDayButton, showPhaseTransitionToast } from './structure';
 
 // Wrapper component that conditionally applies DragDropContext
 function DragDropContextWrapper({
@@ -142,6 +142,17 @@ export function DailyFlowTimeline({
     userProfileDefaults
   );
 
+  // Track if user has "started their day"
+  const [dayStarted, setDayStarted] = useLocalStorage<string | null>(
+    'neurulae-day-started',
+    null
+  );
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const isDayStarted = dayStarted === today;
+
+  // Phase transition detection
+  const previousPhaseRef = useRef<string | null>(null);
+
   // Update time every minute
   useEffect(() => {
     const updateTime = () => {
@@ -152,6 +163,33 @@ export function DailyFlowTimeline({
     const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Detect phase transitions and show toast
+  useEffect(() => {
+    const currentPhase = structureAnalysis.context.currentPhase;
+    
+    if (previousPhaseRef.current !== null && 
+        previousPhaseRef.current !== currentPhase &&
+        structureSettings.notifyPhaseTransitions) {
+      // Phase just changed - show toast
+      showPhaseTransitionToast({
+        phase: currentPhase,
+        phaseLabel: structureAnalysis.context.phaseLabel,
+        suggestion: structureAnalysis.suggestions[0],
+        onAcceptSuggestion: handleAcceptSuggestion
+      });
+    }
+    
+    previousPhaseRef.current = currentPhase;
+  }, [structureAnalysis.context.currentPhase, structureSettings.notifyPhaseTransitions]);
+
+  const handleStartMyDay = () => {
+    setDayStarted(today);
+    toast({
+      title: "☀️ Day Started!",
+      description: "Your morning is set up. Let's make it a great day!",
+    });
+  };
 
   useEffect(() => {
     if (user) {
@@ -695,6 +733,17 @@ export function DailyFlowTimeline({
           </Button>
         </div>
       </div>
+
+      {/* Start My Day Button - only shows in morning */}
+      {structureSettings.enableCoaching && (
+        <StartMyDayButton
+          currentPhase={structureAnalysis.context.currentPhase}
+          morningTemplateExists={false}
+          topTasks={tasks.slice(0, 3)}
+          dayStarted={isDayStarted}
+          onStartDay={handleStartMyDay}
+        />
+      )}
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between flex-wrap gap-4">
