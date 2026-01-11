@@ -388,12 +388,21 @@ const Index = () => {
     }
   }, [customTheme]);
 
-  // Load theme from database preferences
+  // Load theme from database preferences - but don't override custom theme
   useEffect(() => {
     if (!prefsLoading && preferences.theme) {
-      setTheme(preferences.theme as Theme);
+      // If user currently has a custom theme active, don't let database overwrite it
+      if (theme === 'custom' && customTheme) {
+        console.log('[Theme] Keeping custom theme, ignoring database preference:', preferences.theme);
+        return;
+      }
+      // Only apply database theme if it's different from current
+      if (preferences.theme !== theme) {
+        console.log('[Theme] Loading theme from database:', preferences.theme);
+        setTheme(preferences.theme as Theme);
+      }
     }
-  }, [preferences.theme, prefsLoading, setTheme]);
+  }, [preferences.theme, prefsLoading]);
 
   // Daily refresh logic - load today's schedule on mount or date change
   useEffect(() => {
@@ -1733,6 +1742,11 @@ const Index = () => {
     setTheme('custom');
     setTemplateTheme(undefined);
 
+    // IMPORTANT: Also save 'custom' to database so it persists on reload
+    if (user) {
+      savePreferences({ theme: 'custom' });
+    }
+
     toast({
       title: "✨ Custom theme saved",
       description: `${newTheme.name} will sync across all devices`
@@ -1751,7 +1765,11 @@ const Index = () => {
   // Handler for applying a saved custom theme from the dropdown
   const handleApplyCustomTheme = (themeToApply: CustomTheme) => {
     setCustomTheme(themeToApply); // Update the active custom theme state
-    // Note: ThemeSwitcher already calls onThemeChange('custom') after this
+    setTheme('custom');
+    // Save to database so it persists
+    if (user) {
+      savePreferences({ theme: 'custom' });
+    }
   };
 
   const handleAddCustomTab = () => {
