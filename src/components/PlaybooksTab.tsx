@@ -18,7 +18,13 @@ interface PlaybooksTabProps {
   onStartTimer?: (stepTitle: string, minutes: number) => void;
 }
 
-const CATEGORIES = ['All', 'Cleaning', 'Cooking', 'Learning', 'Self-Care', 'Creative', 'Work', 'Health', 'Social', 'Other'];
+const CATEGORIES = [
+  'All', 
+  // Cleaning by room
+  'Bathroom', 'Bedroom', 'Kitchen', 'Living Room', 'Office', 'Entrance & Dining', 'Vehicle', 'Whole Home',
+  // Other categories
+  'Cleaning', 'Cooking', 'Learning', 'Self-Care', 'Creative', 'Work', 'Health', 'Social', 'Other'
+];
 
 export function PlaybooksTab({ playbooks, onAddPlaybook, onUpdatePlaybook, onDeletePlaybook, onReorderPlaybooks, onStartTimer }: PlaybooksTabProps) {
   const [selectedCategory, setSelectedCategory] = useState('All');
