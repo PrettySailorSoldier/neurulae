@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { Playbook } from '@/types';
-import { Clock, RotateCcw, Link2, Play } from 'lucide-react';
+import { Playbook, PlaybookStep } from '@/types';
+import { Clock, RotateCcw, Link2, Play, Sparkles, ChevronDown, Loader2 } from 'lucide-react';
 import { formatDuration } from '@/lib/timeUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PlaybookViewerProps {
   open: boolean;
@@ -18,6 +20,8 @@ interface PlaybookViewerProps {
 
 export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook, onStartTimer }: PlaybookViewerProps) {
   const [openSteps, setOpenSteps] = useState<string[]>([]);
+  const [breakingDownStepId, setBreakingDownStepId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const completedSteps = playbook.steps.filter(s => s.completed).length;
   const totalSteps = playbook.steps.length;
@@ -39,6 +43,143 @@ export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook,
   const handleStartTimerForStep = (step: typeof playbook.steps[0]) => {
     if (onStartTimer && step.estimatedMinutes) {
       onStartTimer(step.title, step.estimatedMinutes);
+    }
+  };
+
+  const handleAIBreakdown = async (step: PlaybookStep, stepIndex: number) => {
+    setBreakingDownStepId(step.id);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to use AI features.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-playbook', {
+        body: {
+          goal: `Break down this step into smaller sub-steps: "${step.title}"`,
+          details: `Original step description: ${step.description}. Estimated time: ${step.estimatedMinutes || 15} minutes. Create 3-5 smaller, more manageable sub-steps that together accomplish this task. Each sub-step should be very specific and actionable.`,
+          category: playbook.category,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.steps && data.steps.length > 0) {
+        // Insert the new sub-steps after the current step
+        const newSteps = [...playbook.steps];
+        const subSteps: PlaybookStep[] = data.steps.map((s: any, i: number) => ({
+          id: crypto.randomUUID(),
+          title: `  ↳ ${s.title}`,
+          description: s.description,
+          estimatedMinutes: s.estimatedMinutes || 5,
+          completed: false,
+          order: stepIndex + i + 1,
+          tips: s.tips || [],
+        }));
+
+        // Insert sub-steps after the current step
+        newSteps.splice(stepIndex + 1, 0, ...subSteps);
+
+        // Update order for all steps
+        const reorderedSteps = newSteps.map((s, i) => ({ ...s, order: i }));
+
+        onUpdatePlaybook({ ...playbook, steps: reorderedSteps });
+        
+        // Auto-expand the step to show sub-steps were added
+        setOpenSteps(prev => [...prev, step.id]);
+
+        toast({
+          title: "Step broken down!",
+          description: `Added ${subSteps.length} sub-steps to help you complete this task.`,
+        });
+      }
+    } catch (error: any) {
+      console.error('AI breakdown error:', error);
+      toast({
+        title: "Breakdown failed",
+        description: error.message || "Failed to break down step. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBreakingDownStepId(null);
+    }
+  };
+
+  const handleGenerateTips = async (step: PlaybookStep, stepIndex: number) => {
+    setBreakingDownStepId(step.id);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to use AI features.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-playbook', {
+        body: {
+          goal: `Generate helpful tips for completing this task: "${step.title}"`,
+          details: `Task description: ${step.description}. Generate 3-5 practical, actionable tips that would help someone with ADHD or autism complete this task successfully. Focus on: overcoming common obstacles, staying focused, and making the task easier.`,
+          category: playbook.category,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.steps && data.steps.length > 0) {
+        // Extract tips from the generated steps
+        const allTips: string[] = [];
+        data.steps.forEach((s: any) => {
+          if (s.tips) {
+            allTips.push(...s.tips);
+          }
+          // Also use step titles as tips if they're actionable
+          if (s.title && !s.title.toLowerCase().includes('step')) {
+            allTips.push(s.title);
+          }
+        });
+
+        // Merge with existing tips, removing duplicates
+        const existingTips = step.tips || [];
+        const combinedTips = [...new Set([...existingTips, ...allTips.slice(0, 5)])];
+
+        // Update the step with new tips
+        const updatedSteps = playbook.steps.map((s, i) =>
+          i === stepIndex ? { ...s, tips: combinedTips } : s
+        );
+
+        onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+        
+        // Auto-expand to show tips
+        setOpenSteps(prev => [...prev, step.id]);
+
+        toast({
+          title: "Tips generated!",
+          description: `Added ${allTips.length} helpful tips for this step.`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Generate tips error:', error);
+      toast({
+        title: "Failed to generate tips",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBreakingDownStepId(null);
     }
   };
 
@@ -91,7 +232,7 @@ export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook,
               value={step.id}
               className={`border border-border rounded-lg overflow-hidden ${
                 step.completed ? 'bg-muted/30' : 'bg-card'
-              }`}
+              } ${step.title.startsWith('  ↳') ? 'ml-6 border-l-2 border-l-primary/50' : ''}`}
             >
               <AccordionTrigger className="px-4 hover:no-underline hover:bg-accent/50 transition-colors">
                 <div className="flex items-center gap-3 flex-1">
@@ -103,7 +244,7 @@ export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook,
                   />
                   <div className="flex-1 text-left">
                     <div className={`font-medium ${step.completed ? 'line-through text-muted-foreground' : ''}`}>
-                      Step {index + 1}: {step.title}
+                      {step.title.startsWith('  ↳') ? step.title : `Step ${index + 1}: ${step.title}`}
                     </div>
                     {step.estimatedMinutes && (
                       <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
@@ -132,17 +273,51 @@ export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook,
                     </div>
                   )}
 
-                  {onStartTimer && step.estimatedMinutes && (
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {onStartTimer && step.estimatedMinutes && (
+                      <Button
+                        onClick={() => handleStartTimerForStep(step)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Play className="h-3 w-3 mr-2" />
+                        Start Timer
+                      </Button>
+                    )}
+                    
+                    {/* AI Breakdown Button */}
                     <Button
-                      onClick={() => handleStartTimerForStep(step)}
+                      onClick={() => handleAIBreakdown(step, index)}
                       variant="outline"
                       size="sm"
-                      className="w-full"
+                      disabled={breakingDownStepId === step.id}
+                      className="text-primary border-primary/50 hover:bg-primary/10"
                     >
-                      <Play className="h-3 w-3 mr-2" />
-                      Start Timer for This Step
+                      {breakingDownStepId === step.id ? (
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3 mr-2" />
+                      )}
+                      Break Down
                     </Button>
-                  )}
+
+                    {/* Generate Tips Button */}
+                    <Button
+                      onClick={() => handleGenerateTips(step, index)}
+                      variant="ghost"
+                      size="sm"
+                      disabled={breakingDownStepId === step.id}
+                      className="text-muted-foreground hover:text-primary"
+                    >
+                      {breakingDownStepId === step.id ? (
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3 mr-2" />
+                      )}
+                      Get Tips
+                    </Button>
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>
