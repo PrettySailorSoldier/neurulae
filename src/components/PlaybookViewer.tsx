@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 import { Playbook, PlaybookStep } from '@/types';
-import { Clock, RotateCcw, Link2, Play, Sparkles, ChevronDown, Loader2 } from 'lucide-react';
+import { Clock, RotateCcw, Link2, Play, Sparkles, ChevronDown, ChevronUp, Loader2, Pencil, Trash2, Check, X, Plus } from 'lucide-react';
 import { formatDuration } from '@/lib/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +22,9 @@ interface PlaybookViewerProps {
 export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook, onStartTimer }: PlaybookViewerProps) {
   const [openSteps, setOpenSteps] = useState<string[]>([]);
   const [breakingDownStepId, setBreakingDownStepId] = useState<string | null>(null);
+  const [editingSubtaskKey, setEditingSubtaskKey] = useState<string | null>(null);
+  const [editingSubtaskText, setEditingSubtaskText] = useState('');
+  const [newSubtaskText, setNewSubtaskText] = useState<{[stepIndex: number]: string}>({});
   const { toast } = useToast();
 
   const completedSteps = playbook.steps.filter(s => s.completed).length;
@@ -184,8 +188,12 @@ export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook,
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
+      <DialogContent 
+        className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="pr-8">{playbook.title}</DialogTitle>
           {playbook.description && (
@@ -257,75 +265,416 @@ export function PlaybookViewer({ open, onOpenChange, playbook, onUpdatePlaybook,
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3 pt-2">
-                  <p className="text-sm">{step.description}</p>
-                  
-                  {/* Subtasks - Checkable items within a step */}
-                                    {(step.subtasks && step.subtasks.length > 0) || (step.tips && step.tips.length > 0) ? (
-                    <div className="bg-accent/10 rounded-lg p-3 space-y-2">
-                      <div className="text-xs font-semibold text-accent flex items-center gap-1">
-                        📋 Subtasks:
-                      </div>
-                      <div className="space-y-1.5">
-                        {/* Render existing subtasks */}
-                        {step.subtasks?.map((subtask) => (
-                          <label 
-                            key={subtask.id} 
-                            className="flex items-start gap-2 cursor-pointer hover:bg-accent/5 rounded p-1 -m-1"
+                  {/* Unified Subtasks - All checkable items in one box */}
+                  <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-semibold text-muted-foreground">📋 Subtasks:</div>
+                    </div>
+                    <div className="space-y-1">
+                      {/* Render description items as checkable subtasks */}
+                      {step.description.split(/[.!]/).filter(item => item.trim().length > 0).map((item, itemIndex, allItems) => {
+                        const itemKey = `desc-${itemIndex}`;
+                        const existingSubtask = step.subtasks?.find(st => st.id === itemKey);
+                        const isCompleted = existingSubtask?.completed || false;
+                        const isEditing = editingSubtaskKey === `${index}-${itemKey}`;
+                        
+                        return (
+                          <div 
+                            key={itemKey}
+                            className="flex items-center gap-2 group hover:bg-accent/10 rounded py-1.5 px-2"
+                          >
+                            <Checkbox
+                              checked={isCompleted}
+                              onCheckedChange={() => {
+                                let newSubtasks = step.subtasks || [];
+                                if (!existingSubtask) {
+                                  newSubtasks = [...newSubtasks, { id: itemKey, title: item.trim(), completed: true }];
+                                } else {
+                                  newSubtasks = newSubtasks.map(st => 
+                                    st.id === itemKey ? { ...st, completed: !st.completed } : st
+                                  );
+                                }
+                                const updatedSteps = playbook.steps.map((s, i) =>
+                                  i === index ? { ...s, subtasks: newSubtasks } : s
+                                );
+                                onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                              }}
+                              className="border-border"
+                            />
+                            {isEditing ? (
+                              <div className="flex-1 flex items-center gap-1">
+                                <Input
+                                  value={editingSubtaskText}
+                                  onChange={(e) => setEditingSubtaskText(e.target.value)}
+                                  className="h-7 text-sm"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      // Save edit
+                                      let newSubtasks = step.subtasks || [];
+                                      if (existingSubtask) {
+                                        newSubtasks = newSubtasks.map(st => 
+                                          st.id === itemKey ? { ...st, title: editingSubtaskText } : st
+                                        );
+                                      } else {
+                                        newSubtasks = [...newSubtasks, { id: itemKey, title: editingSubtaskText, completed: false }];
+                                      }
+                                      const updatedSteps = playbook.steps.map((s, i) =>
+                                        i === index ? { ...s, subtasks: newSubtasks } : s
+                                      );
+                                      onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                      setEditingSubtaskKey(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingSubtaskKey(null);
+                                    }
+                                  }}
+                                />
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                                  let newSubtasks = step.subtasks || [];
+                                  if (existingSubtask) {
+                                    newSubtasks = newSubtasks.map(st => 
+                                      st.id === itemKey ? { ...st, title: editingSubtaskText } : st
+                                    );
+                                  } else {
+                                    newSubtasks = [...newSubtasks, { id: itemKey, title: editingSubtaskText, completed: false }];
+                                  }
+                                  const updatedSteps = playbook.steps.map((s, i) =>
+                                    i === index ? { ...s, subtasks: newSubtasks } : s
+                                  );
+                                  onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                  setEditingSubtaskKey(null);
+                                }}>
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingSubtaskKey(null)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <span className={`text-sm flex-1 cursor-pointer ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                                  {existingSubtask?.title || item.trim()}
+                                </span>
+                                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-6 w-6"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingSubtaskKey(`${index}-${itemKey}`);
+                                      setEditingSubtaskText(existingSubtask?.title || item.trim());
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Render tips as additional checkable subtasks */}
+                      {step.tips?.map((tip, tipIndex, allTips) => {
+                        const tipKey = `tip-${tipIndex}`;
+                        const existingSubtask = step.subtasks?.find(st => st.id === tipKey);
+                        const isCompleted = existingSubtask?.completed || false;
+                        const isEditing = editingSubtaskKey === `${index}-${tipKey}`;
+                        
+                        return (
+                          <div 
+                            key={tipKey}
+                            className="flex items-center gap-2 group hover:bg-accent/10 rounded py-1.5 px-2"
+                          >
+                            <Checkbox
+                              checked={isCompleted}
+                              onCheckedChange={() => {
+                                let newSubtasks = step.subtasks || [];
+                                if (!existingSubtask) {
+                                  newSubtasks = [...newSubtasks, { id: tipKey, title: tip, completed: true }];
+                                } else {
+                                  newSubtasks = newSubtasks.map(st => 
+                                    st.id === tipKey ? { ...st, completed: !st.completed } : st
+                                  );
+                                }
+                                const updatedSteps = playbook.steps.map((s, i) =>
+                                  i === index ? { ...s, subtasks: newSubtasks } : s
+                                );
+                                onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                              }}
+                              className="border-border"
+                            />
+                            {isEditing ? (
+                              <div className="flex-1 flex items-center gap-1">
+                                <Input
+                                  value={editingSubtaskText}
+                                  onChange={(e) => setEditingSubtaskText(e.target.value)}
+                                  className="h-7 text-sm"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      let newSubtasks = step.subtasks || [];
+                                      if (existingSubtask) {
+                                        newSubtasks = newSubtasks.map(st => 
+                                          st.id === tipKey ? { ...st, title: editingSubtaskText } : st
+                                        );
+                                      } else {
+                                        newSubtasks = [...newSubtasks, { id: tipKey, title: editingSubtaskText, completed: false }];
+                                      }
+                                      const updatedSteps = playbook.steps.map((s, i) =>
+                                        i === index ? { ...s, subtasks: newSubtasks } : s
+                                      );
+                                      onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                      setEditingSubtaskKey(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingSubtaskKey(null);
+                                    }
+                                  }}
+                                />
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                                  let newSubtasks = step.subtasks || [];
+                                  if (existingSubtask) {
+                                    newSubtasks = newSubtasks.map(st => 
+                                      st.id === tipKey ? { ...st, title: editingSubtaskText } : st
+                                    );
+                                  } else {
+                                    newSubtasks = [...newSubtasks, { id: tipKey, title: editingSubtaskText, completed: false }];
+                                  }
+                                  const updatedSteps = playbook.steps.map((s, i) =>
+                                    i === index ? { ...s, subtasks: newSubtasks } : s
+                                  );
+                                  onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                  setEditingSubtaskKey(null);
+                                }}>
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingSubtaskKey(null)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <span className={`text-sm flex-1 text-muted-foreground cursor-pointer ${isCompleted ? 'line-through' : ''}`}>
+                                  💡 {existingSubtask?.title || tip}
+                                </span>
+                                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-6 w-6"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingSubtaskKey(`${index}-${tipKey}`);
+                                      setEditingSubtaskText(existingSubtask?.title || tip);
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Custom subtasks (user-added) */}
+                      {step.subtasks?.filter(st => st.id.startsWith('custom-')).map((subtask, customIndex) => {
+                        const isEditing = editingSubtaskKey === `${index}-${subtask.id}`;
+                        const customSubtasks = step.subtasks?.filter(st => st.id.startsWith('custom-')) || [];
+                        
+                        return (
+                          <div 
+                            key={subtask.id}
+                            className="flex items-center gap-2 group hover:bg-accent/10 rounded py-1.5 px-2"
                           >
                             <Checkbox
                               checked={subtask.completed}
                               onCheckedChange={() => {
+                                const newSubtasks = step.subtasks?.map(st => 
+                                  st.id === subtask.id ? { ...st, completed: !st.completed } : st
+                                ) || [];
                                 const updatedSteps = playbook.steps.map((s, i) =>
-                                  i === index
-                                    ? {
-                                        ...s,
-                                        subtasks: s.subtasks?.map((st) =>
-                                          st.id === subtask.id
-                                            ? { ...st, completed: !st.completed }
-                                            : st
-                                        ),
-                                      }
-                                    : s
+                                  i === index ? { ...s, subtasks: newSubtasks } : s
                                 );
                                 onUpdatePlaybook({ ...playbook, steps: updatedSteps });
                               }}
-                              className="mt-0.5 border-border"
+                              className="border-border"
                             />
-                            <span className={`text-xs ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
-                              {subtask.title}
-                            </span>
-                          </label>
-                        ))}
-                        {/* Render tips as checkable items if no subtasks exist */}
-                        {(!step.subtasks || step.subtasks.length === 0) && step.tips?.map((tip, tipIndex) => (
-                          <label 
-                            key={tipIndex} 
-                            className="flex items-start gap-2 cursor-pointer hover:bg-accent/5 rounded p-1 -m-1"
-                          >
-                            <Checkbox
-                              checked={false}
-                              onCheckedChange={() => {
-                                // Convert tips to subtasks on first interaction
-                                const newSubtasks = step.tips?.map((t, i) => ({
-                                  id: crypto.randomUUID(),
-                                  title: t,
-                                  completed: i === tipIndex, // Mark this one as complete
-                                })) || [];
-                                const updatedSteps = playbook.steps.map((s, i) =>
-                                  i === index
-                                    ? { ...s, subtasks: newSubtasks, tips: [] }
-                                    : s
-                                );
-                                onUpdatePlaybook({ ...playbook, steps: updatedSteps });
-                              }}
-                              className="mt-0.5 border-border"
-                            />
-                            <span className="text-xs">{tip}</span>
-                          </label>
-                        ))}
+                            {isEditing ? (
+                              <div className="flex-1 flex items-center gap-1">
+                                <Input
+                                  value={editingSubtaskText}
+                                  onChange={(e) => setEditingSubtaskText(e.target.value)}
+                                  className="h-7 text-sm"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const newSubtasks = step.subtasks?.map(st => 
+                                        st.id === subtask.id ? { ...st, title: editingSubtaskText } : st
+                                      ) || [];
+                                      const updatedSteps = playbook.steps.map((s, i) =>
+                                        i === index ? { ...s, subtasks: newSubtasks } : s
+                                      );
+                                      onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                      setEditingSubtaskKey(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingSubtaskKey(null);
+                                    }
+                                  }}
+                                />
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                                  const newSubtasks = step.subtasks?.map(st => 
+                                    st.id === subtask.id ? { ...st, title: editingSubtaskText } : st
+                                  ) || [];
+                                  const updatedSteps = playbook.steps.map((s, i) =>
+                                    i === index ? { ...s, subtasks: newSubtasks } : s
+                                  );
+                                  onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                  setEditingSubtaskKey(null);
+                                }}>
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingSubtaskKey(null)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <span className={`text-sm flex-1 cursor-pointer ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                  {subtask.title}
+                                </span>
+                                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                                  {customIndex > 0 && (
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-6 w-6"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Move up in custom subtasks
+                                        const newSubtasks = [...(step.subtasks || [])];
+                                        const currentIdx = newSubtasks.findIndex(st => st.id === subtask.id);
+                                        const prevCustomIdx = newSubtasks.slice(0, currentIdx).reverse().findIndex(st => st.id.startsWith('custom-'));
+                                        if (prevCustomIdx >= 0) {
+                                          const prevIdx = currentIdx - 1 - prevCustomIdx;
+                                          [newSubtasks[currentIdx], newSubtasks[prevIdx]] = [newSubtasks[prevIdx], newSubtasks[currentIdx]];
+                                          const updatedSteps = playbook.steps.map((s, i) =>
+                                            i === index ? { ...s, subtasks: newSubtasks } : s
+                                          );
+                                          onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                        }
+                                      }}
+                                    >
+                                      <ChevronUp className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  {customIndex < customSubtasks.length - 1 && (
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-6 w-6"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Move down in custom subtasks
+                                        const newSubtasks = [...(step.subtasks || [])];
+                                        const currentIdx = newSubtasks.findIndex(st => st.id === subtask.id);
+                                        const nextCustomIdx = newSubtasks.slice(currentIdx + 1).findIndex(st => st.id.startsWith('custom-'));
+                                        if (nextCustomIdx >= 0) {
+                                          const nextIdx = currentIdx + 1 + nextCustomIdx;
+                                          [newSubtasks[currentIdx], newSubtasks[nextIdx]] = [newSubtasks[nextIdx], newSubtasks[currentIdx]];
+                                          const updatedSteps = playbook.steps.map((s, i) =>
+                                            i === index ? { ...s, subtasks: newSubtasks } : s
+                                          );
+                                          onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                        }
+                                      }}
+                                    >
+                                      <ChevronDown className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-6 w-6"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingSubtaskKey(`${index}-${subtask.id}`);
+                                      setEditingSubtaskText(subtask.title);
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-6 w-6 text-destructive hover:text-destructive"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const newSubtasks = step.subtasks?.filter(st => st.id !== subtask.id) || [];
+                                      const updatedSteps = playbook.steps.map((s, i) =>
+                                        i === index ? { ...s, subtasks: newSubtasks } : s
+                                      );
+                                      onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                                    }}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Add new subtask */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <Input
+                          placeholder="Add subtask..."
+                          value={newSubtaskText[index] || ''}
+                          onChange={(e) => setNewSubtaskText({...newSubtaskText, [index]: e.target.value})}
+                          className="h-7 text-sm flex-1"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newSubtaskText[index]?.trim()) {
+                              const newSubtask = {
+                                id: `custom-${crypto.randomUUID()}`,
+                                title: newSubtaskText[index].trim(),
+                                completed: false
+                              };
+                              const newSubtasks = [...(step.subtasks || []), newSubtask];
+                              const updatedSteps = playbook.steps.map((s, i) =>
+                                i === index ? { ...s, subtasks: newSubtasks } : s
+                              );
+                              onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                              setNewSubtaskText({...newSubtaskText, [index]: ''});
+                            }
+                          }}
+                        />
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-7 w-7"
+                          onClick={() => {
+                            if (newSubtaskText[index]?.trim()) {
+                              const newSubtask = {
+                                id: `custom-${crypto.randomUUID()}`,
+                                title: newSubtaskText[index].trim(),
+                                completed: false
+                              };
+                              const newSubtasks = [...(step.subtasks || []), newSubtask];
+                              const updatedSteps = playbook.steps.map((s, i) =>
+                                i === index ? { ...s, subtasks: newSubtasks } : s
+                              );
+                              onUpdatePlaybook({ ...playbook, steps: updatedSteps });
+                              setNewSubtaskText({...newSubtaskText, [index]: ''});
+                            }
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                  ) : null}
+                  </div>
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2">
