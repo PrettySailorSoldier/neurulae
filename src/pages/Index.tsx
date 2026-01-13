@@ -7,6 +7,10 @@ import { TaskSection } from '@/components/dashboard/TaskSection';
 import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
 import { FocusPanel } from '@/components/dashboard/FocusPanel';
 import { TaskLibrary } from '@/components/dashboard/TaskLibrary';
+import { HeroFocusCard } from '@/components/dashboard/HeroFocusCard';
+import { CompactTimeline } from '@/components/dashboard/CompactTimeline';
+import { QuickActionBar } from '@/components/dashboard/QuickActionBar';
+import { TimerDrawer } from '@/components/dashboard/TimerDrawer';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 
@@ -195,6 +199,12 @@ const Index = () => {
   const [taskViewMode, setTaskViewMode] = useLocalStorage<'focus' | 'all'>('neurulae-task-view-mode', 'focus');
   const [libraryOpen, setLibraryOpen] = useState(false);
 
+  // Hero Dashboard - Timer drawer and priority tracking
+  const [timerDrawerOpen, setTimerDrawerOpen] = useState(false);
+  const [selectedTaskForTimer, setSelectedTaskForTimer] = useState<Task | null>(null);
+  const [currentPriorityIndex, setCurrentPriorityIndex] = useState(0);
+  const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
+
   const { toast } = useToast();
 
   // Active Intention Banner - for focus tracking
@@ -243,6 +253,49 @@ const Index = () => {
       description: `Working on: ${task.title}`,
     });
   }, [timerContext, toast]);
+
+  // === HERO DASHBOARD HANDLERS ===
+  
+  // Get priority tasks from today's intentions
+  const dailyPriorities = tomorrowIntentions?.intentions?.slice(0, 3) || [];
+  const currentPriorityTask = dailyPriorities[currentPriorityIndex] || null;
+  const remainingPriorityTasks = dailyPriorities.slice(currentPriorityIndex + 1);
+  
+  // Handle starting timer from Hero card
+  const handleHeroStartTimer = useCallback((task: Task) => {
+    setSelectedTaskForTimer(task);
+    setTimerDrawerOpen(true);
+    handleStartWorkSession(task);
+  }, [handleStartWorkSession]);
+  
+  // Handle completing task from Hero card - marks done and advances
+  const handleHeroCompleteTask = useCallback((intentionId: string) => {
+    handleToggleIntention(intentionId);
+    
+    // If we just completed the current task, show a congrats message
+    if (currentPriorityTask?.id === intentionId) {
+      if (remainingPriorityTasks.length > 0) {
+        toast({
+          title: "🎉 Great work!",
+          description: "Moving to your next priority...",
+        });
+        setCurrentPriorityIndex(prev => prev + 1);
+      } else {
+        toast({
+          title: "🏆 All priorities complete!",
+          description: "Amazing work today!",
+        });
+      }
+    }
+  }, [currentPriorityTask, remainingPriorityTasks.length, toast]);
+  
+  // Skip to next priority without completing current
+  const handleNextPriority = useCallback(() => {
+    if (currentPriorityIndex < dailyPriorities.length - 1) {
+      setCurrentPriorityIndex(prev => prev + 1);
+    }
+  }, [currentPriorityIndex, dailyPriorities.length]);
+
 
   // Start a timer for a playbook step
   const handleStartPlaybookTimer = useCallback((stepTitle: string, minutes: number) => {
@@ -2268,45 +2321,37 @@ const Index = () => {
               </div>
             ) : (
               <DragDropContext onDragEnd={handleDashboardDragEnd}>
-                {/* Desktop: Two-panel layout - Focus Panel + Task Library */}
-                <div className="flex gap-6 min-h-[600px]">
-                  {/* Left Column: FocusPanel + Focus Timer + Schedule */}
-                  <div className="w-[400px] min-w-[350px] max-w-[450px] shrink-0 flex flex-col gap-6">
-                    {/* Focus Panel - Today's priorities */}
-                    <FocusPanel
+                {/* Desktop: Two-panel layout - Focus Panel (PRIMARY) + Task Library (SECONDARY) */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[2fr_1fr] gap-6 min-h-[600px]">
+                  {/* Left Column: Hero Focus - PRIMARY (60-65% width) */}
+                  <div className="min-w-0 flex flex-col gap-4">
+                    {/* HERO: Current Priority Task */}
+                    <HeroFocusCard
+                      currentTask={currentPriorityTask}
                       tasks={tasks}
-                      intentions={tomorrowIntentions}
-                      onToggleIntention={handleToggleIntention}
-                      onAddTask={(title, minutes) => handleAddTask(title, minutes)}
+                      remainingTasks={remainingPriorityTasks}
+                      userName={user?.email?.split('@')[0] || 'there'}
+                      onStartTimer={handleHeroStartTimer}
+                      onCompleteTask={handleHeroCompleteTask}
+                      onNextTask={handleNextPriority}
                       onOpenDailyReview={() => setDailyReviewOpen(true)}
-                      onToggleComplete={handleToggleComplete}
-                      onStartWorkSession={handleStartWorkSession}
-                      totalTaskCount={tasks.length}
-                      isMobile={false}
                       activeTaskId={timerContext.linkedTask?.id}
-                      userName={user?.email?.split('@')[0] || 'User'}
                     />
-                    {/* Focus Timer */}
-                    <Suspense fallback={<ComponentLoader />}>
-                      <FocusTimer tasks={tasks} playbooks={playbooks} />
-                    </Suspense>
-                    {/* Schedule/Timeline */}
-                    <ScheduleSection
-                      timeBlocks={timeBlocks}
-                      scheduledTasks={scheduledTasks}
-                      tasks={tasks}
-                      onAddTimeBlock={handleAddTimeBlock}
-                      onUpdateTimeBlock={handleUpdateTimeBlock}
-                      onDeleteTimeBlock={handleDeleteTimeBlock}
-                      onAddTask={handleAddTask}
-                      onScheduleTask={(st) => handleScheduleTask(st.taskId, st.blockId, st.date, st.estimatedMinutes)}
-                      useExternalDragContext={true}
-                      onStartWorkSession={handleStartWorkSession}
+                    
+                    {/* TIMELINE: Compact day progress */}
+                    <CompactTimeline />
+                    
+                    {/* QUICK ACTIONS: Timer, Add Task, Browse All */}
+                    <QuickActionBar
+                      onOpenTimer={() => setTimerDrawerOpen(true)}
+                      onAddTask={() => setShowQuickAddDialog(true)}
+                      onOpenLibrary={() => setLibraryOpen(true)}
+                      totalTaskCount={tasks.filter(t => !t.completed).length}
                     />
                   </div>
                   
-                  {/* Right Column: Task Library - all tasks by category */}
-                  <div className="flex-1 bg-card rounded-xl border border-border overflow-hidden">
+                  {/* Right Column: Task Library - SECONDARY (35-40% width) */}
+                  <div className="min-w-0 max-w-[450px] bg-card rounded-xl border border-border overflow-hidden">
                     <TaskLibrary
                       tasks={tasks}
                       onToggleComplete={handleToggleComplete}
@@ -2959,6 +3004,15 @@ const Index = () => {
           />
         </Suspense>
       )}
+
+      {/* Timer Drawer - slide out panel for focus timer */}
+      <TimerDrawer
+        open={timerDrawerOpen}
+        onClose={() => setTimerDrawerOpen(false)}
+        selectedTask={selectedTaskForTimer}
+        tasks={tasks}
+        playbooks={playbooks}
+      />
 
       {/* Daily Review History */}
       {reviewHistoryOpen && (

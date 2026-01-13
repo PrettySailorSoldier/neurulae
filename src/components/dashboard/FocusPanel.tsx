@@ -106,9 +106,8 @@ export function FocusPanel({
 
   return (
     <div className={cn(
-      "flex flex-col h-full",
+      "flex flex-col h-full rounded-xl border border-border",
       "bg-card text-card-foreground",
-      isMobile ? "w-full" : "w-[400px] min-w-[350px] max-w-[450px] border-r border-border",
       className
     )}>
       {/* Header with greeting */}
