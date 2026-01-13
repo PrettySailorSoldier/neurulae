@@ -32,6 +32,8 @@ export const ACTIVITY_OPTIONS = [
   { value: 'daily-routine', label: 'Daily Routine' },
   { value: 'self-care', label: 'Self-Care' },
   { value: 'cooking', label: 'Cooking' },
+  { value: 'recovery', label: 'Recovery' },
+  { value: 'learning', label: 'Learning' },
 ] as const;
 
 export const TIME_OPTIONS = [

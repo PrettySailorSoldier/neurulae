@@ -234,7 +234,7 @@ export interface Playbook {
 // Tags for playbook filtering
 export interface PlaybookTags {
   rooms?: ('bathroom' | 'bedroom' | 'kitchen' | 'living-room' | 'office' | 'entryway' | 'garage' | 'whole-home' | 'vehicle')[];
-  activityType?: ('deep-clean' | 'quick-clean' | 'declutter' | 'organize' | 'maintenance' | 'seasonal' | 'daily-routine' | 'self-care' | 'cooking')[];
+  activityType?: ('deep-clean' | 'quick-clean' | 'declutter' | 'organize' | 'maintenance' | 'seasonal' | 'daily-routine' | 'self-care' | 'cooking' | 'recovery' | 'learning')[];
   duration?: ('0-15' | '15-30' | '30-60' | '60-120' | '120+')[];
 }
 

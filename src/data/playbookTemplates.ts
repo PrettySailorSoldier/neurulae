@@ -16,6 +16,8 @@ export const playbookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'linkedTaskI
     category: 'Cleaning',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 2,
+    tags: { rooms: ['whole-home'], activityType: ['deep-clean'], duration: ['60-120'] },
     steps: [
       {
         id: crypto.randomUUID(),
@@ -116,6 +118,8 @@ export const playbookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'linkedTaskI
     category: 'Cooking',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 2,
+    tags: { activityType: ['cooking'], duration: ['120+'] },
     steps: [
       {
         id: crypto.randomUUID(),
@@ -203,6 +207,8 @@ export const playbookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'linkedTaskI
     category: 'Learning',
     isTemplate: true,
     resetOnRecurrence: false,
+    tier: 3,
+    tags: { activityType: ['learning'], duration: ['60-120'] },
     steps: [
       {
         id: crypto.randomUUID(),
@@ -290,6 +296,8 @@ export const playbookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'linkedTaskI
     category: 'Self-Care',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['bathroom', 'bedroom'], activityType: ['daily-routine', 'self-care'], duration: ['30-60'] },
     steps: [
       {
         id: crypto.randomUUID(),
@@ -377,6 +385,8 @@ export const playbookTemplates: Omit<Playbook, 'id' | 'createdAt' | 'linkedTaskI
     category: 'Self-Care',
     isTemplate: true,
     resetOnRecurrence: true,
+    tier: 1,
+    tags: { rooms: ['bathroom', 'bedroom', 'kitchen'], activityType: ['daily-routine', 'self-care'], duration: ['30-60'] },
     steps: [
       {
         id: crypto.randomUUID(),
