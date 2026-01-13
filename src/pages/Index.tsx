@@ -5,6 +5,8 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { TaskSection } from '@/components/dashboard/TaskSection';
 import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
+import { FocusPanel } from '@/components/dashboard/FocusPanel';
+import { TaskLibrary } from '@/components/dashboard/TaskLibrary';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 
@@ -188,6 +190,10 @@ const Index = () => {
 
   // Analytics Dashboard (as a tab)
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Task Organization - Focus/Library view mode
+  const [taskViewMode, setTaskViewMode] = useLocalStorage<'focus' | 'all'>('neurulae-task-view-mode', 'focus');
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -2180,13 +2186,7 @@ const Index = () => {
           </div>
 
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Tomorrow's Intentions Bar - shown at top when intentions are set */}
-            <TomorrowIntentionsBar
-              intentions={tomorrowIntentions}
-              onToggleIntention={handleToggleIntention}
-              onClearIntentions={handleClearIntentions}
-              onOpenDailyReview={() => setDailyReviewOpen(true)}
-            />
+            {/* Note: Priority intentions are shown inside MobileTaskView via TaskSection */}
 
             {/* Smart Suggestion Card - What should I do next? */}
             {suggestion && (
@@ -2223,39 +2223,69 @@ const Index = () => {
                   />
                 )}
                 {mobileTab === 'tasks' && (
-                  <TaskSection
-                    tasks={tasks}
-                    timeBlocks={timeBlocks}
-                    userId={user?.id}
-                    userName={user?.email?.split('@')[0] || 'User'}
-                    onAddTask={handleAddTask}
-                    onBulkAddTasks={handleBulkAddTasks}
-                    onToggleComplete={handleToggleComplete}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    onPrioritize={handlePrioritizeTasks}
-                    onScheduleTasks={handleScheduleTasks}
-                    onAskAI={handleAskAI}
-                    onBreakdownTask={handleBreakdownTask}
-                    onOpenAIChat={handleOpenAIChat}
-                    onStartIntention={startIntention}
-                    activeIntentionId={activeIntention?.taskId}
-                    showQuickActions={showQuickActions}
-                    onClearCompleted={handleClearCompletedTasks}
-                    onClearAll={handleClearAllTasks}
-                    onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
-                    onOpenDailyReview={() => setDailyReviewOpen(true)}
-                    intentions={tomorrowIntentions}
-                    onToggleIntention={handleToggleIntention}
-                    onStartWorkSession={handleStartWorkSession}
-                  />
+                  <>
+                    {/* FocusPanel - Today's priorities + quick add + browse button */}
+                    <FocusPanel
+                      tasks={tasks}
+                      intentions={tomorrowIntentions}
+                      onToggleIntention={handleToggleIntention}
+                      onAddTask={(title, minutes) => handleAddTask(title, minutes)}
+                      onOpenDailyReview={() => setDailyReviewOpen(true)}
+                      onToggleComplete={handleToggleComplete}
+                      onStartWorkSession={handleStartWorkSession}
+                      onOpenLibrary={() => setLibraryOpen(true)}
+                      totalTaskCount={tasks.length}
+                      isMobile={true}
+                      activeTaskId={timerContext.linkedTask?.id}
+                      userName={user?.email?.split('@')[0] || 'User'}
+                    />
+                    
+                    {/* Mobile Task Library Drawer - slides in from right */}
+                    {libraryOpen && (
+                      <div 
+                        className="fixed inset-0 bg-black/50 z-40"
+                        onClick={() => setLibraryOpen(false)}
+                      />
+                    )}
+                    <div className={cn(
+                      "fixed right-0 top-0 h-full w-full bg-background z-50",
+                      "transform transition-transform duration-300 ease-in-out",
+                      libraryOpen ? "translate-x-0" : "translate-x-full"
+                    )}>
+                      <TaskLibrary
+                        tasks={tasks}
+                        onToggleComplete={handleToggleComplete}
+                        onUpdateTask={handleUpdateTask}
+                        onDeleteTask={handleDeleteTask}
+                        onStartWorkSession={handleStartWorkSession}
+                        onClose={() => setLibraryOpen(false)}
+                        isDrawer={true}
+                        activeTaskId={timerContext.linkedTask?.id}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
               <DragDropContext onDragEnd={handleDashboardDragEnd}>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column: Focus Timer + Time Blocks */}
-                  <div className="space-y-6">
+                {/* Desktop: Two-panel layout - Focus Panel + Task Library */}
+                <div className="flex gap-6 min-h-[600px]">
+                  {/* Left Column: FocusPanel + Focus Timer + Schedule */}
+                  <div className="w-[400px] min-w-[350px] max-w-[450px] shrink-0 flex flex-col gap-6">
+                    {/* Focus Panel - Today's priorities */}
+                    <FocusPanel
+                      tasks={tasks}
+                      intentions={tomorrowIntentions}
+                      onToggleIntention={handleToggleIntention}
+                      onAddTask={(title, minutes) => handleAddTask(title, minutes)}
+                      onOpenDailyReview={() => setDailyReviewOpen(true)}
+                      onToggleComplete={handleToggleComplete}
+                      onStartWorkSession={handleStartWorkSession}
+                      totalTaskCount={tasks.length}
+                      isMobile={false}
+                      activeTaskId={timerContext.linkedTask?.id}
+                      userName={user?.email?.split('@')[0] || 'User'}
+                    />
                     {/* Focus Timer */}
                     <Suspense fallback={<ComponentLoader />}>
                       <FocusTimer tasks={tasks} playbooks={playbooks} />
@@ -2274,34 +2304,19 @@ const Index = () => {
                       onStartWorkSession={handleStartWorkSession}
                     />
                   </div>
-                  {/* Right Column: Task List */}
-                  <TaskSection
-                    tasks={tasks}
-                    timeBlocks={timeBlocks}
-                    userId={user?.id}
-                    userName={user?.email?.split('@')[0] || 'User'}
-                    onAddTask={handleAddTask}
-                    onBulkAddTasks={handleBulkAddTasks}
-                    onToggleComplete={handleToggleComplete}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    onPrioritize={handlePrioritizeTasks}
-                    onScheduleTasks={handleScheduleTasks}
-                    onAskAI={handleAskAI}
-                    onBreakdownTask={handleBreakdownTask}
-                    onOpenAIChat={handleOpenAIChat}
-                    onStartIntention={startIntention}
-                    activeIntentionId={activeIntention?.taskId}
-                    showQuickActions={showQuickActions}
-                    onClearCompleted={handleClearCompletedTasks}
-                    onClearAll={handleClearAllTasks}
-                    onOpenDailyPlanning={() => setDailyPlanningOpen(true)}
-                    onOpenDailyReview={() => setDailyReviewOpen(true)}
-                    enableDragDrop={true}
-                    intentions={tomorrowIntentions}
-                    onToggleIntention={handleToggleIntention}
-                    onStartWorkSession={handleStartWorkSession}
-                  />
+                  
+                  {/* Right Column: Task Library - all tasks by category */}
+                  <div className="flex-1 bg-card rounded-xl border border-border overflow-hidden">
+                    <TaskLibrary
+                      tasks={tasks}
+                      onToggleComplete={handleToggleComplete}
+                      onUpdateTask={handleUpdateTask}
+                      onDeleteTask={handleDeleteTask}
+                      onStartWorkSession={handleStartWorkSession}
+                      isDrawer={false}
+                      activeTaskId={timerContext.linkedTask?.id}
+                    />
+                  </div>
                 </div>
               </DragDropContext>
             )}
