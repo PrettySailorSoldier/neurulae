@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Task, TomorrowIntentions, TomorrowIntention } from '@/types';
-import { Target, Play, Check, ChevronDown, ChevronRight, Sparkles, Moon } from 'lucide-react';
+import { Target, Play, Check, ChevronDown, ChevronRight, Sparkles, Moon, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -28,6 +28,8 @@ interface HeroFocusCardProps {
   onCompleteTask: (intentionId: string) => void;
   /** Move to next task */
   onNextTask: () => void;
+  /** Edit a task */
+  onEditTask?: (task: Task) => void;
   /** Open daily review to set priorities */
   onOpenDailyReview: () => void;
   /** Currently active task ID from timer */
@@ -44,6 +46,7 @@ export function HeroFocusCard({
   onStartTimer,
   onCompleteTask,
   onNextTask,
+  onEditTask,
   onOpenDailyReview,
   activeTaskId,
   className,
@@ -130,6 +133,16 @@ export function HeroFocusCard({
                       <Check className="h-4 w-4" />
                       Mark Complete
                     </Button>
+                    {currentTaskObject && onEditTask && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => onEditTask(currentTaskObject)}
+                        title="Edit task"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

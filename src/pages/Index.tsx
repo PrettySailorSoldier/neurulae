@@ -11,6 +11,8 @@ import { HeroFocusCard } from '@/components/dashboard/HeroFocusCard';
 import { CompactTimeline } from '@/components/dashboard/CompactTimeline';
 import { QuickActionBar } from '@/components/dashboard/QuickActionBar';
 import { TimerDrawer } from '@/components/dashboard/TimerDrawer';
+import { TimeBlocksSection } from '@/components/dashboard/TimeBlocksSection';
+import { TaskEditDialog } from '@/components/dashboard/TaskEditDialog';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 
@@ -204,6 +206,10 @@ const Index = () => {
   const [selectedTaskForTimer, setSelectedTaskForTimer] = useState<Task | null>(null);
   const [currentPriorityIndex, setCurrentPriorityIndex] = useState(0);
   const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
+
+  // Task Edit Dialog
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskEditDialogOpen, setTaskEditDialogOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -826,6 +832,23 @@ const Index = () => {
     setPriorities(priorities.map(task =>
       task.id === taskId ? { ...task, ...updates } : task
     ));
+  };
+
+  // Open task edit dialog
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setTaskEditDialogOpen(true);
+  };
+
+  // Save task edit changes
+  const handleSaveTaskEdit = (taskId: string, updates: Partial<Task>) => {
+    handleUpdateTaskById(taskId, updates);
+    setTaskEditDialogOpen(false);
+    setEditingTask(null);
+    toast({
+      title: 'Task updated',
+      description: 'Your changes have been saved.',
+    });
   };
 
   const handleDeleteTask = async (id: string) => {
@@ -2334,6 +2357,7 @@ const Index = () => {
                       onStartTimer={handleHeroStartTimer}
                       onCompleteTask={handleHeroCompleteTask}
                       onNextTask={handleNextPriority}
+                      onEditTask={handleEditTask}
                       onOpenDailyReview={() => setDailyReviewOpen(true)}
                       activeTaskId={timerContext.linkedTask?.id}
                     />
@@ -2341,12 +2365,27 @@ const Index = () => {
                     {/* TIMELINE: Compact day progress */}
                     <CompactTimeline />
                     
+                    {/* TIME BLOCKS: Collapsible schedule view */}
+                    <TimeBlocksSection
+                      timeBlocks={timeBlocks}
+                      scheduledTasks={scheduledTasks}
+                      tasks={tasks}
+                      onAddTimeBlock={handleAddTimeBlock}
+                      onUpdateTimeBlock={handleUpdateTimeBlock}
+                      onDeleteTimeBlock={handleDeleteTimeBlock}
+                      onAddTask={handleAddTask}
+                      onStartWorkSession={handleStartWorkSession}
+                    />
+                    
                     {/* QUICK ACTIONS: Timer, Add Task, Browse All */}
                     <QuickActionBar
                       onOpenTimer={() => setTimerDrawerOpen(true)}
                       onAddTask={() => setShowQuickAddDialog(true)}
                       onOpenLibrary={() => setLibraryOpen(true)}
                       totalTaskCount={tasks.filter(t => !t.completed).length}
+                      timerIsRunning={timerContext.activeTimerState.isRunning}
+                      elapsedSeconds={timerContext.activeTimerState.totalTime - timerContext.activeTimerState.timeRemaining}
+                      timedTaskTitle={timerContext.activeTimerState.taskTitle}
                     />
                   </div>
                   
@@ -2357,6 +2396,7 @@ const Index = () => {
                       onToggleComplete={handleToggleComplete}
                       onUpdateTask={handleUpdateTask}
                       onDeleteTask={handleDeleteTask}
+                      onEditTask={handleEditTask}
                       onStartWorkSession={handleStartWorkSession}
                       isDrawer={false}
                       activeTaskId={timerContext.linkedTask?.id}
@@ -3023,6 +3063,18 @@ const Index = () => {
           />
         </Suspense>
       )}
+
+      {/* Task Edit Dialog */}
+      <TaskEditDialog
+        task={editingTask}
+        open={taskEditDialogOpen}
+        onClose={() => {
+          setTaskEditDialogOpen(false);
+          setEditingTask(null);
+        }}
+        onSave={handleSaveTaskEdit}
+        projects={projects}
+      />
     </div>
   );
 };

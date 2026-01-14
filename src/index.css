@@ -308,3 +308,17 @@
     @apply border-primary bg-primary/10;
   }
 }
+
+/* Timer button glow animation */
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); 
+  }
+  50% { 
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0); 
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

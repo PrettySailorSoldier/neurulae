@@ -12,8 +12,28 @@ interface QuickActionBarProps {
   onOpenLibrary: () => void;
   /** Total number of incomplete tasks */
   totalTaskCount: number;
+  /** Whether timer is currently running */
+  timerIsRunning?: boolean;
+  /** Elapsed seconds on current timer */
+  elapsedSeconds?: number;
+  /** Title of task being timed (if any) */
+  timedTaskTitle?: string | null;
   /** Extra classes */
   className?: string;
+}
+
+/**
+ * Format seconds into MM:SS or H:MM:SS display
+ */
+function formatElapsedTime(seconds: number): string {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function QuickActionBar({
@@ -21,6 +41,9 @@ export function QuickActionBar({
   onAddTask,
   onOpenLibrary,
   totalTaskCount,
+  timerIsRunning = false,
+  elapsedSeconds = 0,
+  timedTaskTitle,
   className,
 }: QuickActionBarProps) {
   return (
@@ -29,13 +52,25 @@ export function QuickActionBar({
       className
     )}>
       <Button 
-        variant="outline" 
+        variant={timerIsRunning ? "default" : "outline"}
         size="lg"
         onClick={onOpenTimer}
-        className="gap-2"
+        className={cn(
+          "gap-2 relative",
+          timerIsRunning && "animate-pulse-glow"
+        )}
+        title={timerIsRunning && timedTaskTitle ? `Working on: ${timedTaskTitle}` : undefined}
       >
         <Timer className="h-5 w-5" />
         Timer
+        {timerIsRunning && (
+          <Badge 
+            variant="secondary" 
+            className="ml-1 animate-pulse tabular-nums"
+          >
+            {formatElapsedTime(elapsedSeconds)}
+          </Badge>
+        )}
       </Button>
       
       <Button 

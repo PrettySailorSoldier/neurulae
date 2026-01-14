@@ -32,6 +32,8 @@ interface TaskLibraryProps {
   onUpdateTask: (task: Task) => void;
   /** Delete a task */
   onDeleteTask: (id: string) => void;
+  /** Edit a task (opens edit dialog) */
+  onEditTask?: (task: Task) => void;
   /** Start work session on a task */
   onStartWorkSession?: (task: Task) => void;
   /** Close the library (mobile drawer only) */
@@ -59,6 +61,7 @@ export function TaskLibrary({
   onToggleComplete,
   onUpdateTask,
   onDeleteTask,
+  onEditTask,
   onStartWorkSession,
   onClose,
   isDrawer = false,
@@ -224,6 +227,7 @@ export function TaskLibrary({
                           isActive={activeTaskId === task.id}
                           onToggleComplete={onToggleComplete}
                           onStartWorkSession={onStartWorkSession}
+                          onEdit={onEditTask}
                           onDelete={handleDeleteTask}
                         />
                       ))}
@@ -241,6 +245,7 @@ export function TaskLibrary({
                               isActive={false}
                               onToggleComplete={onToggleComplete}
                               onStartWorkSession={onStartWorkSession}
+                              onEdit={onEditTask}
                               onDelete={handleDeleteTask}
                             />
                           ))}
@@ -269,10 +274,11 @@ interface TaskItemProps {
   isActive: boolean;
   onToggleComplete: (id: string) => void;
   onStartWorkSession?: (task: Task) => void;
+  onEdit?: (task: Task) => void;
   onDelete: (id: string) => void;
 }
 
-function TaskItem({ task, isActive, onToggleComplete, onStartWorkSession, onDelete }: TaskItemProps) {
+function TaskItem({ task, isActive, onToggleComplete, onStartWorkSession, onEdit, onDelete }: TaskItemProps) {
   return (
     <div className={cn(
       "flex items-center gap-3 p-2.5 rounded-lg group",
@@ -343,6 +349,12 @@ function TaskItem({ task, isActive, onToggleComplete, onStartWorkSession, onDele
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
+          )}
+          {onEdit && (
+            <DropdownMenuItem onClick={() => onEdit(task)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
           )}
           <DropdownMenuItem 
             onClick={() => onDelete(task.id)}
