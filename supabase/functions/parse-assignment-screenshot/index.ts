@@ -185,7 +185,7 @@ REQUIRED: You MUST extract the course name from visible class/subject labels. Lo
     console.error('Error in parse-assignment-screenshot:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Failed to parse screenshot. Please try again.',
         success: false
       }),
       { 

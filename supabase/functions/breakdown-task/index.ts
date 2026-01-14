@@ -97,7 +97,7 @@ Create 4-8 detailed subtasks with clear descriptions, tips, and potential blocke
       const errorText = await aiResponse.text();
       console.error('AI API error:', aiResponse.status, errorText);
       return new Response(
-        JSON.stringify({ error: 'Failed to generate subtasks', details: errorText }),
+        JSON.stringify({ error: 'Failed to generate subtasks. Please try again.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -125,7 +125,7 @@ Create 4-8 detailed subtasks with clear descriptions, tips, and potential blocke
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
       return new Response(
-        JSON.stringify({ error: 'Failed to parse AI response', rawResponse: content }),
+        JSON.stringify({ error: 'Failed to parse AI response. Please try again.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -161,7 +161,7 @@ Create 4-8 detailed subtasks with clear descriptions, tips, and potential blocke
   } catch (error) {
     console.error('Error in breakdown-task function:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Unknown error occurred' }),
+      JSON.stringify({ error: 'An unexpected error occurred. Please try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

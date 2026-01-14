@@ -162,7 +162,7 @@ serve(async (req) => {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error(`[manage-time-blocks] Unhandled error`, err);
     return new Response(
-      JSON.stringify({ success: false, error: message }),
+      JSON.stringify({ success: false, error: 'An unexpected error occurred. Please try again.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

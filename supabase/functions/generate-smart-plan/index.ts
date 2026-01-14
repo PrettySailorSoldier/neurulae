@@ -315,7 +315,7 @@ Create a 2-week schedule that fits everything around my busy times. Prioritize u
     console.error('Error generating smart plan:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to generate plan',
+        error: 'Failed to generate plan. Please try again.',
         plan: []
       }),
       { 
