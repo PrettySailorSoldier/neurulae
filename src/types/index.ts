@@ -22,6 +22,7 @@ export interface Task {
   id: string;
   title: string;
   completed: boolean;
+  category?: string; // Formal category field
   dueDate?: string;
   projectId?: string;
   focusTimeMinutes?: number;

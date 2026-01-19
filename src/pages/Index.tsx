@@ -6,13 +6,14 @@ import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { TaskSection } from '@/components/dashboard/TaskSection';
 import { ScheduleSection } from '@/components/dashboard/ScheduleSection';
 import { FocusPanel } from '@/components/dashboard/FocusPanel';
-import { TaskLibrary } from '@/components/dashboard/TaskLibrary';
 import { HeroFocusCard } from '@/components/dashboard/HeroFocusCard';
 import { CompactTimeline } from '@/components/dashboard/CompactTimeline';
 import { QuickActionBar } from '@/components/dashboard/QuickActionBar';
 import { TimerDrawer } from '@/components/dashboard/TimerDrawer';
 import { TimeBlocksSection } from '@/components/dashboard/TimeBlocksSection';
 import { TaskEditDialog } from '@/components/dashboard/TaskEditDialog';
+import { TodaysFocus } from '@/components/dashboard/TodaysFocus';
+import { WorkOnTaskButton } from '@/components/dashboard/WorkOnTaskButton';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 
@@ -45,6 +46,7 @@ import { useSuggestedAction } from '@/hooks/useSuggestedAction';
 
 // Lazy load heavy components for better code splitting
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab').then(m => ({ default: m.ProjectsTab })));
+const TasksTab = lazy(() => import('@/components/tasks/TasksTab').then(m => ({ default: m.TasksTab })));
 const PlaybooksTab = lazy(() => import('@/components/PlaybooksTab').then(m => ({ default: m.PlaybooksTab })));
 const WidgetPanel = lazy(() => import('@/components/WidgetPanel').then(m => ({ default: m.WidgetPanel })));
 const CalendarScheduler = lazy(() => import('@/components/CalendarScheduler').then(m => ({ default: m.CalendarScheduler })));
@@ -133,6 +135,7 @@ const Index = () => {
   // Dashboard Tabs - includes both built-in and custom tabs
   const DEFAULT_DASHBOARD_TABS: DashboardTab[] = [
     { id: 'dashboard', key: 'dashboard', name: 'Dashboard', isBuiltIn: true, isVisible: true, order: 0 },
+    { id: 'tasks', key: 'tasks', name: 'Tasks', isBuiltIn: false, isVisible: true, order: 0.5 },
     { id: 'projects', key: 'projects', name: 'Projects', isBuiltIn: false, isVisible: true, order: 1 },
     { id: 'playbooks', key: 'playbooks', name: 'Playbooks', isBuiltIn: false, isVisible: true, order: 2 },
     { id: 'care', key: 'care', name: 'Care', isBuiltIn: false, isVisible: true, order: 3 },
@@ -2344,40 +2347,25 @@ const Index = () => {
               </div>
             ) : (
               <DragDropContext onDragEnd={handleDashboardDragEnd}>
-                {/* Desktop: Two-panel layout - Focus Panel (PRIMARY) + Task Library (SECONDARY) */}
-                <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[2fr_1fr] gap-6 min-h-[600px]">
-                  {/* Left Column: Hero Focus - PRIMARY (60-65% width) */}
-                  <div className="min-w-0 flex flex-col gap-4">
-                    {/* HERO: Current Priority Task */}
-                    <HeroFocusCard
-                      currentTask={currentPriorityTask}
-                      tasks={tasks}
-                      remainingTasks={remainingPriorityTasks}
-                      userName={user?.email?.split('@')[0] || 'there'}
-                      onStartTimer={handleHeroStartTimer}
-                      onCompleteTask={handleHeroCompleteTask}
-                      onNextTask={handleNextPriority}
-                      onEditTask={handleEditTask}
-                      onOpenDailyReview={() => setDailyReviewOpen(true)}
-                      activeTaskId={timerContext.linkedTask?.id}
-                    />
-                    
-                    {/* TIMELINE: Compact day progress */}
-                    <CompactTimeline />
-                    
-                    {/* TIME BLOCKS: Collapsible schedule view */}
-                    <TimeBlocksSection
-                      timeBlocks={timeBlocks}
-                      scheduledTasks={scheduledTasks}
-                      tasks={tasks}
-                      onAddTimeBlock={handleAddTimeBlock}
-                      onUpdateTimeBlock={handleUpdateTimeBlock}
-                      onDeleteTimeBlock={handleDeleteTimeBlock}
-                      onAddTask={handleAddTask}
-                      onStartWorkSession={handleStartWorkSession}
-                    />
-                    
-                    {/* QUICK ACTIONS: Timer, Add Task, Browse All */}
+                {/* Desktop: Expanded Dashboard Layout - Visual Timeline + Today's Focus */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8 min-h-[600px]">
+                  {/* Left Column: Today's Focus & Quick Actions (30-35% width) */}
+                  <div className="min-w-0 flex flex-col gap-6">
+                    {/* Today's Focus - Intentions from Daily Review */}
+                    <div className="space-y-4">
+                      <TodaysFocus 
+                        intentions={tomorrowIntentions}
+                        onToggleIntention={handleToggleIntention}
+                        onOpenDailyReview={() => setDailyReviewOpen(true)}
+                      />
+                      
+                      <WorkOnTaskButton 
+                        onStartSession={handleStartWorkSession}
+                        className="w-full justify-start"
+                      />
+                    </div>
+
+                    {/* Quick Stats or Timer when running */}
                     <QuickActionBar
                       onOpenTimer={() => setTimerDrawerOpen(true)}
                       onAddTask={() => setShowQuickAddDialog(true)}
@@ -2387,24 +2375,63 @@ const Index = () => {
                       elapsedSeconds={timerContext.activeTimerState.totalTime - timerContext.activeTimerState.timeRemaining}
                       timedTaskTitle={timerContext.activeTimerState.taskTitle}
                     />
+
+                    {/* Compact Timeline (Secondary view of day) */}
+                    <div className="bg-card rounded-xl border border-border p-4">
+                      <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wider">Day Progress</h3>
+                      <CompactTimeline />
+                    </div>
                   </div>
                   
-                  {/* Right Column: Task Library - SECONDARY (35-40% width) */}
-                  <div className="min-w-0 max-w-[450px] bg-card rounded-xl border border-border overflow-hidden">
-                    <TaskLibrary
-                      tasks={tasks}
-                      onToggleComplete={handleToggleComplete}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      onEditTask={handleEditTask}
-                      onStartWorkSession={handleStartWorkSession}
-                      isDrawer={false}
-                      activeTaskId={timerContext.linkedTask?.id}
-                    />
+                  {/* Right Column: Expanded Timeline & Execution (65-70% width) */}
+                  <div className="min-w-0 flex flex-col gap-6">
+                    {/* Active Hero Card if working */}
+                    {(timerContext.activeTimerState.isRunning || currentPriorityTask) && (
+                      <HeroFocusCard
+                        currentTask={timerContext.linkedTask || currentPriorityTask}
+                        tasks={tasks}
+                        remainingTasks={remainingPriorityTasks}
+                        userName={user?.email?.split('@')[0] || 'there'}
+                        onStartTimer={handleHeroStartTimer}
+                        onCompleteTask={handleHeroCompleteTask}
+                        onNextTask={handleNextPriority}
+                        onEditTask={handleEditTask}
+                        onOpenDailyReview={() => setDailyReviewOpen(true)}
+                        activeTaskId={timerContext.linkedTask?.id}
+                      />
+                    )}
+
+                    {/* EXPANDED Timeline / Schedule Section */}
+                    <div className="bg-card/30 rounded-xl border border-border/50 p-6 min-h-[500px]">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold">Daily Flow</h2>
+                        <Button variant="outline" size="sm" onClick={() => handleAddTimeBlock({ title: 'New Block', startTime: '12:00', endTime: '13:00', type: 'main', scheduleType: 'everyday' })}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Block
+                        </Button>
+                      </div>
+                      
+                      <TimeBlocksSection
+                        timeBlocks={timeBlocks}
+                        scheduledTasks={scheduledTasks}
+                        tasks={tasks}
+                        onAddTimeBlock={handleAddTimeBlock}
+                        onUpdateTimeBlock={handleUpdateTimeBlock}
+                        onDeleteTimeBlock={handleDeleteTimeBlock}
+                        onAddTask={handleAddTask}
+                        onStartWorkSession={handleStartWorkSession}
+                      />
+                    </div>
                   </div>
                 </div>
               </DragDropContext>
             )}
+          </TabsContent>
+
+          <TabsContent value="tasks">
+             <Suspense fallback={<ComponentLoader />}>
+                <TasksTab />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="projects">
