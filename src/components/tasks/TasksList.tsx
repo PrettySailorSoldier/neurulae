@@ -113,19 +113,18 @@ export const TasksList = () => {
            </div>
         )}
 
-        {/* Tasks List */}
+        {/* Tasks List - Compact */}
         <ScrollArea className="flex-1">
-          <div className="p-4 sm:p-6 space-y-2 max-w-3xl mx-auto">
+          <div className="px-3 py-2 max-w-2xl mx-auto">
             <AnimatePresence mode="popLayout">
               {filteredTasks.length === 0 ? (
                 <motion.div 
                   initial={{ opacity: 0 }} 
                   animate={{ opacity: 1 }}
-                  className="text-center py-20 text-muted-foreground"
+                  className="text-center py-12 text-muted-foreground"
                 >
-                  <div className="mb-4 text-4xl opacity-20">📝</div>
-                  <p>No tasks found in this collection.</p>
-                  <Button variant="link" onClick={() => setIsAddModalOpen(true)}>Create one?</Button>
+                  <p className="text-sm">No tasks in this list.</p>
+                  <Button variant="link" size="sm" onClick={() => setIsAddModalOpen(true)}>Add one</Button>
                 </motion.div>
               ) : (
                 filteredTasks.map(task => (

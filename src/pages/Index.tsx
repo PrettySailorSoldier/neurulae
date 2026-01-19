@@ -11,6 +11,7 @@ import { CompactTimeline } from '@/components/dashboard/CompactTimeline';
 import { QuickActionBar } from '@/components/dashboard/QuickActionBar';
 import { TimerDrawer } from '@/components/dashboard/TimerDrawer';
 import { TimeBlocksSection } from '@/components/dashboard/TimeBlocksSection';
+import { DailyFlowTimeline } from '@/components/DailyFlowTimeline';
 import { TaskEditDialog } from '@/components/dashboard/TaskEditDialog';
 import { TodaysFocus } from '@/components/dashboard/TodaysFocus';
 import { WorkOnTaskButton } from '@/components/dashboard/WorkOnTaskButton';
@@ -2384,7 +2385,7 @@ const Index = () => {
                   </div>
                   
                   {/* Right Column: Expanded Timeline & Execution (65-70% width) */}
-                  <div className="min-w-0 flex flex-col gap-6">
+                  <div className="min-w-0 flex flex-col gap-4 flex-1">
                     {/* Active Hero Card if working */}
                     {(timerContext.activeTimerState.isRunning || currentPriorityTask) && (
                       <HeroFocusCard
@@ -2401,26 +2402,29 @@ const Index = () => {
                       />
                     )}
 
-                    {/* EXPANDED Timeline / Schedule Section */}
-                    <div className="bg-card/30 rounded-xl border border-border/50 p-6 min-h-[500px]">
-                      <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold">Daily Flow</h2>
+                    {/* EXPANDED Timeline - MAIN HERO - Always visible, no collapsible */}
+                    <div className="flex-1 bg-gradient-to-b from-card/60 to-background rounded-xl border border-border/40 overflow-hidden flex flex-col min-h-[600px]">
+                      <div className="flex items-center justify-between p-4 border-b border-border/40 bg-card/50">
+                        <h2 className="text-lg font-semibold">Daily Flow</h2>
                         <Button variant="outline" size="sm" onClick={() => handleAddTimeBlock({ title: 'New Block', startTime: '12:00', endTime: '13:00', type: 'main', scheduleType: 'everyday' })}>
                           <Plus className="w-4 h-4 mr-2" />
                           Add Block
                         </Button>
                       </div>
                       
-                      <TimeBlocksSection
-                        timeBlocks={timeBlocks}
-                        scheduledTasks={scheduledTasks}
-                        tasks={tasks}
-                        onAddTimeBlock={handleAddTimeBlock}
-                        onUpdateTimeBlock={handleUpdateTimeBlock}
-                        onDeleteTimeBlock={handleDeleteTimeBlock}
-                        onAddTask={handleAddTask}
-                        onStartWorkSession={handleStartWorkSession}
-                      />
+                      {/* Full Height Timeline - No scroll container - Let it breathe */}
+                      <div className="flex-1 p-4">
+                        <DailyFlowTimeline
+                          timeBlocks={timeBlocks}
+                          scheduledTasks={scheduledTasks}
+                          tasks={tasks}
+                          onAddTimeBlock={handleAddTimeBlock}
+                          onUpdateTimeBlock={handleUpdateTimeBlock}
+                          onDeleteTimeBlock={handleDeleteTimeBlock}
+                          onAddTask={handleAddTask}
+                          onStartWorkSession={handleStartWorkSession}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

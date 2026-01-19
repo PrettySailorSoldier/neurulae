@@ -1,14 +1,7 @@
 import { Task } from '@/types';
 import { cn } from '@/lib/utils';
-import { Check, MoreHorizontal, Pencil, Trash2, Calendar } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { motion } from 'framer-motion';
 
 interface TaskItemProps {
@@ -19,96 +12,75 @@ interface TaskItemProps {
   categories: { id: string; name: string; icon: string }[];
 }
 
-export const TaskItem = ({ task, onToggleComplete, onDelete, onEdit, categories }: TaskItemProps) => {
+// Category color map
+const categoryColors: Record<string, string> = {
+  work: 'bg-blue-500',
+  school: 'bg-indigo-500',
+  personal: 'bg-violet-500',
+  home: 'bg-amber-500',
+  urgent: 'bg-red-500',
+};
+
+export const TaskItem = ({ task, onToggleComplete, onDelete, categories }: TaskItemProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const category = categories.find(c => c.id === task.category);
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, height: 0 }}
       className={cn(
-        "group flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-primary/20",
-        task.completed && "opacity-60 bg-muted/30"
+        "group flex items-center gap-2 py-1.5 px-1 border-b border-border/30 last:border-b-0 transition-colors hover:bg-muted/30",
+        task.completed && "opacity-50"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Category Indicator Strip */}
+      {/* Category dot */}
       <div className={cn(
-        "w-1 h-8 rounded-full opacity-50",
-        task.category === 'urgent' ? "bg-red-500" :
-        task.category === 'work' ? "bg-blue-500" :
-        task.category === 'school' ? "bg-indigo-500" :
-        "bg-primary/50"
+        "w-1.5 h-1.5 rounded-full flex-shrink-0",
+        categoryColors[task.category || 'personal'] || 'bg-muted-foreground/30'
       )} />
 
       {/* Checkbox */}
       <button
         onClick={() => onToggleComplete(task.id)}
         className={cn(
-          "flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+          "flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-all",
           task.completed 
-            ? "bg-primary border-primary text-primary-foreground" 
-            : "border-muted-foreground/30 hover:border-primary"
+            ? "bg-primary/80 border-primary/80 text-primary-foreground" 
+            : "border-muted-foreground/40 hover:border-primary/60"
         )}
       >
-        {task.completed && <Check className="w-3.5 h-3.5" />}
+        {task.completed && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
       </button>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className={cn(
-          "text-sm font-medium transition-colors",
-          task.completed ? "text-muted-foreground line-through" : "text-foreground"
-        )}>
-          {task.title}
-        </div>
-        {(category || task.estimatedMinutes) && (
-          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-            {category && (
-              <span className="flex items-center gap-1 opacity-80">
-                <span>{category.icon}</span>
-                <span>{category.name}</span>
-              </span>
-            )}
-            {task.estimatedMinutes && (
-              <>
-                <span className="w-0.5 h-0.5 rounded-full bg-muted-foreground/50" />
-                <span>{task.estimatedMinutes}m</span>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className={cn(
-        "flex items-center gap-1 transition-opacity",
-        isHovered ? "opacity-100" : "opacity-0"
+      {/* Task title - single line */}
+      <span className={cn(
+        "flex-1 text-sm truncate",
+        task.completed && "line-through text-muted-foreground"
       )}>
-        {onEdit && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => onEdit(task)}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
+        {task.title}
+      </span>
+
+      {/* Time estimate - tiny inline */}
+      {task.estimatedMinutes && !task.completed && (
+        <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">
+          {task.estimatedMinutes}m
+        </span>
+      )}
+
+      {/* Delete on hover */}
+      <button
+        onClick={() => onDelete(task.id)}
+        className={cn(
+          "flex-shrink-0 p-0.5 text-muted-foreground/40 hover:text-destructive transition-opacity",
+          isHovered ? "opacity-100" : "opacity-0"
         )}
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(task.id)}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      >
+        <Trash2 className="w-3 h-3" />
+      </button>
     </motion.div>
   );
 };
