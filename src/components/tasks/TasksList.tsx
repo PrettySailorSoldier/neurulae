@@ -136,7 +136,7 @@ export const TasksList = () => {
                   <Button variant="link" size="sm" onClick={() => setIsAddModalOpen(true)}>Add one</Button>
                 </motion.div>
               ) : (
-              ) : (
+
                 filteredTasks
                     .filter(task => !task.parentId) // Only show top-level tasks
                     .map(task => (
@@ -153,7 +153,7 @@ export const TasksList = () => {
                   />
                 ))
               )}
-              )}
+
             </AnimatePresence>
           </div>
         </ScrollArea>
