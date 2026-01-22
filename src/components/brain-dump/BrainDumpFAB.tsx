@@ -38,21 +38,30 @@ export const BrainDumpFAB = ({ onClick, className }: BrainDumpFABProps) => {
     <TooltipProvider>
       <Tooltip open={isHovered}>
         <TooltipTrigger asChild>
-          <Button
+          <button
             onClick={onClick}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={cn(
-              "fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg",
-              "bg-primary hover:bg-primary/90 text-primary-foreground",
-              "transition-all duration-300 hover:scale-105 active:scale-95",
-              "animate-pulse-glow", // Custom glow animation class needs to be added to tailwind
+              "fixed bottom-8 right-8 z-50 h-16 w-16 rounded-full",
+              "flex items-center justify-center",
+              "transition-all duration-200 hover:scale-110 hover:rotate-[5deg] active:scale-105",
               className
             )}
-            size="icon"
+            style={{
+              background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%)',
+              border: '2px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: `
+                0 4px 8px rgba(0, 0, 0, 0.2),
+                0 8px 16px rgba(0, 0, 0, 0.15),
+                0 0 24px hsl(var(--primary) / 0.3)
+              `,
+              animation: 'fabPulse 2s ease-in-out infinite',
+            }}
+            aria-label="Open brain dump"
           >
-            <Zap className="h-6 w-6 fill-current animate-pulse" />
-          </Button>
+            <Zap className="h-7 w-7 text-white fill-white" />
+          </button>
         </TooltipTrigger>
         <TooltipContent side="left" className="mr-2 px-3 py-1.5 bg-primary text-primary-foreground border-none shadow-md overflow-hidden min-w-[140px] text-center">
             <AnimatePresence mode="wait">

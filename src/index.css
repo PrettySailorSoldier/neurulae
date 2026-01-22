@@ -322,3 +322,19 @@
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+/* FAB pulse animation for Brain Dump button */
+@keyframes fabPulse {
+  0%, 100% {
+    box-shadow:
+      0 4px 8px rgba(0, 0, 0, 0.2),
+      0 8px 16px rgba(0, 0, 0, 0.15),
+      0 0 24px hsl(var(--primary) / 0.3);
+  }
+  50% {
+    box-shadow:
+      0 4px 8px rgba(0, 0, 0, 0.2),
+      0 8px 16px rgba(0, 0, 0, 0.15),
+      0 0 40px hsl(var(--primary) / 0.5);
+  }
+}

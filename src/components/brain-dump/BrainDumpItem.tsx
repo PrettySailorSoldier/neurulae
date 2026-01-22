@@ -19,43 +19,54 @@ export const BrainDumpItem = ({ item, isSelected, onToggleSelect, onDelete, inde
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0 }}
-      transition={{ delay: index * 0.05 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "group flex items-center gap-3 p-3 rounded-lg border border-transparent transition-all",
-        "hover:bg-white/5 hover:border-white/10 hover:-translate-y-0.5",
-        isSelected && "bg-primary/10 border-primary/20",
+        "group flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+        "bg-white/[0.04] border-white/[0.08]",
+        "hover:bg-white/[0.06] hover:border-white/[0.15] hover:-translate-y-0.5",
+        isSelected && "border-primary bg-primary/10",
       )}
+      style={{
+        boxShadow: isSelected 
+          ? '0 0 0 2px hsl(var(--primary) / 0.25)' 
+          : isHovered 
+            ? '0 4px 12px rgba(0, 0, 0, 0.15)' 
+            : 'none',
+      }}
+      onClick={() => onToggleSelect(item.id)}
     >
       {/* Drag Handle */}
-      <div className="text-muted-foreground/30 hover:text-muted-foreground cursor-grab active:cursor-grabbing">
+      <div className="text-white/30 hover:text-white/60 cursor-grab active:cursor-grabbing">
         <GripVertical className="w-4 h-4" />
       </div>
 
       {/* Checkbox */}
-      <Checkbox 
-        checked={isSelected}
-        onCheckedChange={() => onToggleSelect(item.id)}
+      <div
         className={cn(
-            "h-5 w-5 border-muted-foreground/50 transition-colors",
-            isSelected && "border-primary bg-primary text-primary-foreground"
+          "w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all flex-shrink-0",
+          isSelected 
+            ? "bg-primary border-primary" 
+            : "border-white/30 hover:border-white/50"
         )}
-      />
+      >
+        {isSelected && (
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </div>
 
       {/* Text Content */}
       <div className="flex-1 min-w-0">
         <p className={cn(
-            "text-sm font-medium leading-none truncate transition-opacity",
-            isSelected && "opacity-80"
+            "text-sm text-white/90 leading-snug truncate",
         )}>
             {item.text}
-        </p>
-        <p className="text-[10px] text-muted-foreground mt-1 opacity-60">
-            Received {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
 
@@ -66,8 +77,8 @@ export const BrainDumpItem = ({ item, isSelected, onToggleSelect, onDelete, inde
             onDelete(item.id);
         }}
         className={cn(
-            "p-1.5 rounded-full hover:bg-destructive/20 hover:text-destructive transition-all opacity-0",
-            (isHovered || isSelected) && "opacity-100" // Show on hover or selection
+            "p-1.5 rounded text-white/50 hover:text-red-400 hover:scale-110 transition-all",
+            isHovered ? "opacity-100" : "opacity-0"
         )}
         aria-label="Delete item"
       >

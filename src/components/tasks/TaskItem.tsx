@@ -13,13 +13,20 @@ interface TaskItemProps {
   categories: { id: string; name: string; icon: string }[];
   onToggleSubtask?: (parentId: string, subtaskId: string) => void;
   onDeleteSubtask?: (parentId: string, subtaskId: string) => void;
-  onEdit?: (task: Task) => void;
+
   onIndent?: (taskId: string) => void;
   onOutdent?: (taskId: string) => void;
   depth?: number;
 }
 
-// ... colors ...
+// Category color map
+const categoryColors: Record<string, string> = {
+  work: 'hsl(217, 91%, 60%)',
+  school: 'hsl(239, 84%, 67%)',
+  personal: 'hsl(262, 83%, 58%)',
+  home: 'hsl(43, 96%, 56%)',
+  urgent: 'hsl(0, 84%, 60%)',
+};
 
 export const TaskItem = ({ 
     task, 
@@ -178,25 +185,74 @@ export const TaskItem = ({
         </div>
         </motion.div>
 
-        {/* Details Section */}
+        {/* Details Section - Premium Design */}
         <AnimatePresence>
             {isDetailsOpen && (
                 <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="pl-8 pr-2 pb-2 overflow-hidden"
+                    initial={{ opacity: 0, height: 0, y: -8 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -8 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    className="ml-10 mr-2 mb-2 overflow-hidden"
                 >
-                    <textarea 
-                        className="w-full text-sm bg-muted/20 rounded-md p-2 border-none focus:ring-1 focus:ring-primary/20 min-h-[60px]"
-                        placeholder="Add notes, links, or subtasks..."
-                        defaultValue={task.details}
-                        onBlur={(e) => {
-                             if (onEdit) {
-                                 onEdit({ ...task, details: e.target.value });
-                             }
+                    <div 
+                        className="rounded-lg overflow-hidden"
+                        style={{
+                            background: `linear-gradient(135deg, ${categoryColors[task.category || 'personal']}08 0%, transparent 100%)`,
+                            border: `1px solid ${categoryColors[task.category || 'personal']}20`,
+                            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
                         }}
-                    />
+                    >
+                        {/* Header */}
+                        <div 
+                            className="flex items-center justify-between px-3 py-2 border-b"
+                            style={{ 
+                                background: `${categoryColors[task.category || 'personal']}08`,
+                                borderColor: `${categoryColors[task.category || 'personal']}15`,
+                            }}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">📝</span>
+                                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Notes</span>
+                            </div>
+                            <button 
+                                onClick={() => setIsDetailsOpen(false)}
+                                className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground/60 hover:bg-black/10 hover:text-foreground transition-all"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        
+                        {/* Body */}
+                        <div className="p-3">
+                            <textarea 
+                                className="w-full text-sm bg-transparent rounded-md p-0 border-none focus:ring-0 focus:outline-none min-h-[80px] resize-y placeholder:text-muted-foreground/40 placeholder:italic"
+                                placeholder="Add notes, links, or context..."
+                                defaultValue={task.details}
+                                onBlur={(e) => {
+                                    if (onEdit) {
+                                        onEdit({ ...task, details: e.target.value });
+                                    }
+                                }}
+                            />
+                        </div>
+                        
+                        {/* Footer with quick actions */}
+                        <div 
+                            className="flex items-center gap-2 px-3 py-2 border-t"
+                            style={{ 
+                                background: `${categoryColors[task.category || 'personal']}05`,
+                                borderColor: `${categoryColors[task.category || 'personal']}10`,
+                            }}
+                        >
+                            <button className="text-[10px] px-2 py-1 rounded border border-transparent hover:border-current text-muted-foreground/60 hover:text-muted-foreground transition-all">
+                                📎 Attach
+                            </button>
+                            <button className="text-[10px] px-2 py-1 rounded border border-transparent hover:border-current text-muted-foreground/60 hover:text-muted-foreground transition-all">
+                                🔗 Link
+                            </button>
+                        </div>
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>
