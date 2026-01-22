@@ -141,6 +141,7 @@ interface DraggableTaskItemProps {
   showQuickActions: boolean;
 }
 
+// Explicitly typed props
 const DraggableTaskItem = ({
   task,
   index,
