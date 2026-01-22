@@ -31,14 +31,15 @@ export interface Task {
   colorTag?: string;
   createdAt: string;
   linkedPlaybookId?: string;
-  subtasks?: SubTask[];
+  linkedPlaybookId?: string;
+  subtasks?: Task[]; // Nested tasks (max depth 1)
+  notes?: string;
   notes?: string;
   eisenhowerQuadrant?: 'urgent-important' | 'not-urgent-important' | 'urgent-not-important' | 'not-urgent-not-important';
   course?: string;
   type?: 'daily' | 'ongoing';
   taskType?: 'school' | 'work' | 'home' | 'appointment' | 'call' | 'other';
   // Time constraint fields
-  timeConstraint?: 'business-hours' | 'anytime' | 'morning' | 'evening' | 'custom';
   customTimeWindow?: {
     startTime: string; // HH:MM format
     endTime: string;   // HH:MM format
@@ -57,6 +58,32 @@ export interface Task {
     stepsCompleted: number;
     totalSteps: number;
   }[];
+  // Subtask Hierarchy & Details
+  parentId?: string | null; // NEW: null for top-level, id for subtask
+  details?: string;         // NEW: notes, phone numbers, links, etc.
+  order?: number;           // NEW: for manual ordering
+}
+
+// Brain Dump Widget - for externalizing intrusive thoughts
+export interface BrainDumpThought {
+  id: string;
+  content: string;
+  timestamp: string;
+}
+
+export interface BrainDumpWidget {
+  id: string;
+  type: 'brain-dump';
+  title: string;
+  thoughts: BrainDumpThought[];
+}
+
+export interface BrainDumpItem {
+  id: string;
+  text: string;
+  order: number;
+  createdAt: string;
+  isSelected?: boolean;
 }
 
 export interface Project {

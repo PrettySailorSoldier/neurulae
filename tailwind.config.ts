@@ -143,6 +143,26 @@ export default {
             transform: "translate(-50%, -50%) translateY(-8px)",
           },
         },
+        },
+        // Brain Dump Animations
+        "label-fade-in": {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" }
+        },
+        "holographic-shimmer": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" }
+        },
+        "fab-pulse": {
+          "0%, 100%": { 
+            boxShadow: "0 0 15px rgba(139, 92, 246, 0.4)",
+            transform: "scale(1)"
+          },
+          "50%": { 
+            boxShadow: "0 0 25px rgba(139, 92, 246, 0.7)",
+            transform: "scale(1.05)"
+          }
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -153,6 +173,10 @@ export default {
         "spiral-void": "spiral-void 0.6s ease-in forwards",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "sun-float": "sun-float 3s ease-in-out infinite",
+        // New Brain Dump animations
+        "label-cycle": "label-fade-in 200ms ease-out",
+        "holographic": "holographic-shimmer 3s linear infinite",
+        "fab-pulse": "fab-pulse 2s ease-in-out infinite"
       },
     },
   },

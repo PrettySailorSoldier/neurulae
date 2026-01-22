@@ -12,7 +12,16 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export const TasksList = () => {
-  const { tasks, addTask, toggleTask, deleteTask, updateTask, DEFAULT_CATEGORIES } = useTasks();
+  const { 
+    tasks, 
+    addTask, 
+    toggleTask, 
+    deleteTask, 
+    updateTask, 
+    DEFAULT_CATEGORIES,
+    toggleSubtask,
+    deleteSubtask 
+  } = useTasks();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -127,16 +136,23 @@ export const TasksList = () => {
                   <Button variant="link" size="sm" onClick={() => setIsAddModalOpen(true)}>Add one</Button>
                 </motion.div>
               ) : (
-                filteredTasks.map(task => (
+              ) : (
+                filteredTasks
+                    .filter(task => !task.parentId) // Only show top-level tasks
+                    .map(task => (
                   <TaskItem 
                     key={task.id} 
                     task={task} 
                     onToggleComplete={toggleTask}
                     onDelete={deleteTask}
-                    onEdit={(t) => {/* We can reuse TaskEditDialog later if needed */}}
+                    onEdit={(updatedTask) => updateTask(updatedTask.id, updatedTask)}
                     categories={DEFAULT_CATEGORIES}
+                    // Subtask handlers
+                    onToggleSubtask={toggleSubtask}
+                    onDeleteSubtask={deleteSubtask}
                   />
                 ))
+              )}
               )}
             </AnimatePresence>
           </div>

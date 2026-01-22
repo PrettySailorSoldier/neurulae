@@ -114,6 +114,134 @@ export const useTasks = () => {
     await syncToDb(task, 'delete');
   };
 
+  // --- Subtask Management ---
+
+  const createSubtask = async (parentId: string, title: string) => {
+    const parent = tasks.find(t => t.id === parentId);
+    if (!parent) return;
+
+    // Enforce max depth 2 (Parent -> Child)
+    if (parent.parentId) {
+        toast({
+            title: "Maximum nesting depth reached",
+            description: "Subtasks cannot have their own subtasks.",
+            variant: "destructive"
+        });
+        return;
+    }
+
+    const subtaskId = crypto.randomUUID();
+    const newSubtask: Task = {
+        id: subtaskId,
+        title,
+        completed: false,
+        parentId: parentId,
+        category: parent.category, // Inherit category
+        createdAt: new Date().toISOString(),
+        type: 'daily'
+    };
+    
+    // Add subtask to parent's subtasks array AND to main task list (if we want them addressable)
+    // Design decision: Are subtasks strictly nested in the data, or flattened?
+    // Based on `subtasks?: Task[]` in parent, it implies nested structure or reference.
+    // Let's go with nested structure for `subtasks` array, but also keep them addressable if needed.
+    // Actually, simpler to just update the parent struct.
+    
+    // Update parent
+    const updatedSubtasks = [...(parent.subtasks || []), newSubtask];
+    await updateTask(parentId, { subtasks: updatedSubtasks });
+    
+    return newSubtask;
+  };
+
+  const toggleSubtask = async (parentId: string, subtaskId: string) => {
+    const parent = tasks.find(t => t.id === parentId);
+    if (!parent || !parent.subtasks) return;
+
+    const updatedSubtasks = parent.subtasks.map(s => 
+        s.id === subtaskId ? { ...s, completed: !s.completed } : s
+    );
+
+    await updateTask(parentId, { subtasks: updatedSubtasks });
+  };
+
+  const deleteSubtask = async (parentId: string, subtaskId: string) => {
+    const parent = tasks.find(t => t.id === parentId);
+    if (!parent || !parent.subtasks) return;
+
+    const updatedSubtasks = parent.subtasks.filter(s => s.id !== subtaskId);
+    await updateTask(parentId, { subtasks: updatedSubtasks });
+  };
+
+  const nestTaskAsSubtask = async (taskIdToNest: string, newParentId: string) => {
+      // 1. Find the task to nest
+      const taskToNest = tasks.find(t => t.id === taskIdToNest);
+      const newParent = tasks.find(t => t.id === newParentId);
+      
+      if (!taskToNest || !newParent) return;
+
+      if (newParent.parentId) {
+         toast({ title: "Cannot nest under a subtask" });
+         return;
+      }
+
+      // 2. Remove from top level
+      const remainingTasks = tasks.filter(t => t.id !== taskIdToNest);
+      
+      // 3. Add as subtask to parent
+      const newSubtask: Task = {
+          ...taskToNest,
+          parentId: newParentId,
+          subtasks: undefined, // Strip any subtasks if moving a parent (or prevent moving parents with children)
+      };
+
+      if (taskToNest.subtasks && taskToNest.subtasks.length > 0) {
+          toast({ title: "Cannot nest a task that already has subtasks" });
+          return;
+      }
+
+      const updatedParent = {
+          ...newParent,
+          subtasks: [...(newParent.subtasks || []), newSubtask]
+      };
+
+      // 4. Update state atomically (ideally)
+      // Since we can't do atomic updates easily with this hook structure, we update state directly
+      const finalTasks = remainingTasks.map(t => t.id === newParentId ? updatedParent : t);
+      setTasks(finalTasks);
+      
+      // Sync (simplified for now, ideally batch updates)
+      // Delete old top level
+      await syncToDb(taskToNest, 'delete'); 
+      // Update parent (which contains new child)
+      await syncToDb(updatedParent, 'update');
+  };
+
+  const unnestSubtask = async (parentId: string, subtaskId: string) => {
+      const parent = tasks.find(t => t.id === parentId);
+      if (!parent || !parent.subtasks) return;
+
+      const subtaskToPromote = parent.subtasks.find(s => s.id === subtaskId);
+      if (!subtaskToPromote) return;
+
+      // 1. Remove from parent
+      const updatedParentSubtasks = parent.subtasks.filter(s => s.id !== subtaskId);
+      const updatedParent = { ...parent, subtasks: updatedParentSubtasks };
+
+      // 2. Create new top level task
+      const newTopLevelTask: Task = {
+          ...subtaskToPromote,
+          parentId: undefined, // Remove parent link
+      };
+
+      // 3. Update state
+      const updatedTasks = tasks.map(t => t.id === parentId ? updatedParent : t);
+      setTasks([...updatedTasks, newTopLevelTask]);
+
+      await syncToDb(updatedParent, 'update');
+      await syncToDb(newTopLevelTask, 'insert');
+  };
+
   // Get tasks by category
   const getTasksByCategory = (categoryId: string) => {
     if (categoryId === 'all') return tasks;
@@ -128,6 +256,12 @@ export const useTasks = () => {
     toggleTask,
     deleteTask,
     getTasksByCategory,
-    DEFAULT_CATEGORIES
+    DEFAULT_CATEGORIES,
+    // Subtask functions
+    createSubtask,
+    toggleSubtask,
+    deleteSubtask,
+    nestTaskAsSubtask,
+    unnestSubtask,
   };
 };
