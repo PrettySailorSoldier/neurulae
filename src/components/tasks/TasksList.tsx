@@ -20,7 +20,9 @@ export const TasksList = () => {
     updateTask, 
     DEFAULT_CATEGORIES,
     toggleSubtask,
-    deleteSubtask 
+    deleteSubtask,
+    nestTaskAsSubtask,
+    unnestSubtask
   } = useTasks();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,6 +61,37 @@ export const TasksList = () => {
   // Handle Quick Add
   const handleAddTask = (title: string, category: string, estimatedMinutes?: number) => {
     addTask(title, category, estimatedMinutes);
+  };
+
+  // Indentation Handlers
+  const handleIndent = async (taskId: string) => {
+      // Find current index in the filtered list (visible tasks)
+      const taskIndex = filteredTasks.findIndex(t => t.id === taskId);
+      if (taskIndex <= 0) return; // Can't indent first item
+
+      const previousTask = filteredTasks[taskIndex - 1];
+      
+      // Prevent nesting if previous task is already a subtask (max depth 1 for now/UI limit)
+      // or if previous task is effectively a subtask (though filteredTasks only filters out subtasks usually?)
+      // Actually filteredTasks logic at line 141 filters out subtasks. 
+      // So detailed logic:
+      // We are iterating over `filteredTasks` which currently might sort them.
+      // Indentation strictly usually visual.
+      // If we sort by completion, indenting might feel weird if previous task is far away in 'real' order.
+      // But let's assume visual order is what user intends.
+      
+      if (previousTask && !previousTask.parentId) {
+          await nestTaskAsSubtask(taskId, previousTask.id);
+      }
+  };
+
+  const handleOutdent = async (taskId: string) => {
+      // Logic for outdenting is cleaner in hook side usually, but we need parentId
+      // We can find the task to get parentId
+      const task = tasks.find(t => t.id === taskId);
+      if (task && task.parentId) {
+          await unnestSubtask(task.parentId, taskId);
+      }
   };
 
   return (
@@ -150,6 +183,8 @@ export const TasksList = () => {
                     // Subtask handlers
                     onToggleSubtask={toggleSubtask}
                     onDeleteSubtask={deleteSubtask}
+                    onIndent={handleIndent}
+                    onOutdent={handleOutdent}
                   />
                 ))
               )}

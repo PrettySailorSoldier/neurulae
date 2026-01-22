@@ -13,17 +13,13 @@ interface TaskItemProps {
   categories: { id: string; name: string; icon: string }[];
   onToggleSubtask?: (parentId: string, subtaskId: string) => void;
   onDeleteSubtask?: (parentId: string, subtaskId: string) => void;
+  onEdit?: (task: Task) => void;
+  onIndent?: (taskId: string) => void;
+  onOutdent?: (taskId: string) => void;
   depth?: number;
 }
 
-// Category color map
-const categoryColors: Record<string, string> = {
-  work: 'bg-blue-500',
-  school: 'bg-indigo-500',
-  personal: 'bg-violet-500',
-  home: 'bg-amber-500',
-  urgent: 'bg-red-500',
-};
+// ... colors ...
 
 export const TaskItem = ({ 
     task, 
@@ -33,6 +29,8 @@ export const TaskItem = ({
     onToggleSubtask,
     onDeleteSubtask,
     onEdit,
+    onIndent,
+    onOutdent,
     depth = 0
 }: TaskItemProps) => {
   const [isExpanded, setIsExpanded] = useState(true); // Default open for visibility
@@ -55,8 +53,27 @@ export const TaskItem = ({
       onToggleComplete(task.id);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+      // Indent (Tab) / Outdent (Shift+Tab)
+      if (e.key === 'Tab') {
+          e.preventDefault(); // Prevent focus change
+          if (e.shiftKey) {
+              // Outdent
+              if (onOutdent) onOutdent(task.id);
+          } else {
+              // Indent
+              if (onIndent) onIndent(task.id);
+          }
+      }
+  };
+
   return (
-    <div className={cn("flex flex-col", depth > 0 && "ml-4 lg:ml-6 border-l border-border/20 pl-2")}>
+    <div 
+        className={cn("flex flex-col outline-none", depth > 0 && "ml-4 lg:ml-6 border-l border-border/20 pl-2")}
+        onKeyDown={handleKeyDown}
+        // Make the row focusable so it can receive keyboard events for indentation
+        tabIndex={0} 
+    >
         <motion.div
         layout
         initial={{ opacity: 0, x: -10 }}
@@ -203,6 +220,9 @@ export const TaskItem = ({
                             onDeleteSubtask={onDeleteSubtask}
                             categories={categories}
                             depth={depth + 1}
+                            onEdit={onEdit}
+                            onIndent={onIndent}
+                            onOutdent={onOutdent}
                         />
                     ))}
                 </motion.div>
