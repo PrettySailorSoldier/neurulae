@@ -44,6 +44,7 @@ import { useTimerContext } from '@/contexts/TimerContext';
 import { ActiveIntentionBanner } from '@/components/ActiveIntentionBanner';
 import { TomorrowIntentionsBar } from '@/components/TomorrowIntentionsBar';
 import { useSuggestedAction } from '@/hooks/useSuggestedAction';
+import { ActiveWorkSessionProvider } from '@/contexts/ActiveWorkSessionContext';
 
 // Lazy load heavy components for better code splitting
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab').then(m => ({ default: m.ProjectsTab })));
@@ -2137,6 +2138,12 @@ const Index = () => {
   // Remove AI-First Mode effect since we can't control AICommandBar externally
 
   return (
+    <ActiveWorkSessionProvider
+      tasks={tasks}
+      timeBlocks={timeBlocks}
+      scheduledTasks={scheduledTasks}
+      onTaskComplete={handleToggleComplete}
+    >
     <div className={cn("min-h-screen", isMobile && "pb-16")}>
       <DashboardHeader
         user={user}
@@ -3107,6 +3114,7 @@ const Index = () => {
         projects={projects}
       />
     </div>
+    </ActiveWorkSessionProvider>
   );
 };
 

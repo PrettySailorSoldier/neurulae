@@ -10,8 +10,20 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Task } from '@/types';
 
-export const TasksList = () => {
+interface TasksListProps {
+  // Active work session props
+  activeTaskId?: string | null;
+  activeElapsed?: number; // seconds elapsed in current session
+  onStartWork?: (task: Task) => void;
+}
+
+export const TasksList = ({ 
+  activeTaskId,
+  activeElapsed = 0,
+  onStartWork,
+}: TasksListProps = {}) => {
   const { 
     tasks, 
     addTask, 
@@ -29,20 +41,26 @@ export const TasksList = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  // Filter tasks
+  // Filter and sort tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       const matchesCategory = selectedCategory === 'all' || task.category === selectedCategory;
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     }).sort((a, b) => {
-      // Sort by completion status first (incomplete first), then creation date
+      // Active task always first
+      if (activeTaskId) {
+        if (a.id === activeTaskId) return -1;
+        if (b.id === activeTaskId) return 1;
+      }
+      
+      // Sort by completion status (incomplete first), then by creation date
       if (a.completed === b.completed) {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
       return a.completed ? 1 : -1;
     });
-  }, [tasks, selectedCategory, searchQuery]);
+  }, [tasks, selectedCategory, searchQuery, activeTaskId]);
 
   // Counts for sidebar
   const counts = useMemo(() => {
@@ -185,6 +203,10 @@ export const TasksList = () => {
                     onDeleteSubtask={deleteSubtask}
                     onIndent={handleIndent}
                     onOutdent={handleOutdent}
+                    // Active work session props
+                    isActive={task.id === activeTaskId}
+                    activeElapsed={task.id === activeTaskId ? activeElapsed : 0}
+                    onStartWork={onStartWork}
                   />
                 ))
               )}

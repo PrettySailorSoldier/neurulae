@@ -1,16 +1,27 @@
 import { TasksList } from './TasksList';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { migrateTasksToCategories } from '@/utils/taskMigration';
 import { useSyncedStorage } from '@/hooks/useSyncedStorage';
 import { Task } from '@/types';
 import { BrainDumpFAB } from '@/components/brain-dump/BrainDumpFAB';
 import { BrainDumpPanel } from '@/components/brain-dump/BrainDumpPanel';
 import { useBrainDump } from '@/hooks/useBrainDump';
+import { useActiveWorkSessionState } from '@/contexts/ActiveWorkSessionContext';
 
 export const TasksTab = () => {
     // Run migration on mount
     const [tasks, setTasks] = useSyncedStorage<Task[]>('neurulae-tasks', []);
     const brainDump = useBrainDump();
+    
+    // Get active work session context (returns null outside provider)
+    const session = useActiveWorkSessionState();
+    
+    // Derive active task info from session
+    const activeTaskId = session?.activeSession?.taskId ?? null;
+    const activeElapsed = useMemo(() => {
+        if (!session?.totalTime || !session?.timeRemaining) return 0;
+        return session.totalTime - session.timeRemaining;
+    }, [session?.totalTime, session?.timeRemaining]);
     
     useEffect(() => {
         const migrated = migrateTasksToCategories(tasks);
@@ -29,7 +40,11 @@ export const TasksTab = () => {
                     <p className="text-muted-foreground">Capture and organize your to-dos.</p>
                 </div>
             </div>
-            <TasksList />
+            <TasksList 
+                activeTaskId={activeTaskId}
+                activeElapsed={activeElapsed}
+                onStartWork={session?.startFromTaskList}
+            />
 
             {/* Brain Dump FAB - Fixed bottom-right relative to this container or viewport via fixed/absolute */}
             <BrainDumpFAB onClick={brainDump.openPanel} />

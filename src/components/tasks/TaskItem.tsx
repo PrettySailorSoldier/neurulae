@@ -1,9 +1,21 @@
 import { Task } from '@/types';
 import { cn } from '@/lib/utils';
-import { Check, Trash2 } from 'lucide-react';
+import { Check, Trash2, Play } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ParticleExplosion } from '@/components/ui/ParticleExplosion';
+import { Badge } from '@/components/ui/badge';
+
+// Format elapsed time (seconds) to MM:SS or H:MM:SS
+const formatElapsedTime = (seconds: number): string => {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 interface TaskItemProps {
   task: Task;
@@ -17,6 +29,11 @@ interface TaskItemProps {
   onIndent?: (taskId: string) => void;
   onOutdent?: (taskId: string) => void;
   depth?: number;
+  
+  // Active work session props
+  isActive?: boolean;
+  activeElapsed?: number; // seconds elapsed in current session
+  onStartWork?: (task: Task) => void;
 }
 
 // Category color map
@@ -38,7 +55,10 @@ export const TaskItem = ({
     onEdit,
     onIndent,
     onOutdent,
-    depth = 0
+    depth = 0,
+    isActive = false,
+    activeElapsed = 0,
+    onStartWork,
 }: TaskItemProps) => {
   const [isExpanded, setIsExpanded] = useState(true); // Default open for visibility
   const [isHovered, setIsHovered] = useState(false);
@@ -87,8 +107,9 @@ export const TaskItem = ({
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, height: 0 }}
         className={cn(
-            "group flex items-center gap-2 py-2 px-2 border-b border-border/30 last:border-b-0 transition-colors hover:bg-muted/30 rounded-lg",
-            task.completed && "opacity-50"
+            "group flex items-center gap-2 py-2 px-2 border-b border-border/30 last:border-b-0 transition-all hover:bg-muted/30 rounded-lg",
+            task.completed && "opacity-50",
+            isActive && "border-green-500 bg-green-50 dark:bg-green-900/20 ring-2 ring-green-500/50 border-l-4 border-l-green-500"
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -143,6 +164,14 @@ export const TaskItem = ({
                         {completedSubtasks}/{subtaskList.length}
                     </span>
                 )}
+                
+                {/* Active Session Badge */}
+                {isActive && (
+                    <Badge variant="outline" className="ml-1 border-green-500 text-green-700 dark:text-green-300 text-[10px] px-1.5 py-0">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse" />
+                        Active
+                    </Badge>
+                )}
             </div>
             
             {/* Details Preview (if collapsed) or just icon */}
@@ -158,6 +187,28 @@ export const TaskItem = ({
             <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">
             {task.estimatedMinutes}m
             </span>
+        )}
+
+        {/* Active Session Elapsed Time */}
+        {isActive && (
+            <span className="text-xs text-green-600 dark:text-green-400 font-mono flex-shrink-0 tabular-nums">
+                {formatElapsedTime(activeElapsed)}
+            </span>
+        )}
+
+        {/* Start Work Button - shows for incomplete, non-active tasks */}
+        {!task.completed && !isActive && onStartWork && (
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onStartWork(task);
+                }}
+                className="flex-shrink-0 p-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full hover:scale-110 transition-all"
+                title="Start working on this task"
+                aria-label={`Start working on ${task.title}`}
+            >
+                <Play className="w-3 h-3 fill-current" />
+            </button>
         )}
 
         {/* Actions Group (Show on hover) */}
