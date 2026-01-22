@@ -143,7 +143,6 @@ export default {
             transform: "translate(-50%, -50%) translateY(-8px)",
           },
         },
-        },
         // Brain Dump Animations
         "label-fade-in": {
           "0%": { opacity: "0", transform: "translateY(4px)" },
