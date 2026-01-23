@@ -19,6 +19,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { format, isToday, parseISO } from 'date-fns';
 
+// Momentum & Hyperfocus components
+import { MomentumWidget } from '@/components/momentum/MomentumWidget';
+import { HyperfocusBreakModal } from '@/components/hyperfocus/HyperfocusBreakModal';
+import { SessionMonitor } from '@/components/session/SessionMonitor';
+
 interface MobileTaskViewProps {
   tasks: Task[];
   userName?: string;
@@ -536,6 +541,13 @@ const MobileTaskViewComponent = ({
             </div>
           </div>
 
+          {/* Momentum Widget - shows after Daily Goals */}
+          {showHeader && (
+            <div className="mb-6">
+              <MomentumWidget compact={false} />
+            </div>
+          )}
+
           {/* Categories Header */}
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Categories</h3>
 
@@ -1000,6 +1012,10 @@ const MobileTaskViewComponent = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Global Momentum & Hyperfocus Components */}
+      <HyperfocusBreakModal />
+      <SessionMonitor showAfterMinutes={30} position="bottom-right" />
     </div>
   );
 };
