@@ -309,6 +309,21 @@ export const useTasks = () => {
       await syncToDb(newTopLevelTask, 'insert');
   };
 
+  // Reorder tasks within a specific list
+  const reorderTasksInList = (listId: string, orderedTaskIds: string[]) => {
+    setTasks(prev => {
+      // Create a map of task ID to new order
+      const orderMap = new Map(orderedTaskIds.map((id, index) => [id, index]));
+      
+      return prev.map(task => {
+        if (task.taskListId === listId && orderMap.has(task.id)) {
+          return { ...task, order: orderMap.get(task.id) };
+        }
+        return task;
+      });
+    });
+  };
+
   // Get tasks by category
   const getTasksByCategory = (categoryId: string) => {
     if (categoryId === 'all') return tasks;
@@ -338,5 +353,6 @@ export const useTasks = () => {
     deleteSubtask,
     nestTaskAsSubtask,
     unnestSubtask,
+    reorderTasksInList,
   };
 };

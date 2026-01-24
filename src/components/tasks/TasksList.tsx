@@ -37,6 +37,11 @@ export const TasksList = ({
     updateTaskList,
     deleteTaskList,
     getTasksByList,
+    // Indent/Outdent for Tab key subtask creation
+    nestTaskAsSubtask,
+    unnestSubtask,
+    // Reorder for drag and drop
+    reorderTasksInList,
   } = useTasks();
   
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -175,6 +180,9 @@ export const TasksList = ({
           activeTaskId={activeTaskId}
           activeElapsed={activeElapsed}
           onStartWork={onStartWork}
+          onNestTaskAsSubtask={nestTaskAsSubtask}
+          onUnnestSubtask={unnestSubtask}
+          onReorderTasksInList={reorderTasksInList}
         />
       </div>
 

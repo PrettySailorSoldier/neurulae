@@ -25,6 +25,11 @@ interface TaskListsGridProps {
   activeTaskId?: string | null;
   activeElapsed?: number;
   onStartWork?: (task: Task) => void;
+  // Indent/Outdent handlers (Tab key subtask creation)
+  onNestTaskAsSubtask?: (taskId: string, newParentId: string) => void;
+  onUnnestSubtask?: (parentId: string, subtaskId: string) => void;
+  // Reorder handler
+  onReorderTasksInList?: (listId: string, orderedTaskIds: string[]) => void;
 }
 
 export const TaskListsGrid = ({
@@ -44,6 +49,9 @@ export const TaskListsGrid = ({
   activeTaskId,
   activeElapsed = 0,
   onStartWork,
+  onNestTaskAsSubtask,
+  onUnnestSubtask,
+  onReorderTasksInList,
 }: TaskListsGridProps) => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
@@ -85,6 +93,9 @@ export const TaskListsGrid = ({
             activeTaskId={activeTaskId}
             activeElapsed={activeElapsed}
             onStartWork={onStartWork}
+            onNestTaskAsSubtask={onNestTaskAsSubtask}
+            onUnnestSubtask={onUnnestSubtask}
+            onReorderTasks={onReorderTasksInList}
           />
         ))}
 

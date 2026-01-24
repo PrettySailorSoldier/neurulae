@@ -485,6 +485,18 @@ export function DailyFlowTimeline({
       ? ((activeTimerState.totalTime - activeTimerState.timeRemaining) / activeTimerState.totalTime) * 100
       : 0;
 
+    // Determine positioning based on block type
+    // Main blocks: left side, larger (60% width)
+    // Dedicated blocks: right side, smaller (35% width)
+    const isMainBlock = block.type === 'main';
+    const blockLeft = isMainBlock ? '80px' : 'calc(60% + 90px)';
+    const blockWidth = isMainBlock ? 'calc(55% - 80px)' : 'calc(40% - 16px)';
+    
+    // Default colors for blocks without custom colors
+    const defaultMainColor = 'hsl(210, 70%, 55%)';
+    const defaultDedicatedColor = 'hsl(280, 60%, 55%)';
+    const blockColor = block.color || (isMainBlock ? defaultMainColor : defaultDedicatedColor);
+
     return (
       <Droppable key={block.id} droppableId={`timeblock-${block.id}`} type="TASK">
         {(provided, snapshot) => (
@@ -492,32 +504,49 @@ export function DailyFlowTimeline({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "absolute border rounded-lg p-1.5 cursor-pointer transition-all hover:shadow-lg overflow-hidden group",
-              isActive ? 'bg-primary/20 border-primary ring-2 ring-primary/50' : 'bg-card/80 border-border',
+              "absolute border-2 rounded-lg p-2 cursor-pointer transition-all hover:shadow-xl overflow-hidden group",
+              // Base styling with better contrast
+              isMainBlock 
+                ? 'bg-card/90 backdrop-blur-sm shadow-md' 
+                : 'bg-card/70 backdrop-blur-sm shadow-sm',
+              // Active state
+              isActive && 'ring-2 ring-primary/50 shadow-lg',
+              // Drag over state
               snapshot.isDraggingOver && 'ring-2 ring-green-500/50 bg-green-500/10 border-green-500',
-              // Active timer styling - pulsing border when timer is running
-              hasActiveTimerTask && isTimerRunning && 'ring-2 ring-primary animate-pulse border-primary'
+              // Active timer styling
+              hasActiveTimerTask && isTimerRunning && 'ring-2 ring-primary animate-pulse'
             )}
             style={{
               top: `${topPercentage}%`,
-              height: `${height}%`,
-              left: '80px',
-              right: '8px',
+              height: `${Math.max(height, 2)}%`, // Minimum height for visibility
+              left: blockLeft,
+              width: blockWidth,
               backgroundColor: snapshot.isDraggingOver
-                ? undefined // Let the className handle it
-                : (block.color ? `${block.color}20` : undefined),
-              borderColor: snapshot.isDraggingOver ? undefined : (hasActiveTimerTask ? undefined : (block.color || undefined)),
-              zIndex: snapshot.isDraggingOver ? 10 : (hasActiveTimerTask ? 5 : 3),
+                ? undefined
+                : `${blockColor}25`,
+              borderColor: snapshot.isDraggingOver 
+                ? undefined 
+                : (hasActiveTimerTask ? 'hsl(var(--primary))' : blockColor),
+              zIndex: snapshot.isDraggingOver ? 10 : (hasActiveTimerTask ? 5 : (isMainBlock ? 4 : 3)),
             }}
             onClick={() => {
               setEditingBlock(block);
               setIsTimeBlockEditorOpen(true);
             }}
           >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between h-full">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <h4 className="font-semibold text-xs truncate">{block.title}</h4>
+                <div className="flex items-center gap-1.5">
+                  {/* Block type indicator */}
+                  <div 
+                    className={cn(
+                      "w-1.5 h-4 rounded-full flex-shrink-0",
+                      isMainBlock ? "bg-blue-500" : "bg-purple-500"
+                    )}
+                  />
+                  <h4 className="font-semibold text-sm truncate" style={{ color: blockColor }}>
+                    {block.title}
+                  </h4>
                   {/* Active timer badge */}
                   {hasActiveTimerTask && (
                     <Badge
@@ -902,12 +931,20 @@ export function DailyFlowTimeline({
                 </div>
               </div>
 
-              {/* Empty state */}
+              {/* Empty state - clickable to create block */}
               {filteredEntries.length === 0 && filteredBlocks.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center z-5">
-                  <p className="text-sm text-muted-foreground bg-background/80 px-4 py-2 rounded-lg">
-                    Add time blocks to visualize your day
-                  </p>
+                  <button
+                    onClick={() => {
+                      setEditingBlock(undefined);
+                      setIsTimeBlockEditorOpen(true);
+                    }}
+                    className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground bg-background/80 hover:bg-background px-6 py-4 rounded-lg border border-dashed border-border/50 hover:border-border transition-all hover:shadow-md cursor-pointer"
+                  >
+                    <Plus className="h-6 w-6" />
+                    <p className="text-sm font-medium">Add your first time block</p>
+                    <p className="text-xs text-muted-foreground">Click to create a block and visualize your day</p>
+                  </button>
                 </div>
               )}
             </div>

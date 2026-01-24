@@ -1,10 +1,12 @@
 import { Task } from '@/types';
 import { cn } from '@/lib/utils';
-import { Check, Trash2, Play } from 'lucide-react';
+import { Check, Trash2, Play, GripVertical, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ParticleExplosion } from '@/components/ui/ParticleExplosion';
 import { Badge } from '@/components/ui/badge';
+import { getContrastColor, isLightBackground } from '@/lib/getContrastColor';
+import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 
 // Format elapsed time (seconds) to MM:SS or H:MM:SS
 const formatElapsedTime = (seconds: number): string => {
@@ -26,23 +28,62 @@ interface TaskItemProps {
   onToggleSubtask?: (parentId: string, subtaskId: string) => void;
   onDeleteSubtask?: (parentId: string, subtaskId: string) => void;
 
-  onIndent?: (taskId: string) => void;
-  onOutdent?: (taskId: string) => void;
+  onIndent?: () => void;
+  onOutdent?: () => void;
   depth?: number;
   
   // Active work session props
   isActive?: boolean;
   activeElapsed?: number; // seconds elapsed in current session
   onStartWork?: (task: Task) => void;
+  
+  // Drag and drop props
+  dragHandleProps?: DraggableProvidedDragHandleProps | null;
+  isDragging?: boolean;
 }
 
-// Category color map
-const categoryColors: Record<string, string> = {
-  work: 'hsl(217, 91%, 60%)',
-  school: 'hsl(239, 84%, 67%)',
-  personal: 'hsl(262, 83%, 58%)',
-  home: 'hsl(43, 96%, 56%)',
-  urgent: 'hsl(0, 84%, 60%)',
+// Category color map with accessible text colors
+const categoryColors: Record<string, { bg: string; text: string }> = {
+  work: { 
+    bg: 'hsl(217, 91%, 60%)', 
+    text: 'hsl(0, 0%, 100%)' 
+  },
+  school: { 
+    bg: 'hsl(239, 84%, 67%)', 
+    text: 'hsl(0, 0%, 100%)' 
+  },
+  personal: { 
+    bg: 'hsl(262, 83%, 58%)', 
+    text: 'hsl(0, 0%, 100%)' 
+  },
+  home: { 
+    bg: 'hsl(43, 96%, 56%)', 
+    text: 'hsl(0, 0%, 10%)' // Dark text for yellow background
+  },
+  urgent: { 
+    bg: 'hsl(0, 84%, 60%)', 
+    text: 'hsl(0, 0%, 100%)' 
+  },
+};
+
+// Get category color with automatic contrast text
+const getCategoryStyle = (category: string | undefined) => {
+  const categoryKey = category || 'personal';
+  const colors = categoryColors[categoryKey];
+  
+  if (colors) {
+    return {
+      backgroundColor: colors.bg,
+      color: colors.text,
+    };
+  }
+  
+  // Fallback with dynamic contrast calculation
+  const defaultBg = 'hsl(262, 83%, 58%)';
+  return {
+    backgroundColor: defaultBg,
+    color: getContrastColor(defaultBg),
+  };
 };
 
 export const TaskItem = ({ 
@@ -59,6 +100,8 @@ export const TaskItem = ({
     isActive = false,
     activeElapsed = 0,
     onStartWork,
+    dragHandleProps,
+    isDragging = false,
 }: TaskItemProps) => {
   const [isExpanded, setIsExpanded] = useState(true); // Default open for visibility
   const [isHovered, setIsHovered] = useState(false);
@@ -70,6 +113,10 @@ export const TaskItem = ({
   
   // Calculate subtasks recursively if needed, but for depth 0 we just show direct children
   const subtaskList = task.subtasks || [];
+  
+  // Get category styling with accessible contrast
+  const categoryStyle = getCategoryStyle(task.category);
+  const categoryBgColor = categoryStyle.backgroundColor;
 
   // Trigger particles on completion
   const handleToggle = () => {
@@ -85,18 +132,22 @@ export const TaskItem = ({
       if (e.key === 'Tab') {
           e.preventDefault(); // Prevent focus change
           if (e.shiftKey) {
-              // Outdent
-              if (onOutdent) onOutdent(task.id);
+              // Outdent - make subtask back into regular task
+              if (onOutdent) onOutdent();
           } else {
-              // Indent
-              if (onIndent) onIndent(task.id);
+              // Indent - make task a subtask of the one above
+              if (onIndent) onIndent();
           }
       }
   };
 
   return (
     <div 
-        className={cn("flex flex-col outline-none", depth > 0 && "ml-4 lg:ml-6 border-l border-border/20 pl-2")}
+        className={cn(
+          "flex flex-col outline-none", 
+          depth > 0 && "ml-4 lg:ml-6 border-l border-border/20 pl-2",
+          isDragging && "opacity-90"
+        )}
         onKeyDown={handleKeyDown}
         // Make the row focusable so it can receive keyboard events for indentation
         tabIndex={0} 
@@ -109,11 +160,27 @@ export const TaskItem = ({
         className={cn(
             "group flex items-center gap-2 py-2 px-2 border-b border-border/30 last:border-b-0 transition-all hover:bg-muted/30 rounded-lg",
             task.completed && "opacity-50",
-            isActive && "border-green-500 bg-green-50 dark:bg-green-900/20 ring-2 ring-green-500/50 border-l-4 border-l-green-500"
+            isActive && "border-green-500 bg-green-50 dark:bg-green-900/20 ring-2 ring-green-500/50 border-l-4 border-l-green-500",
+            isDragging && "shadow-lg bg-background/95 backdrop-blur-sm"
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         >
+        {/* Drag Handle */}
+        {dragHandleProps && (
+          <div 
+            {...dragHandleProps}
+            className={cn(
+              "flex-shrink-0 cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded transition-colors",
+              "text-muted-foreground/30 hover:text-muted-foreground/60",
+              isHovered && "text-muted-foreground/50"
+            )}
+            title="Drag to reorder"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </div>
+        )}
+
         {/* Expand/Collapse Arrow */}
         <div className="w-4 flex justify-center flex-shrink-0">
             {hasSubtasks ? (
@@ -121,15 +188,17 @@ export const TaskItem = ({
                     onClick={() => setIsExpanded(!isExpanded)}
                     className="text-muted-foreground/50 hover:text-foreground transition-colors p-0.5"
                 >
-                    <Check className={cn("w-3 h-3 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} />
-                    {/* Reuse Check icon as Chevron for now or import ChevronRight */}
+                    <ChevronRight className={cn(
+                      "w-3 h-3 transition-transform duration-200", 
+                      isExpanded && "rotate-90"
+                    )} />
                 </button>
             ) : (
                 /* Category dot if no subtasks or space filler */
-                <div className={cn(
-                    "w-1.5 h-1.5 rounded-full",
-                    categoryColors[task.category || 'personal'] || 'bg-muted-foreground/30'
-                )} />
+                <div 
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: categoryBgColor }}
+                />
             )}
         </div>
 
@@ -157,6 +226,16 @@ export const TaskItem = ({
                 )}>
                     {task.title}
                 </span>
+                
+                {/* Category Badge with accessible contrast */}
+                {task.category && !task.completed && (
+                  <span 
+                    className="text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wide"
+                    style={categoryStyle}
+                  >
+                    {task.category}
+                  </span>
+                )}
                 
                 {/* Subtask Progress Badge */}
                 {hasSubtasks && (
@@ -236,7 +315,7 @@ export const TaskItem = ({
         </div>
         </motion.div>
 
-        {/* Details Section - Premium Design */}
+        {/* Details Section - Premium Design with accessible contrast */}
         <AnimatePresence>
             {isDetailsOpen && (
                 <motion.div
@@ -249,8 +328,8 @@ export const TaskItem = ({
                     <div 
                         className="rounded-lg overflow-hidden"
                         style={{
-                            background: `linear-gradient(135deg, ${categoryColors[task.category || 'personal']}08 0%, transparent 100%)`,
-                            border: `1px solid ${categoryColors[task.category || 'personal']}20`,
+                            background: `linear-gradient(135deg, ${categoryBgColor}08 0%, transparent 100%)`,
+                            border: `1px solid ${categoryBgColor}20`,
                             boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
                         }}
                     >
@@ -258,8 +337,8 @@ export const TaskItem = ({
                         <div 
                             className="flex items-center justify-between px-3 py-2 border-b"
                             style={{ 
-                                background: `${categoryColors[task.category || 'personal']}08`,
-                                borderColor: `${categoryColors[task.category || 'personal']}15`,
+                                background: `${categoryBgColor}08`,
+                                borderColor: `${categoryBgColor}15`,
                             }}
                         >
                             <div className="flex items-center gap-2">
@@ -292,8 +371,8 @@ export const TaskItem = ({
                         <div 
                             className="flex items-center gap-2 px-3 py-2 border-t"
                             style={{ 
-                                background: `${categoryColors[task.category || 'personal']}05`,
-                                borderColor: `${categoryColors[task.category || 'personal']}10`,
+                                background: `${categoryBgColor}05`,
+                                borderColor: `${categoryBgColor}10`,
                             }}
                         >
                             <button className="text-[10px] px-2 py-1 rounded border border-transparent hover:border-current text-muted-foreground/60 hover:text-muted-foreground transition-all">

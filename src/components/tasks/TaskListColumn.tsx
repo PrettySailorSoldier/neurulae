@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AnimatePresence, motion } from 'framer-motion';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 interface TaskListColumnProps {
   list: TaskList;
@@ -31,6 +32,11 @@ interface TaskListColumnProps {
   activeTaskId?: string | null;
   activeElapsed?: number;
   onStartWork?: (task: Task) => void;
+  // Indent/Outdent handlers (Tab key subtask creation)
+  onNestTaskAsSubtask?: (taskId: string, newParentId: string) => void;
+  onUnnestSubtask?: (parentId: string, subtaskId: string) => void;
+  // Reorder handler
+  onReorderTasks?: (listId: string, reorderedTaskIds: string[]) => void;
 }
 
 export const TaskListColumn = ({
@@ -48,6 +54,9 @@ export const TaskListColumn = ({
   activeTaskId,
   activeElapsed = 0,
   onStartWork,
+  onNestTaskAsSubtask,
+  onUnnestSubtask,
+  onReorderTasks,
 }: TaskListColumnProps) => {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -80,6 +89,57 @@ export const TaskListColumn = ({
 
   const incompleteTasks = tasks.filter(t => !t.completed);
   const completedTasks = tasks.filter(t => t.completed);
+
+  // Handle drag end for reordering
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const { source, destination } = result;
+    
+    // Don't do anything if dropped in same position
+    if (source.index === destination.index) return;
+    
+    // Reorder incomplete tasks
+    const reordered = Array.from(incompleteTasks);
+    const [movedTask] = reordered.splice(source.index, 1);
+    reordered.splice(destination.index, 0, movedTask);
+    
+    // Call reorder handler with new order
+    if (onReorderTasks) {
+      const newOrder = [
+        ...reordered.map(t => t.id),
+        ...completedTasks.map(t => t.id),
+      ];
+      onReorderTasks(list.id, newOrder);
+    }
+  };
+
+  // Handle indent (Tab key) - make task a subtask of the one above it
+  const handleIndentTask = (taskId: string) => {
+    const taskIndex = incompleteTasks.findIndex(t => t.id === taskId);
+    
+    // Can't indent if it's the first task or has no task above
+    if (taskIndex <= 0) return;
+    
+    const taskAbove = incompleteTasks[taskIndex - 1];
+    
+    // Don't nest under a task that's already a subtask
+    if (taskAbove.parentId) return;
+    
+    if (onNestTaskAsSubtask) {
+      onNestTaskAsSubtask(taskId, taskAbove.id);
+    }
+  };
+
+  // Handle outdent (Shift+Tab) - promote subtask to regular task
+  const handleOutdentTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.parentId) return;
+    
+    if (onUnnestSubtask) {
+      onUnnestSubtask(task.parentId, taskId);
+    }
+  };
 
   return (
     <div className="flex flex-col w-[280px] min-w-[280px] h-full">
@@ -188,60 +248,92 @@ export const TaskListColumn = ({
           )}
         </div>
 
-        {/* Tasks List */}
+        {/* Tasks List with Drag and Drop */}
         <ScrollArea className="flex-1">
           <div className="px-1 py-1">
-            <AnimatePresence mode="popLayout">
-              {incompleteTasks.length === 0 && completedTasks.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-8 text-muted-foreground/60"
-                >
-                  <p className="text-xs">No tasks yet</p>
-                </motion.div>
-              ) : (
-                <>
-                  {/* Incomplete tasks */}
-                  {incompleteTasks.map(task => (
-                    <TaskItem
-                      key={task.id}
-                      task={task}
-                      onToggleComplete={onToggleComplete}
-                      onDelete={onDeleteTask}
-                      onEdit={onUpdateTask}
-                      categories={categories}
-                      onToggleSubtask={onToggleSubtask}
-                      onDeleteSubtask={onDeleteSubtask}
-                      isActive={task.id === activeTaskId}
-                      activeElapsed={task.id === activeTaskId ? activeElapsed : 0}
-                      onStartWork={onStartWork}
-                    />
-                  ))}
-                  
-                  {/* Completed tasks section */}
-                  {completedTasks.length > 0 && (
-                    <div className="mt-3 pt-2 border-t border-border/20">
-                      <p className="text-xs text-muted-foreground/60 px-2 mb-1">
-                        Completed ({completedTasks.length})
-                      </p>
-                      {completedTasks.map(task => (
-                        <TaskItem
-                          key={task.id}
-                          task={task}
-                          onToggleComplete={onToggleComplete}
-                          onDelete={onDeleteTask}
-                          onEdit={onUpdateTask}
-                          categories={categories}
-                          onToggleSubtask={onToggleSubtask}
-                          onDeleteSubtask={onDeleteSubtask}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </AnimatePresence>
+            {incompleteTasks.length === 0 && completedTasks.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-8 text-muted-foreground/60"
+              >
+                <p className="text-xs">No tasks yet</p>
+              </motion.div>
+            ) : (
+              <>
+                {/* Incomplete tasks - Draggable */}
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <Droppable droppableId={`list-${list.id}`}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={cn(
+                          "min-h-[20px] transition-colors duration-200",
+                          snapshot.isDraggingOver && "bg-primary/5 rounded-lg"
+                        )}
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {incompleteTasks.map((task, index) => (
+                            <Draggable key={task.id} draggableId={task.id} index={index}>
+                              {(dragProvided, dragSnapshot) => (
+                                <div
+                                  ref={dragProvided.innerRef}
+                                  {...dragProvided.draggableProps}
+                                  className={cn(
+                                    "transition-shadow duration-200",
+                                    dragSnapshot.isDragging && "shadow-lg rounded-lg bg-background/80 backdrop-blur-sm"
+                                  )}
+                                >
+                                  <TaskItem
+                                    task={task}
+                                    onToggleComplete={onToggleComplete}
+                                    onDelete={onDeleteTask}
+                                    onEdit={onUpdateTask}
+                                    categories={categories}
+                                    onToggleSubtask={onToggleSubtask}
+                                    onDeleteSubtask={onDeleteSubtask}
+                                    isActive={task.id === activeTaskId}
+                                    activeElapsed={task.id === activeTaskId ? activeElapsed : 0}
+                                    onStartWork={onStartWork}
+                                    onIndent={() => handleIndentTask(task.id)}
+                                    onOutdent={() => handleOutdentTask(task.id)}
+                                    dragHandleProps={dragProvided.dragHandleProps}
+                                    isDragging={dragSnapshot.isDragging}
+                                  />
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                        </AnimatePresence>
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+                
+                {/* Completed tasks section */}
+                {completedTasks.length > 0 && (
+                  <div className="mt-3 pt-2 border-t border-border/20">
+                    <p className="text-xs text-muted-foreground/60 px-2 mb-1">
+                      Completed ({completedTasks.length})
+                    </p>
+                    {completedTasks.map(task => (
+                      <TaskItem
+                        key={task.id}
+                        task={task}
+                        onToggleComplete={onToggleComplete}
+                        onDelete={onDeleteTask}
+                        onEdit={onUpdateTask}
+                        categories={categories}
+                        onToggleSubtask={onToggleSubtask}
+                        onDeleteSubtask={onDeleteSubtask}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </ScrollArea>
       </div>

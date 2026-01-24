@@ -97,7 +97,7 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="everyday">Every Day</SelectItem>
+                <SelectItem value="everyday">Daily (Every Day)</SelectItem>
                 <SelectItem value="weekday">Weekdays Only</SelectItem>
                 <SelectItem value="weekend">Weekends Only</SelectItem>
               </SelectContent>
