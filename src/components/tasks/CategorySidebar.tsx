@@ -9,6 +9,7 @@ interface CategorySidebarProps {
   onSelectCategory: (id: string) => void;
   counts: Record<string, number>;
   className?: string;
+  onAddList?: () => void;
 }
 
 export const CategorySidebar = ({ 
@@ -16,10 +17,16 @@ export const CategorySidebar = ({
   selectedCategory, 
   onSelectCategory, 
   counts,
-  className 
+  className,
+  onAddList,
 }: CategorySidebarProps) => {
   return (
-    <div className={cn("flex flex-col h-full bg-muted/10 border-r border-border/40", className)}>
+    <div className={cn(
+      "flex flex-col h-full",
+      // Solid background for the sidebar (collections)
+      "bg-card",
+      className
+    )}>
       <div className="p-4 pb-2">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2">
           Collections
@@ -59,12 +66,11 @@ export const CategorySidebar = ({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Add List Button (Placeholder for future feature) */}
-      <div className="p-4 border-t border-border/40">
-        <Button variant="ghost" className="w-full justify-start text-muted-foreground opacity-50 cursor-not-allowed">
-          <Plus className="w-4 h-4 mr-2" />
-          New Collection
-        </Button>
+      {/* Info text about lists */}
+      <div className="px-4 py-3 border-t border-border/40">
+        <p className="text-xs text-muted-foreground/70 leading-relaxed">
+          Use "Add another list" in the task area to create new lists.
+        </p>
       </div>
     </div>
   );

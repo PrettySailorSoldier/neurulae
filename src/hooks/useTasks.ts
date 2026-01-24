@@ -1,9 +1,9 @@
 import { useSyncedStorage } from '@/hooks/useSyncedStorage';
-import { Task } from '@/types';
+import { Task, TaskList } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 // Default categories
 export const DEFAULT_CATEGORIES = [
@@ -15,10 +15,29 @@ export const DEFAULT_CATEGORIES = [
   { id: 'urgent', name: 'Urgent', icon: '🚨' },
 ];
 
+// Default task lists for new users
+const createDefaultTaskLists = (): TaskList[] => [
+  {
+    id: 'default-today',
+    name: 'Today',
+    icon: '📅',
+    order: 0,
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export const useTasks = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [tasks, setTasks] = useSyncedStorage<Task[]>('neurulae-tasks', []);
+  const [taskLists, setTaskLists] = useSyncedStorage<TaskList[]>('neurulae-task-lists', []);
+
+  // Initialize default task lists if empty
+  useEffect(() => {
+    if (taskLists.length === 0) {
+      setTaskLists(createDefaultTaskLists());
+    }
+  }, []);
 
   // Sync to database helper
   const syncToDb = async (task: Task, operation: 'insert' | 'update' | 'delete') => {
@@ -61,7 +80,7 @@ export const useTasks = () => {
     }
   };
 
-  const addTask = async (title: string, category: string = 'personal', estimatedMinutes?: number) => {
+  const addTask = async (title: string, category: string = 'personal', estimatedMinutes?: number, taskListId?: string) => {
     const taskId = crypto.randomUUID();
     const newTask: Task = {
       id: taskId,
@@ -72,6 +91,7 @@ export const useTasks = () => {
       createdAt: new Date().toISOString(),
       estimatedMinutes,
       type: 'daily',
+      taskListId: taskListId || taskLists[0]?.id, // Default to first list
     };
 
     setTasks(prev => [...prev, newTask]);
@@ -112,6 +132,53 @@ export const useTasks = () => {
 
     setTasks(prev => prev.filter(t => t.id !== taskId));
     await syncToDb(task, 'delete');
+  };
+
+  // --- Task List Management ---
+
+  const addTaskList = (name: string, icon?: string, color?: string) => {
+    const newList: TaskList = {
+      id: crypto.randomUUID(),
+      name,
+      icon,
+      color,
+      order: taskLists.length,
+      createdAt: new Date().toISOString(),
+    };
+    setTaskLists(prev => [...prev, newList]);
+    return newList;
+  };
+
+  const updateTaskList = (listId: string, updates: Partial<TaskList>) => {
+    setTaskLists(prev => prev.map(list => 
+      list.id === listId ? { ...list, ...updates } : list
+    ));
+  };
+
+  const deleteTaskList = (listId: string) => {
+    // Move tasks from deleted list to first remaining list
+    const remainingLists = taskLists.filter(l => l.id !== listId);
+    const firstListId = remainingLists[0]?.id;
+    
+    if (firstListId) {
+      setTasks(prev => prev.map(task => 
+        task.taskListId === listId ? { ...task, taskListId: firstListId } : task
+      ));
+    }
+    
+    setTaskLists(remainingLists);
+  };
+
+  const reorderTaskLists = (newOrder: TaskList[]) => {
+    setTaskLists(newOrder.map((list, index) => ({ ...list, order: index })));
+  };
+
+  const moveTaskToList = (taskId: string, targetListId: string) => {
+    updateTask(taskId, { taskListId: targetListId });
+  };
+
+  const getTasksByList = (listId: string) => {
+    return tasks.filter(t => t.taskListId === listId && !t.parentId);
   };
 
   // --- Subtask Management ---
@@ -257,6 +324,14 @@ export const useTasks = () => {
     deleteTask,
     getTasksByCategory,
     DEFAULT_CATEGORIES,
+    // Task list management
+    taskLists,
+    addTaskList,
+    updateTaskList,
+    deleteTaskList,
+    reorderTaskLists,
+    moveTaskToList,
+    getTasksByList,
     // Subtask functions
     createSubtask,
     toggleSubtask,

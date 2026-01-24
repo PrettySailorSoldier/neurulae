@@ -30,6 +30,39 @@ export interface PhaseDefinition {
   description: string;
 }
 
+// ============ TRANSITION SUPPORT TYPES ============
+
+export interface TransitionInfo {
+  fromPhase: DayPhase;
+  toPhase: DayPhase;
+  minutesUntil: number;
+  isApproaching: boolean;  // Within 20 minutes
+}
+
+export interface TransitionWarnings {
+  at20Minutes: boolean;
+  at10Minutes: boolean;
+  at5Minutes: boolean;
+  at1Minute: boolean;
+}
+
+export interface TransitionRitual {
+  title: string;
+  description: string;
+  steps: string[];
+  estimatedDuration: number;  // minutes
+  category: 'wrap-up' | 'preparation' | 'environment' | 'mindset';
+}
+
+export interface EnvironmentHints {
+  lighting: string | null;    // "Open blinds" or "Dim overhead lights"
+  sound: string | null;        // "Consider quiet background music"
+  space: string | null;        // "Clear your desk for evening"
+  timing: string | null;       // "Good time for outdoor break"
+}
+
+// ============ MAIN CONTEXT TYPES ============
+
 export interface TemporalContext {
   currentTime: string;
   currentDate: Date;
@@ -54,6 +87,11 @@ export interface TemporalContext {
   isTransitionTime: boolean;
   isGoodTimeForRoutine: boolean;
   isGoodTimeForDeepWork: boolean;
+  // NEW: Transition support
+  upcomingTransition: TransitionInfo | null;
+  transitionWarnings: TransitionWarnings;
+  suggestedTransitionRitual: TransitionRitual | null;
+  environmentHints: EnvironmentHints;
 }
 
 export interface UserScheduleContext {
@@ -139,6 +177,87 @@ export const DEFAULT_PHASES: PhaseDefinition[] = [
     description: 'Rest and recovery'
   }
 ];
+
+// ============ TRANSITION RITUALS ============
+
+const TRANSITION_RITUALS: Record<string, TransitionRitual> = {
+  'early-morning-to-morning': {
+    title: 'Wake-up routine wrap',
+    description: 'Bridge from waking to morning activities',
+    steps: [
+      'Finish your morning beverage',
+      'Review your top 3 priorities',
+      'Set up your workspace',
+    ],
+    estimatedDuration: 5,
+    category: 'preparation',
+  },
+  
+  'morning-to-midday': {
+    title: 'Morning wrap-up',
+    description: 'Transition from focused work to midday break',
+    steps: [
+      'Save all open work',
+      'Write down where you left off',
+      'Stand and stretch',
+      'Prepare lunch or snack',
+    ],
+    estimatedDuration: 5,
+    category: 'wrap-up',
+  },
+  
+  'midday-to-afternoon': {
+    title: 'Afternoon reset',
+    description: 'Return from break to afternoon work',
+    steps: [
+      'Clear desk of lunch items',
+      'Review afternoon schedule',
+      'Open afternoon tasks/projects',
+      'Take 3 deep breaths',
+    ],
+    estimatedDuration: 3,
+    category: 'preparation',
+  },
+  
+  'afternoon-to-evening': {
+    title: 'Work shutdown',
+    description: 'Close out work day and transition to personal time',
+    steps: [
+      'Close all work apps and tabs',
+      'Write tomorrow\'s first task',
+      'Tidy workspace',
+      'Change into comfortable clothes',
+    ],
+    estimatedDuration: 10,
+    category: 'wrap-up',
+  },
+  
+  'evening-to-night': {
+    title: 'Evening wind-down',
+    description: 'Begin transition toward bedtime',
+    steps: [
+      'Dim overhead lights',
+      'Put devices on charging stations',
+      'Set out tomorrow\'s essentials',
+      'Start bedtime routine',
+    ],
+    estimatedDuration: 10,
+    category: 'mindset',
+  },
+  
+  'night-to-sleep-hours': {
+    title: 'Sleep preparation',
+    description: 'Final wind-down before bed',
+    steps: [
+      'All screens off',
+      'Complete bedtime hygiene',
+      'Set alarm for tomorrow',
+      'Get into bed',
+    ],
+    estimatedDuration: 5,
+    category: 'mindset',
+  },
+};
 
 // ============ HELPER FUNCTIONS ============
 
@@ -251,6 +370,102 @@ export function getSuggestedActivities(
   return result;
 }
 
+// ============ TRANSITION DETECTION FUNCTIONS ============
+
+function detectUpcomingTransition(
+  currentPhase: PhaseDefinition,
+  currentTime: string
+): TransitionInfo | null {
+  const currentMinutes = timeToMinutes(currentTime);
+  const phaseEndMinutes = timeToMinutes(currentPhase.endTime);
+  
+  let minutesUntilTransition = phaseEndMinutes - currentMinutes;
+  if (minutesUntilTransition < 0) {
+    minutesUntilTransition += 1440; // Next day
+  }
+  
+  if (minutesUntilTransition > 20) return null;  // Not approaching
+  
+  // Find next phase
+  const currentIndex = DEFAULT_PHASES.findIndex(p => p.name === currentPhase.name);
+  const nextPhase = DEFAULT_PHASES[(currentIndex + 1) % DEFAULT_PHASES.length];
+  
+  return {
+    fromPhase: currentPhase.name,
+    toPhase: nextPhase.name,
+    minutesUntil: minutesUntilTransition,
+    isApproaching: minutesUntilTransition <= 20,
+  };
+}
+
+function calculateTransitionWarnings(transition: TransitionInfo | null): TransitionWarnings {
+  if (!transition) {
+    return {
+      at20Minutes: false,
+      at10Minutes: false,
+      at5Minutes: false,
+      at1Minute: false,
+    };
+  }
+  
+  return {
+    at20Minutes: transition.minutesUntil <= 20 && transition.minutesUntil > 10,
+    at10Minutes: transition.minutesUntil <= 10 && transition.minutesUntil > 5,
+    at5Minutes: transition.minutesUntil <= 5 && transition.minutesUntil > 1,
+    at1Minute: transition.minutesUntil <= 1,
+  };
+}
+
+function getTransitionRitual(
+  fromPhase: DayPhase,
+  toPhase: DayPhase
+): TransitionRitual | null {
+  const key = `${fromPhase}-to-${toPhase}`;
+  return TRANSITION_RITUALS[key] || null;
+}
+
+function getEnvironmentHintsForPhase(
+  currentPhase: PhaseDefinition,
+  _transition: TransitionInfo | null
+): EnvironmentHints {
+  const hints: EnvironmentHints = {
+    lighting: null,
+    sound: null,
+    space: null,
+    timing: null,
+  };
+  
+  // Lighting hints based on phase
+  switch (currentPhase.name) {
+    case 'early-morning':
+      hints.lighting = 'Open blinds and turn on bright lights to help wake up';
+      break;
+    case 'morning':
+      hints.lighting = 'Natural or bright light supports focus and alertness';
+      break;
+    case 'evening':
+      hints.lighting = 'Consider dimming overhead lights - warm light helps wind down';
+      break;
+    case 'night':
+      hints.lighting = 'Dim all lights - signals your body it\'s time to rest';
+      break;
+  }
+  
+  // Sound hints
+  if (currentPhase.name === 'morning' || currentPhase.name === 'afternoon') {
+    hints.sound = 'Focus music or ambient sound can help with concentration';
+  } else if (currentPhase.name === 'evening' || currentPhase.name === 'night') {
+    hints.sound = 'Quiet or nature sounds support relaxation';
+  }
+  
+  // Timing hints for outdoor breaks
+  if (currentPhase.name === 'midday' || currentPhase.name === 'afternoon') {
+    hints.timing = 'Good time for a walk outside - daylight supports alertness';
+  }
+  
+  return hints;
+}
+
 // ============ MAIN CONTEXT FUNCTION ============
 
 export function getTemporalContext(userContext: UserScheduleContext): TemporalContext {
@@ -315,6 +530,14 @@ export function getTemporalContext(userContext: UserScheduleContext): TemporalCo
                                  !isQuietHours && 
                                  minutesUntilPhaseChange > 30;
   
+  // NEW: Transition support calculations
+  const upcomingTransition = detectUpcomingTransition(currentPhaseObj, currentTime);
+  const transitionWarnings = calculateTransitionWarnings(upcomingTransition);
+  const suggestedTransitionRitual = upcomingTransition 
+    ? getTransitionRitual(upcomingTransition.fromPhase, upcomingTransition.toPhase)
+    : null;
+  const environmentHints = getEnvironmentHintsForPhase(currentPhaseObj, upcomingTransition);
+  
   return {
     currentTime,
     currentDate: now,
@@ -338,7 +561,12 @@ export function getTemporalContext(userContext: UserScheduleContext): TemporalCo
     nextPhaseLabel: nextPhaseObj?.label || '',
     isTransitionTime,
     isGoodTimeForRoutine,
-    isGoodTimeForDeepWork
+    isGoodTimeForDeepWork,
+    // NEW: Transition support
+    upcomingTransition,
+    transitionWarnings,
+    suggestedTransitionRitual,
+    environmentHints,
   };
 }
 

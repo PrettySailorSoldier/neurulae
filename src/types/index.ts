@@ -62,6 +62,17 @@ export interface Task {
   parentId?: string | null; // NEW: null for top-level, id for subtask
   details?: string;         // NEW: notes, phone numbers, links, etc.
   order?: number;           // NEW: for manual ordering
+  taskListId?: string;      // Which task list this belongs to (for multi-column view)
+}
+
+// User-created task list (column in multi-column view)
+export interface TaskList {
+  id: string;
+  name: string;
+  icon?: string;       // Emoji or lucide icon
+  color?: string;      // Optional accent color for the column header
+  order: number;       // Display order (left to right)
+  createdAt: string;
 }
 
 // Brain Dump Widget - for externalizing intrusive thoughts
