@@ -711,7 +711,7 @@ export function DailyFlowTimeline({
     );
   };
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+
   
   const filteredBlocks = timeBlocks.filter(block => {
     if (block.scheduleType === 'everyday') return true;
