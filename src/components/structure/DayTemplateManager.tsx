@@ -33,14 +33,11 @@ interface DayTemplateManagerProps {
   onSaveAsTemplate: (name: string, suggestedFor: 'weekday' | 'weekend' | 'any') => void;
 }
 
-export function DayTemplateManager({
-  currentBlocks,
-  currentDayType,
-  onApplyTemplate,
-  onSaveAsTemplate
-}: DayTemplateManagerProps) {
+  onSaveAsTemplate,
+  open,
+  onOpenChange
+}: DayTemplateManagerProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [templates, setTemplates] = useLocalStorage<DayTemplate[]>('neurulae-day-templates', []);
-  const [isOpen, setIsOpen] = useState(false);
   const [isSaveMode, setIsSaveMode] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDayType, setNewTemplateDayType] = useState<'weekday' | 'weekend' | 'any'>('any');
@@ -89,11 +86,11 @@ export function DayTemplateManager({
         : t
     ));
     onApplyTemplate(template);
-    setIsOpen(false);
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Calendar className="h-4 w-4 mr-2" />

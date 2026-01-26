@@ -860,6 +860,8 @@ export function DailyFlowTimeline({
               onSaveAsTemplate={(name, dayType) => {
                 toast({ title: 'Template Saved', description: `"${name}" saved successfully` });
               }}
+              open={showTemplatesDialog}
+              onOpenChange={setShowTemplatesDialog}
             />
           )}
           {scheduleEntries.length > 0 && (
@@ -993,41 +995,79 @@ export function DailyFlowTimeline({
               )}
             </div>
           ) : (
-            <div className="space-y-2">
-              {dedupeEntries(filteredEntries).map((entry) => {
-                const startDate = new Date(entry.start_time);
-                const endDate = new Date(entry.end_time);
-                const color = getCategoryColor(entry.category);
-
-                return (
-                  <Card key={entry.id} className="p-4">
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Time Blocks ({filteredBlocks.length})</h3>
+                {filteredBlocks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">No time blocks configured for this day view.</p>
+                ) : (
+                  filteredBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime)).map(block => (
+                  <Card key={block.id} className="p-4 border-l-4" style={{ borderLeftColor: block.color || (block.type === 'main' ? '#3B82F6' : '#8B5CF6') }}>
                     <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div
-                          className="w-1 h-full min-h-[40px] rounded-full"
-                          style={{ backgroundColor: color }}
-                        />
-                        <div className="space-y-1">
-                          <h4 className="font-semibold">{entry.title}</h4>
-                          {entry.location && (
-                            <p className="text-sm font-medium text-primary">{entry.location}</p>
-                          )}
-                          <p className="text-sm text-muted-foreground">
-                            {formatTime(startDate)} - {formatTime(endDate)}
-                          </p>
-                          {entry.description && (
-                            <p className="text-sm text-muted-foreground">{entry.description}</p>
-                          )}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                           <h4 className="font-semibold">{block.title}</h4>
+                           {block.scheduleType === 'today' && <Badge variant="secondary" className="text-[10px]">Today Only</Badge>}
                         </div>
+                        <p className="text-sm text-muted-foreground">
+                          {block.startTime} - {block.endTime}
+                        </p>
+                        <Badge variant="outline" className="text-xs">
+                          {block.type === 'main' ? 'Main Block' : 'Dedicated Focus'}
+                        </Badge>
                       </div>
-                      <Badge variant="secondary">{entry.category || 'other'}</Badge>
+                      <Button variant="ghost" size="icon" onClick={() => {
+                          setEditingBlock(block as TimeBlock);
+                          setIsTimeBlockEditorOpen(true);
+                      }}>
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </Card>
-                );
-              })}
-              {filteredEntries.length === 0 && (
+                  ))
+                )}
+              </div>
+
+              {scheduleEntries.length > 0 && (
+              <div className="grid gap-4 pt-4 border-t">
+                 <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Schedule Events ({dedupeEntries(filteredEntries).length})</h3>
+                 {dedupeEntries(filteredEntries).map((entry) => {
+                  const startDate = new Date(entry.start_time);
+                  const endDate = new Date(entry.end_time);
+                  const color = getCategoryColor(entry.category);
+
+                  return (
+                    <Card key={entry.id} className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="w-1 h-full min-h-[40px] rounded-full"
+                            style={{ backgroundColor: color }}
+                          />
+                          <div className="space-y-1">
+                            <h4 className="font-semibold">{entry.title}</h4>
+                            {entry.location && (
+                              <p className="text-sm font-medium text-primary">{entry.location}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {formatTime(startDate)} - {formatTime(endDate)}
+                            </p>
+                            {entry.description && (
+                              <p className="text-sm text-muted-foreground">{entry.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="secondary">{entry.category || 'other'}</Badge>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+              )}
+
+              {filteredEntries.length === 0 && filteredBlocks.length === 0 && (
                 <div className="flex items-center justify-center py-12">
-                  <p className="text-sm text-muted-foreground">No schedule entries found</p>
+                  <p className="text-sm text-muted-foreground">No schedule entries or time blocks found</p>
                 </div>
               )}
             </div>
