@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimeBlock } from '@/types';
 import { Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface TimeBlockEditorProps {
   open: boolean;
@@ -20,16 +21,20 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
   const [startTime, setStartTime] = useState(block?.startTime || '09:00');
   const [endTime, setEndTime] = useState(block?.endTime || '17:00');
   const [type, setType] = useState<'main' | 'dedicated'>(block?.type || 'main');
-  const [scheduleType, setScheduleType] = useState<'weekday' | 'weekend' | 'everyday'>(block?.scheduleType || 'everyday');
+  const [scheduleType, setScheduleType] = useState<'weekday' | 'weekend' | 'everyday' | 'today'>(block?.scheduleType || 'everyday');
   const [color, setColor] = useState(block?.color || '');
 
   const handleSave = () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    
     onSave({
       title,
       startTime,
       endTime,
       type,
       scheduleType,
+      // Include scheduledDate for 'today' type blocks
+      scheduledDate: scheduleType === 'today' ? today : undefined,
       color: color || undefined,
     });
     onOpenChange(false);
@@ -97,11 +102,17 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="today">Today Only (One-time)</SelectItem>
                 <SelectItem value="everyday">Daily (Every Day)</SelectItem>
                 <SelectItem value="weekday">Weekdays Only</SelectItem>
                 <SelectItem value="weekend">Weekends Only</SelectItem>
               </SelectContent>
             </Select>
+            {scheduleType === 'today' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                This block will only appear today and won't repeat.
+              </p>
+            )}
           </div>
 
           <div>

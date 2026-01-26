@@ -486,15 +486,18 @@ export function DailyFlowTimeline({
       : 0;
 
     // Determine positioning based on block type
-    // Main blocks: left side, larger (60% width)
-    // Dedicated blocks: right side, smaller (35% width)
+    // MAIN blocks: Narrow solid stripe on the LEFT for general time categories (e.g., "Working Hours", "Morning")
+    // DEDICATED blocks: Wider area on the RIGHT for specific tasks that fit "inside" the main blocks
     const isMainBlock = block.type === 'main';
-    const blockLeft = isMainBlock ? '80px' : 'calc(60% + 90px)';
-    const blockWidth = isMainBlock ? 'calc(55% - 80px)' : 'calc(40% - 16px)';
     
-    // Default colors for blocks without custom colors
-    const defaultMainColor = 'hsl(210, 70%, 55%)';
-    const defaultDedicatedColor = 'hsl(280, 60%, 55%)';
+    // Main blocks: narrow vertical stripe (50px wide) after hour labels
+    // Dedicated blocks: fill the remaining space to the right
+    const blockLeft = isMainBlock ? '65px' : '120px';
+    const blockRight = isMainBlock ? 'calc(100% - 115px)' : '8px';
+    
+    // Colors - Main blocks are more solid/opaque
+    const defaultMainColor = '#3B82F6'; // Blue-500
+    const defaultDedicatedColor = '#8B5CF6'; // Violet-500
     const blockColor = block.color || (isMainBlock ? defaultMainColor : defaultDedicatedColor);
 
     return (
@@ -504,11 +507,11 @@ export function DailyFlowTimeline({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "absolute border-2 rounded-lg p-2 cursor-pointer transition-all hover:shadow-xl overflow-hidden group",
-              // Base styling with better contrast
+              "absolute cursor-pointer transition-all hover:shadow-lg overflow-hidden group",
+              // Main blocks: solid stripe, no rounded corners on right
               isMainBlock 
-                ? 'bg-card/90 backdrop-blur-sm shadow-md' 
-                : 'bg-card/70 backdrop-blur-sm shadow-sm',
+                ? 'rounded-l-md border-l-4 bg-opacity-90' 
+                : 'rounded-lg border-2 shadow-md backdrop-blur-sm',
               // Active state
               isActive && 'ring-2 ring-primary/50 shadow-lg',
               // Drag over state
@@ -518,33 +521,62 @@ export function DailyFlowTimeline({
             )}
             style={{
               top: `${topPercentage}%`,
-              height: `${Math.max(height, 2)}%`, // Minimum height for visibility
+              height: `${Math.max(height, 2.5)}%`, // Ensure minimum visibility
               left: blockLeft,
-              width: blockWidth,
+              right: blockRight,
+              // Main blocks are more solid, dedicated are slightly transparent
               backgroundColor: snapshot.isDraggingOver
                 ? undefined
-                : `${blockColor}25`,
+                : isMainBlock 
+                  ? `${blockColor}CC` // ~80% opacity for main (solid feel)
+                  : `${blockColor}40`, // ~25% opacity for dedicated
               borderColor: snapshot.isDraggingOver 
                 ? undefined 
                 : (hasActiveTimerTask ? 'hsl(var(--primary))' : blockColor),
-              zIndex: snapshot.isDraggingOver ? 10 : (hasActiveTimerTask ? 5 : (isMainBlock ? 4 : 3)),
+              // Main blocks behind dedicated blocks
+              zIndex: snapshot.isDraggingOver ? 10 : (hasActiveTimerTask ? 6 : (isMainBlock ? 2 : 4)),
             }}
             onClick={() => {
               setEditingBlock(block);
               setIsTimeBlockEditorOpen(true);
             }}
           >
-            <div className="flex items-start justify-between h-full">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  {/* Block type indicator */}
-                  <div 
-                    className={cn(
-                      "w-1.5 h-4 rounded-full flex-shrink-0",
-                      isMainBlock ? "bg-blue-500" : "bg-purple-500"
-                    )}
-                  />
-                  <h4 className="font-semibold text-sm truncate" style={{ color: blockColor }}>
+            {/* Block content - different layouts for main vs dedicated */}
+            {isMainBlock ? (
+              /* Main blocks: Vertical text for narrow stripe */
+              <div className="h-full flex flex-col items-center justify-start py-2 px-1">
+                <h4 
+                  className="font-bold text-xs whitespace-nowrap"
+                  style={{ 
+                    writingMode: 'vertical-rl',
+                    textOrientation: 'mixed',
+                    color: '#fff',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.5)'
+                  }}
+                >
+                  {block.title}
+                </h4>
+                <span 
+                  className="text-[9px] mt-2 opacity-80"
+                  style={{ 
+                    writingMode: 'vertical-rl',
+                    color: '#fff',
+                  }}
+                >
+                  {block.startTime}
+                </span>
+              </div>
+            ) : (
+              /* Dedicated blocks: Full horizontal content */
+              <div className="flex flex-col h-full p-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 
+                    className="font-semibold text-sm truncate flex-1"
+                    style={{ 
+                      color: blockColor,
+                      textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                    }}
+                  >
                     {block.title}
                   </h4>
                   {/* Active timer badge */}
@@ -552,7 +584,7 @@ export function DailyFlowTimeline({
                     <Badge
                       variant="default"
                       className={cn(
-                        "text-[8px] px-1 py-0 h-4",
+                        "text-[8px] px-1 py-0 h-4 flex-shrink-0",
                         isTimerRunning ? "bg-green-500 animate-pulse" : "bg-yellow-500"
                       )}
                     >
@@ -590,6 +622,7 @@ export function DailyFlowTimeline({
                   </div>
                 )}
               </div>
+            )}
               {snapshot.isDraggingOver && (
                 <div className="flex-shrink-0 text-green-600">
                   <Plus className="h-4 w-4" />
@@ -607,11 +640,16 @@ export function DailyFlowTimeline({
                     }
                   }}
                   title={`Start working on ${scheduledTaskDetails[0]?.title}`}
+                  style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    zIndex: 20
+                  }}
                 >
                   <Play className="h-3 w-3 fill-current" />
                 </button>
               )}
-            </div>
 
             {/* Timer progress bar at bottom of block */}
             {hasActiveTimerTask && (
@@ -673,10 +711,16 @@ export function DailyFlowTimeline({
     );
   };
 
+  const today = format(new Date(), 'yyyy-MM-dd');
+  
   const filteredBlocks = timeBlocks.filter(block => {
     if (block.scheduleType === 'everyday') return true;
     if (block.scheduleType === 'weekday') return scheduleType === 'weekday';
     if (block.scheduleType === 'weekend') return scheduleType === 'weekend';
+    // 'today' blocks only show on their scheduled date
+    if (block.scheduleType === 'today') {
+      return block.scheduledDate === today;
+    }
     return true;
   });
 

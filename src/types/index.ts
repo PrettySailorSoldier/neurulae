@@ -31,9 +31,7 @@ export interface Task {
   colorTag?: string;
   createdAt: string;
   linkedPlaybookId?: string;
-  linkedPlaybookId?: string;
   subtasks?: Task[]; // Nested tasks (max depth 1)
-  notes?: string;
   notes?: string;
   eisenhowerQuadrant?: 'urgent-important' | 'not-urgent-important' | 'urgent-not-important' | 'not-urgent-not-important';
   course?: string;
@@ -169,7 +167,8 @@ export interface TimeBlock {
   startTime: string; // "HH:MM" format (e.g., "07:00")
   endTime: string;   // "HH:MM" format (e.g., "21:00")
   type: 'main' | 'dedicated'; // left side vs right side of timeline
-  scheduleType: 'weekday' | 'weekend' | 'everyday';
+  scheduleType: 'weekday' | 'weekend' | 'everyday' | 'today'; // 'today' = one-time, only shows on the date it was created
+  scheduledDate?: string; // YYYY-MM-DD format, used when scheduleType is 'today'
   color?: string; // optional custom color
   createdAt: string;
 }
