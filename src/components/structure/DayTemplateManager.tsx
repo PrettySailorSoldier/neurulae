@@ -33,6 +33,10 @@ interface DayTemplateManagerProps {
   onSaveAsTemplate: (name: string, suggestedFor: 'weekday' | 'weekend' | 'any') => void;
 }
 
+export function DayTemplateManager({
+  currentBlocks,
+  currentDayType,
+  onApplyTemplate,
   onSaveAsTemplate,
   open,
   onOpenChange
