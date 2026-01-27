@@ -13,6 +13,7 @@ import {
   timeToMinutes,
   getComputedTimeZones,
   formatTimeDisplay,
+  minutesToTime,
   type TimeZoneConfig
 } from '@/lib/timeUtils';
 import { timeToMinutes as temporalTimeToMinutes } from '@/lib/temporalContext';
@@ -156,16 +157,109 @@ export function DailyFlowTimeline({
   // Phase transition detection
   const previousPhaseRef = useRef<string | null>(null);
 
+  // Drag and drop state for time blocks
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
+  const [draggedBlockTop, setDraggedBlockTop] = useState<number | null>(null);
+  const isDragOperationRef = useRef(false);
+  
+  // Refs to store drag state without triggering re-renders for every pixel move (except top update)
+  const dragStateRef = useRef<{
+    startY: number;
+    initialTop: number;
+    initialHeight: number;
+    blockDuration: number;
+  } | null>(null);
+
   // Update time every minute
   useEffect(() => {
-    const updateTime = () => {
       setCurrentTimePercentage(getCurrentTimePercentage());
       setCurrentTimeDisplay(formatTimeDisplay(getCurrentTime()));
     };
 
-    const interval = setInterval(updateTime, 60000);
+    const updateTime = () => {
+      _updateTime();
+    };
+    
+    // Initial call
+    _updateTime();
+    
+    const interval = setInterval(_updateTime, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Handle block dragging
+  useEffect(() => {
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (!draggingBlockId || !dragStateRef.current || !timelineRef.current) return;
+      
+      const { startY, initialTop } = dragStateRef.current;
+      const timelineHeight = timelineRef.current.offsetHeight;
+      const deltaY = e.clientY - startY;
+      const deltaPercent = (deltaY / timelineHeight) * 100;
+
+      if (Math.abs(deltaY) > 5) {
+        isDragOperationRef.current = true;
+      }
+      
+      // Calculate new top position
+      let newTop = initialTop + deltaPercent;
+      
+      // Clamp to timeline bounds (0 to 100 - blockHeight)
+      const maxTop = 100 - (dragStateRef.current.initialHeight || 0);
+      newTop = Math.max(0, Math.min(newTop, maxTop));
+      
+      setDraggedBlockTop(newTop);
+    };
+
+    const handleWindowMouseEnd = (e: MouseEvent) => {
+      if (!draggingBlockId || !dragStateRef.current) return;
+      
+      // Calculate final time
+      const finalTop = draggedBlockTop !== null ? draggedBlockTop : dragStateRef.current.initialTop;
+      
+      // Convert percentage to minutes (1440 minutes in a day)
+      const startMinutesRaw = (finalTop / 100) * 1440;
+      // Snap to nearest 5 minutes
+      const startMinutes = Math.round(startMinutesRaw / 5) * 5;
+      
+      const startTime = minutesToTime(startMinutes);
+      const endTime = minutesToTime(startMinutes + dragStateRef.current.blockDuration);
+      
+      onUpdateTimeBlock(draggingBlockId, {
+        startTime,
+        endTime
+      });
+      
+      // Reset state
+      setDraggingBlockId(null);
+      setDraggedBlockTop(null);
+      dragStateRef.current = null;
+      document.body.style.cursor = '';
+      setTimeout(() => { isDragOperationRef.current = false; }, 100);
+    };
+
+    if (draggingBlockId) {
+      window.addEventListener('mousemove', handleWindowMouseMove);
+      window.addEventListener('mouseup', handleWindowMouseEnd);
+      // Also catch mouse leave just in case
+      window.addEventListener('mouseleave', handleWindowMouseEnd);
+      document.body.style.cursor = 'grabbing';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseEnd);
+      window.removeEventListener('mouseleave', handleWindowMouseEnd);
+      document.body.style.cursor = '';
+    };
+  }, [draggingBlockId, draggedBlockTop, onUpdateTimeBlock]);
+
+  // Helper function moved inside to fix scope issue
+  const _updateTime = () => {
+    setCurrentTimePercentage(getCurrentTimePercentage());
+    setCurrentTimeDisplay(formatTimeDisplay(getCurrentTime()));
+  };
 
   // Detect phase transitions and show toast
   useEffect(() => {
@@ -520,7 +614,7 @@ export function DailyFlowTimeline({
               hasActiveTimerTask && isTimerRunning && 'ring-2 ring-primary animate-pulse'
             )}
             style={{
-              top: `${topPercentage}%`,
+              top: `${draggingBlockId === block.id && draggedBlockTop !== null ? draggedBlockTop : topPercentage}%`,
               height: `${Math.max(height, 2.5)}%`, // Ensure minimum visibility
               left: blockLeft,
               right: blockRight,
@@ -534,13 +628,45 @@ export function DailyFlowTimeline({
                 ? undefined 
                 : (hasActiveTimerTask ? 'hsl(var(--primary))' : blockColor),
               // Main blocks behind dedicated blocks
-              zIndex: snapshot.isDraggingOver ? 10 : (hasActiveTimerTask ? 6 : (isMainBlock ? 2 : 4)),
+              zIndex: draggingBlockId === block.id ? 50 : (snapshot.isDraggingOver ? 10 : (hasActiveTimerTask ? 6 : (isMainBlock ? 2 : 4))),
+              cursor: draggingBlockId === block.id ? 'grabbing' : 'pointer',
             }}
             onClick={() => {
+              if (isDragOperationRef.current) return;
               setEditingBlock(block);
               setIsTimeBlockEditorOpen(true);
             }}
+            onMouseDown={(e) => {
+              isDragOperationRef.current = false;
+              // Prevent dragging if clicking a button or task badge
+              if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.badge')) return;
+              
+              if (e.button !== 0) return; // Only left click
+              
+              e.preventDefault(); // Prevent text selection
+              e.stopPropagation();
+              
+              const startMinutes = timeToMinutes(block.startTime);
+              const endMinutes = timeToMinutes(block.endTime);
+              const duration = endMinutes - startMinutes;
+              
+              setDraggingBlockId(block.id);
+              // Calculate initial top based on current time props, not just style.top which might be animating
+              const initialTopVal = timeToPercentage(block.startTime);
+              setDraggedBlockTop(initialTopVal);
+              
+              dragStateRef.current = {
+                startY: e.clientY,
+                initialTop: initialTopVal,
+                initialHeight: timeToPercentage(block.endTime) - initialTopVal,
+                blockDuration: duration
+              };
+            }}
           >
+            {/* Drag Handle Indicator */}
+            { snapshot.isDraggingOver ? null : (
+              <div className="absolute top-0 left-0 right-0 h-2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 bg-white/20 hover:bg-white/40 transition-opacity z-20 mx-auto w-1/3 rounded-b-md" />
+            )}
             {/* Block content - different layouts for main vs dedicated */}
             {isMainBlock ? (
               /* Main blocks: Vertical text for narrow stripe */
@@ -891,7 +1017,10 @@ export function DailyFlowTimeline({
         {/* Timeline View (full width now) */}
         <div className={cn("space-y-3", viewMode === 'timeline' ? 'lg:col-span-4' : 'lg:col-span-4')}>
           {viewMode === 'timeline' ? (
-            <div className="relative h-[600px] bg-card/50 border border-border rounded-lg overflow-hidden">
+            <div 
+              ref={timelineRef}
+              className="relative h-[600px] bg-card/50 border border-border rounded-lg overflow-hidden select-none"
+            >
               {/* Phase Backgrounds - render first, behind everything */}
               {structureSettings.showPhaseBackgrounds && (
                 <PhaseBackgrounds
