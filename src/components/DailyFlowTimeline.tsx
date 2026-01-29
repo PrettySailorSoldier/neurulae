@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import { TimeBlock, ScheduledTask, Task, DayTemplate, StructureSettings, DEFAULT_STRUCTURE_SETTINGS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { TimeBlockEditor } from './TimeBlockEditor';
-import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, Sparkles, Layers, Play } from 'lucide-react';
+import { Plus, Trash2, Clock, Moon, Briefcase, Sun, Settings2, Sparkles, Layers, Play, Copy } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 import {
@@ -773,6 +773,38 @@ export function DailyFlowTimeline({
                   }}
                 >
                   <Play className="h-3 w-3 fill-current" />
+                </button>
+              )}
+              {/* Duplicate button - creates a copy of the block */}
+              {!snapshot.isDraggingOver && (
+                <button
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 bg-purple-500/10 hover:bg-purple-500/20 rounded-full p-1 text-purple-400 hover:scale-110 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const today = format(new Date(), 'yyyy-MM-dd');
+                    onAddTimeBlock({
+                      title: `${block.title} (copy)`,
+                      startTime: block.startTime,
+                      endTime: block.endTime,
+                      type: block.type,
+                      scheduleType: 'today',
+                      scheduledDate: today,
+                      color: block.color,
+                    });
+                    toast({
+                      title: "Block duplicated",
+                      description: `Created a copy of "${block.title}" for today`,
+                    });
+                  }}
+                  title={`Duplicate "${block.title}"`}
+                  style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: scheduledTaskDetails.length > 0 && !hasActiveTimerTask && onStartWorkSession ? '28px' : '4px',
+                    zIndex: 20
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
                 </button>
               )}
 

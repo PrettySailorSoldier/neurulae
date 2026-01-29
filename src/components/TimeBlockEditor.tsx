@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,28 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
   const [type, setType] = useState<'main' | 'dedicated'>(block?.type || 'main');
   const [scheduleType, setScheduleType] = useState<'weekday' | 'weekend' | 'everyday' | 'today'>(block?.scheduleType || 'everyday');
   const [color, setColor] = useState(block?.color || '');
+
+  // Sync state when block prop changes (fixes edit bug where wrong block data was shown)
+  useEffect(() => {
+    if (open) {
+      if (block) {
+        setTitle(block.title || '');
+        setStartTime(block.startTime || '09:00');
+        setEndTime(block.endTime || '17:00');
+        setType(block.type || 'main');
+        setScheduleType(block.scheduleType || 'everyday');
+        setColor(block.color || '');
+      } else {
+        // Reset to defaults for new block
+        setTitle('');
+        setStartTime('09:00');
+        setEndTime('17:00');
+        setType('main');
+        setScheduleType('everyday');
+        setColor('');
+      }
+    }
+  }, [block, open]);
 
   const handleSave = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -81,6 +103,24 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
               />
             </div>
           </div>
+          
+          {/* Duration display */}
+          {startTime && endTime && (() => {
+            const [startH, startM] = startTime.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+            let diffMins = (endH * 60 + endM) - (startH * 60 + startM);
+            if (diffMins < 0) diffMins += 24 * 60; // Handle overnight
+            const hours = Math.floor(diffMins / 60);
+            const mins = diffMins % 60;
+            const durationText = hours > 0 
+              ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`)
+              : `${mins}m`;
+            return (
+              <div className="text-center text-sm text-muted-foreground bg-muted/50 rounded-md py-1.5">
+                Duration: <span className="font-medium text-foreground">{durationText}</span>
+              </div>
+            );
+          })()}
 
           <div>
             <Label htmlFor="type">Block Type</Label>
