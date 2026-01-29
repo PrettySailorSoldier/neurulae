@@ -45,6 +45,7 @@ import { ActiveIntentionBanner } from '@/components/ActiveIntentionBanner';
 import { TomorrowIntentionsBar } from '@/components/TomorrowIntentionsBar';
 import { useSuggestedAction } from '@/hooks/useSuggestedAction';
 import { ActiveWorkSessionProvider } from '@/contexts/ActiveWorkSessionContext';
+import { BrainDumpModal } from '@/components/brain-dump/BrainDumpModal';
 
 // Lazy load heavy components for better code splitting
 const ProjectsTab = lazy(() => import('@/components/ProjectsTab').then(m => ({ default: m.ProjectsTab })));
@@ -195,6 +196,9 @@ const Index = () => {
   // Daily Planning
   const [dailyPlanningOpen, setDailyPlanningOpen] = useState(false);
   const [lastPlanningDate, setLastPlanningDate] = useLocalStorage<string>('neurulae-last-planning-date', '');
+
+  // Brain Dump Modal
+  const [brainDumpOpen, setBrainDumpOpen] = useState(false);
 
   // Tomorrow's Intentions (from Daily Review "Plan Tomorrow" feature)
   const [tomorrowIntentions, setTomorrowIntentions] = useLocalStorage<TomorrowIntentions | null>('neurulae-tomorrow-intentions', null);
@@ -397,6 +401,11 @@ const Index = () => {
       if (e.key === 'h' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault();
         setReviewHistoryOpen(true);
+      }
+      // Cmd/Ctrl + Shift + D for Brain Dump
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        setBrainDumpOpen(true);
       }
     };
 
@@ -2157,6 +2166,7 @@ const Index = () => {
         onSetEisenhowerOpen={setEisenhowerOpen}
         onSetChatPanelOpen={setIsChatPanelOpen}
         onSetTutorialOpen={setTutorialOpen}
+        onOpenBrainDump={() => setBrainDumpOpen(true)}
         onThemeChange={handleThemeChange}
         onCustomThemeClick={handleOpenCustomThemeBuilder}
         onEditCustomTheme={handleEditCustomTheme}
@@ -3112,6 +3122,12 @@ const Index = () => {
         }}
         onSave={handleSaveTaskEdit}
         projects={projects}
+      />
+
+      {/* Brain Dump Modal */}
+      <BrainDumpModal
+        isOpen={brainDumpOpen}
+        onClose={() => setBrainDumpOpen(false)}
       />
     </div>
     </ActiveWorkSessionProvider>

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Cloud } from 'lucide-react';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
+import { BrainDumpTrigger } from '@/components/brain-dump/BrainDumpTrigger';
 import { Theme, CustomTheme } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -21,6 +22,7 @@ interface DashboardHeaderProps {
   onSetEisenhowerOpen: (open: boolean) => void;
   onSetChatPanelOpen: (open: boolean) => void;
   onSetTutorialOpen: (open: boolean) => void;
+  onOpenBrainDump: () => void;
   onThemeChange: (theme: Theme) => void;
   onCustomThemeClick: () => void;
   onEditCustomTheme: (theme?: CustomTheme, themeId?: string) => void;
@@ -41,6 +43,7 @@ export function DashboardHeader({
   onSetEisenhowerOpen,
   onSetChatPanelOpen,
   onSetTutorialOpen,
+  onOpenBrainDump,
   onThemeChange,
   onCustomThemeClick,
   onEditCustomTheme,
@@ -131,6 +134,9 @@ export function DashboardHeader({
                   </Link>
                 </>
               )}
+
+              {/* Brain Dump Trigger - Always visible */}
+              <BrainDumpTrigger onClick={onOpenBrainDump} />
 
               {/* AI Assistant - Icon only on mobile, with text on desktop */}
               <Button
