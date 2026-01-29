@@ -28,6 +28,7 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
   useEffect(() => {
     if (open) {
       if (block) {
+        // Editing existing block - load its data
         setTitle(block.title || '');
         setStartTime(block.startTime || '09:00');
         setEndTime(block.endTime || '17:00');
@@ -35,19 +36,49 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
         setScheduleType(block.scheduleType || 'everyday');
         setColor(block.color || '');
       } else {
-        // Reset to defaults for new block
+        // Smart defaults for new block
+        const now = new Date();
+        // Round to next 15-minute interval
+        const roundedMinutes = Math.ceil(now.getMinutes() / 15) * 15;
+        const smartStart = new Date(now);
+        smartStart.setMinutes(roundedMinutes, 0, 0);
+        if (roundedMinutes >= 60) {
+          smartStart.setHours(smartStart.getHours() + 1);
+          smartStart.setMinutes(0);
+        }
+        
+        // End time is 1 hour after start
+        const smartEnd = new Date(smartStart.getTime() + 60 * 60 * 1000);
+        
+        // Format as HH:mm
+        const formatTimeValue = (date: Date) => {
+          const h = date.getHours().toString().padStart(2, '0');
+          const m = date.getMinutes().toString().padStart(2, '0');
+          return `${h}:${m}`;
+        };
+        
         setTitle('');
-        setStartTime('09:00');
-        setEndTime('17:00');
-        setType('main');
-        setScheduleType('everyday');
-        setColor('');
+        setStartTime(formatTimeValue(smartStart));
+        setEndTime(formatTimeValue(smartEnd));
+        
+        // Remember last-used type and color from localStorage
+        const lastType = localStorage.getItem('neurulae_last_block_type');
+        const lastColor = localStorage.getItem('neurulae_last_block_color');
+        setType((lastType as 'main' | 'dedicated') || 'main');
+        setColor(lastColor || '');
+        setScheduleType('today'); // Default to today for quick one-off blocks
       }
     }
   }, [block, open]);
 
   const handleSave = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
+    
+    // Remember preferences for next time
+    localStorage.setItem('neurulae_last_block_type', type);
+    if (color) {
+      localStorage.setItem('neurulae_last_block_color', color);
+    }
     
     onSave({
       title,
