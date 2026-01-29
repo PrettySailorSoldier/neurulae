@@ -363,6 +363,17 @@ const Index = () => {
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Helper to check if target is editable (input, textarea, or contentEditable)
+      const isEditableTarget = (target: EventTarget | null): boolean => {
+        if (!target || !(target instanceof HTMLElement)) return false;
+        return (
+          target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target.isContentEditable ||
+          target.closest('[contenteditable="true"]') !== null
+        );
+      };
+
       // Command/Ctrl + K for Command Palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -373,32 +384,32 @@ const Index = () => {
         setFocusModeOpen(false);
       }
       // N for new task (when not in input)
-      if (e.key === 'n' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey && !isEditableTarget(e.target)) {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
       // F for focus mode
-      if (e.key === 'f' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      if (e.key === 'f' && !e.metaKey && !e.ctrlKey && !isEditableTarget(e.target)) {
         e.preventDefault();
         setFocusModeOpen(true);
       }
       // A for AI assistant
-      if (e.key === 'a' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      if (e.key === 'a' && !e.metaKey && !e.ctrlKey && !isEditableTarget(e.target)) {
         e.preventDefault();
         setIsAIAssistantOpen(true);
       }
       // ? for keyboard shortcuts help
-      if (e.key === '?' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      if (e.key === '?' && !isEditableTarget(e.target)) {
         e.preventDefault();
         setKeyboardShortcutsOpen(true);
       }
       // R for daily review / plan tomorrow
-      if (e.key === 'r' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      if (e.key === 'r' && !e.metaKey && !e.ctrlKey && !isEditableTarget(e.target)) {
         e.preventDefault();
         setDailyReviewOpen(true);
       }
       // H for review history
-      if (e.key === 'h' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      if (e.key === 'h' && !e.metaKey && !e.ctrlKey && !isEditableTarget(e.target)) {
         e.preventDefault();
         setReviewHistoryOpen(true);
       }
@@ -412,6 +423,7 @@ const Index = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusModeOpen]);
+
 
   // Daily planning is now triggered manually via button - auto-open disabled
   // Users can click the "Plan Your Day" button in the TaskList header
