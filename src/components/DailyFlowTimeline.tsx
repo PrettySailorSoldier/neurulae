@@ -173,12 +173,9 @@ export function DailyFlowTimeline({
 
   // Update time every minute
   useEffect(() => {
+    const _updateTime = () => {
       setCurrentTimePercentage(getCurrentTimePercentage());
       setCurrentTimeDisplay(formatTimeDisplay(getCurrentTime()));
-    };
-
-    const updateTime = () => {
-      _updateTime();
     };
     
     // Initial call
@@ -254,12 +251,6 @@ export function DailyFlowTimeline({
       document.body.style.cursor = '';
     };
   }, [draggingBlockId, draggedBlockTop, onUpdateTimeBlock]);
-
-  // Helper function moved inside to fix scope issue
-  const _updateTime = () => {
-    setCurrentTimePercentage(getCurrentTimePercentage());
-    setCurrentTimeDisplay(formatTimeDisplay(getCurrentTime()));
-  };
 
   // Detect phase transitions and show toast
   useEffect(() => {
