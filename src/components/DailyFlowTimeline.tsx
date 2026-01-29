@@ -212,6 +212,10 @@ export function DailyFlowTimeline({
     const handleWindowMouseEnd = (e: MouseEvent) => {
       if (!draggingBlockId || !dragStateRef.current) return;
       
+      // Find the original block to get its properties
+      const originalBlock = timeBlocks.find(b => b.id === draggingBlockId);
+      if (!originalBlock) return;
+      
       // Calculate final time
       const finalTop = draggedBlockTop !== null ? draggedBlockTop : dragStateRef.current.initialTop;
       
@@ -224,6 +228,10 @@ export function DailyFlowTimeline({
       const endTime = minutesToTime(startMinutes + dragStateRef.current.blockDuration);
       
       onUpdateTimeBlock(draggingBlockId, {
+        title: originalBlock.title,
+        type: originalBlock.type,
+        scheduleType: originalBlock.scheduleType,
+        color: originalBlock.color,
         startTime,
         endTime
       });

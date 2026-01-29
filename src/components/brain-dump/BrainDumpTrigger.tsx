@@ -12,6 +12,11 @@ interface BrainDumpTriggerProps {
 }
 
 export function BrainDumpTrigger({ onClick }: BrainDumpTriggerProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick();
+  };
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -19,7 +24,7 @@ export function BrainDumpTrigger({ onClick }: BrainDumpTriggerProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={onClick}
+            onClick={handleClick}
             className="brain-dump-header-trigger"
           >
             <Zap className="h-5 w-5" />
