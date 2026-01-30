@@ -632,6 +632,7 @@ export function DailyFlowTimeline({
             }}
             onClick={() => {
               if (isDragOperationRef.current) return;
+              console.log('[DailyFlowTimeline] Edit clicked:', block.id, block.title);
               setEditingBlock(block);
               setIsTimeBlockEditorOpen(true);
             }}
@@ -923,17 +924,33 @@ export function DailyFlowTimeline({
         block={editingBlock}
         onSave={(blockData) => {
           if (editingBlock) {
+            console.log('[DailyFlowTimeline] Updating block:', editingBlock.id);
             onUpdateTimeBlock(editingBlock.id, blockData);
+            toast({
+              title: "Block Updated",
+              description: `"${blockData.title}" has been updated.`,
+            });
           } else {
+            console.log('[DailyFlowTimeline] Creating new block');
             onAddTimeBlock(blockData);
+            toast({
+              title: "Block Created",
+              description: `"${blockData.title}" has been added.`,
+            });
           }
           setIsTimeBlockEditorOpen(false);
           setEditingBlock(undefined);
         }}
         onDelete={editingBlock ? () => {
+          console.log('[DailyFlowTimeline] Deleting block:', editingBlock.id, editingBlock.title);
+          const deletedTitle = editingBlock.title;
           onDeleteTimeBlock(editingBlock.id);
           setIsTimeBlockEditorOpen(false);
           setEditingBlock(undefined);
+          toast({
+            title: "Block Deleted",
+            description: `"${deletedTitle}" has been removed.`,
+          });
         } : undefined}
       />
 

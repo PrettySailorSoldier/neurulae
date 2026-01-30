@@ -24,11 +24,14 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
   const [scheduleType, setScheduleType] = useState<'weekday' | 'weekend' | 'everyday' | 'today'>(block?.scheduleType || 'everyday');
   const [color, setColor] = useState(block?.color || '');
 
-  // Sync state when block prop changes (fixes edit bug where wrong block data was shown)
+  // Sync state when block prop changes
+  // CRITICAL: Using block?.id as dependency ensures React detects when a DIFFERENT block is clicked
+  // Previously used [block, open] but object reference comparison failed to trigger re-sync
   useEffect(() => {
     if (open) {
       if (block) {
         // Editing existing block - load its data
+        console.log('[TimeBlockEditor] Loading block for edit:', block.id, block.title);
         setTitle(block.title || '');
         setStartTime(block.startTime || '09:00');
         setEndTime(block.endTime || '17:00');
@@ -37,6 +40,7 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
         setColor(block.color || '');
       } else {
         // Smart defaults for new block
+        console.log('[TimeBlockEditor] Creating new block with smart defaults');
         const now = new Date();
         // Round to next 15-minute interval
         const roundedMinutes = Math.ceil(now.getMinutes() / 15) * 15;
@@ -69,7 +73,7 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
         setScheduleType('today'); // Default to today for quick one-off blocks
       }
     }
-  }, [block, open]);
+  }, [block?.id, open]);
 
   const handleSave = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
