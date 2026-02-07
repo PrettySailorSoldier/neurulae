@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TimePicker } from '@/components/ui/time-picker';
 import { TimeBlock } from '@/types';
 import { Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -117,26 +118,29 @@ export function TimeBlockEditor({ open, onOpenChange, block, onSave, onDelete }:
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startTime">Start Time</Label>
-              <Input
-                id="startTime"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="bg-input border-border"
-              />
-            </div>
-            <div>
-              <Label htmlFor="endTime">End Time</Label>
-              <Input
-                id="endTime"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="bg-input border-border"
-              />
-            </div>
+            <TimePicker
+              label="Start Time"
+              value={startTime}
+              onChange={(time) => {
+                setStartTime(time);
+                // Auto-adjust end time if it would be before start
+                const parseToMinutes = (t: string) => {
+                  const [h, m] = t.split(':').map(Number);
+                  return h * 60 + m;
+                };
+                if (endTime && parseToMinutes(time) >= parseToMinutes(endTime)) {
+                  // Set end time to 1 hour after new start
+                  const [h, m] = time.split(':').map(Number);
+                  const endH = (h + 1) % 24;
+                  setEndTime(`${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+                }
+              }}
+            />
+            <TimePicker
+              label="End Time"
+              value={endTime}
+              onChange={setEndTime}
+            />
           </div>
           
           {/* Duration display */}
