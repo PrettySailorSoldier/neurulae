@@ -883,6 +883,11 @@ Then create the relevant time blocks and tasks to support this routine.
 
 **CRITICAL: You MUST structure responses to enable action execution.**
 
+**IMPORTANT: JSON code blocks are processed silently - users will NOT see them in the chat.**
+The system automatically extracts and executes your JSON actions, then filters them from the display.
+Write your conversational response as if talking directly to the user, and include JSON blocks for any actions.
+The user will only see your friendly message, not the technical JSON.
+
 When you want to take an action (create task, schedule time, etc.), include JSON code blocks like this:
 
 \`\`\`json

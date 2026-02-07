@@ -68,6 +68,26 @@ const calculateAvailableWindows = (blocks: TimeBlock[]) => {
   return windows;
 };
 
+/**
+ * Cleans AI response by removing JSON code blocks and action objects.
+ * Actions are still executed - this only filters the display.
+ */
+const cleanAIResponse = (response: string): string => {
+  // Remove JSON code blocks (```json ... ```)
+  let cleaned = response.replace(/```json\s*[\s\S]*?\s*```/g, '');
+  
+  // Remove standalone JSON action objects
+  cleaned = cleaned.replace(/\{\s*"action"[\s\S]*?\}/g, '');
+  
+  // Remove any remaining code fence blocks
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+  
+  // Clean up extra whitespace/newlines left behind
+  cleaned = cleaned.replace(/\n\n\n+/g, '\n\n').trim();
+  
+  return cleaned;
+};
+
 export function AIAssistant({
   open,
   onOpenChange,
@@ -850,7 +870,7 @@ export function AIAssistant({
                           li: ({ children }) => <li className="text-sm break-words">{children}</li>,
                         }}
                       >
-                        {message.content}
+                        {cleanAIResponse(message.content)}
                       </ReactMarkdown>
                     </div>
                   )}
