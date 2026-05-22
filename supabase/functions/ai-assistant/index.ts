@@ -85,9 +85,9 @@ serve(async (req: Request) => {
       console.log('Rate limiting skipped:', rateLimitErr);
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY is not configured');
       return new Response(JSON.stringify({ error: 'AI configuration missing (API Key)' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1207,31 +1207,66 @@ Want me to schedule these for you?"`;
     });
 
     console.log('Sending AI request:', {
-      model: 'google/gemini-2.5-pro',
+      model: 'claude-sonnet-4-5-20251001',
       messageCount: transformedMessages.length + 1,
       hasImages: images && images.length > 0,
       imagesCount: images?.length || 0,
     });
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'claude-sonnet-4-5-20251001',
+        max_tokens: 4096,
         stream: true,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...transformedMessages
-        ],
+        system: systemPrompt,
+        messages: transformedMessages.map((msg: any) => {
+          // Convert image_url format (OpenAI) to Anthropic image format
+          if (Array.isArray(msg.content)) {
+            return {
+              role: msg.role,
+              content: msg.content.map((part: any) => {
+                if (part.type === 'image_url') {
+                  const url: string = part.image_url?.url ?? '';
+                  // Handle base64 data URLs: data:image/jpeg;base64,....
+                  if (url.startsWith('data:')) {
+                    const [meta, data] = url.split(',');
+                    const mediaType = meta.split(':')[1].split(';')[0];
+                    return {
+                      type: 'image',
+                      source: {
+                        type: 'base64',
+                        media_type: mediaType,
+                        data,
+                      },
+                    };
+                  }
+                  // Handle plain URLs
+                  return {
+                    type: 'image',
+                    source: {
+                      type: 'url',
+                      url,
+                    },
+                  };
+                }
+                return part; // text parts pass through unchanged
+              }),
+            };
+          }
+          return msg;
+        }),
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+      console.error('Anthropic API error:', response.status, errorText);
 
       if (response.status === 429) {
         return new Response(JSON.stringify({
@@ -1242,7 +1277,7 @@ Want me to schedule these for you?"`;
         });
       }
 
-      if (response.status === 402) {
+      if (response.status === 402 || response.status === 529) {
         return new Response(JSON.stringify({
           error: 'AI credits depleted. Please add credits to continue.'
         }), {
@@ -1251,84 +1286,108 @@ Want me to schedule these for you?"`;
         });
       }
 
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`Anthropic API error: ${response.status} ${errorText}`);
     }
 
-    // Stream the response directly to the client
-    // The client will parse SSE events and display chunks as they arrive
     if (!response.body) {
-      throw new Error('No response body received from AI gateway');
+      throw new Error('No response body received from Anthropic API');
     }
 
-    // Create a TransformStream to process and forward the streaming response
+    // Create a TransformStream to translate Anthropic SSE → frontend SSE format
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
-    // Process the stream in the background
+    // Anthropic streams server-sent events with these event types:
+    //   message_start, content_block_start, content_block_delta,
+    //   content_block_stop, message_delta, message_stop
+    // We only care about content_block_delta events which carry text chunks.
+    // We translate these into the { text: chunk } format the frontend expects.
     (async () => {
       try {
         const reader = response.body!.getReader();
         let fullContent = '';
+        let buffer = '';
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          let currentEventType = '';
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                // Send a final message with any extracted actions
-                const actions: any[] = [];
-                const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
-                let match;
-                while ((match = jsonBlockRegex.exec(fullContent)) !== null) {
-                  try {
-                    const parsed = JSON.parse(match[1]);
-                    if (parsed.action && parsed.data) {
-                      actions.push(parsed);
-                    } else if (Array.isArray(parsed)) {
-                      parsed.forEach(item => {
-                        if (item.action && item.data) {
-                          actions.push(item);
-                        }
-                      });
-                    }
-                  } catch (e) {
-                    // Skip malformed JSON
-                  }
-                }
+            if (line.startsWith('event: ')) {
+              currentEventType = line.slice(7).trim();
+              continue;
+            }
 
-                // Send final event with actions if any
-                if (actions.length > 0) {
-                  await writer.write(encoder.encode(`data: ${JSON.stringify({ actions })}\n\n`));
-                }
-                await writer.write(encoder.encode('data: [DONE]\n\n'));
-                continue;
-              }
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (!data || data === '[DONE]') continue;
 
               try {
                 const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  fullContent += content;
-                  // Forward the text chunk to the client
-                  await writer.write(encoder.encode(`data: ${JSON.stringify({ text: content })}\n\n`));
+
+                // Extract text from content_block_delta events
+                if (
+                  currentEventType === 'content_block_delta' &&
+                  parsed.delta?.type === 'text_delta' &&
+                  parsed.delta?.text
+                ) {
+                  const chunk: string = parsed.delta.text;
+                  fullContent += chunk;
+                  await writer.write(
+                    encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+                  );
                 }
-              } catch (e) {
+
+                // message_stop signals the end of the response
+                if (currentEventType === 'message_stop' || parsed.type === 'message_stop') {
+                  // Extract and send any actions found in the full response
+                  const actions: any[] = [];
+                  const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
+                  let match;
+                  while ((match = jsonBlockRegex.exec(fullContent)) !== null) {
+                    try {
+                      const actionParsed = JSON.parse(match[1]);
+                      if (actionParsed.action && actionParsed.data) {
+                        actions.push(actionParsed);
+                      } else if (Array.isArray(actionParsed)) {
+                        actionParsed.forEach((item: any) => {
+                          if (item.action && item.data) actions.push(item);
+                        });
+                      }
+                    } catch {
+                      // Skip malformed JSON blocks
+                    }
+                  }
+
+                  if (actions.length > 0) {
+                    await writer.write(
+                      encoder.encode(`data: ${JSON.stringify({ actions })}\n\n`)
+                    );
+                  }
+                  await writer.write(encoder.encode('data: [DONE]\n\n'));
+                }
+              } catch {
                 // Skip malformed SSE data
               }
             }
           }
         }
+
+        // Ensure [DONE] is always sent even if message_stop was missed
+        await writer.write(encoder.encode('data: [DONE]\n\n'));
       } catch (error) {
         console.error('Stream processing error:', error);
-        await writer.write(encoder.encode(`data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`));
+        await writer.write(
+          encoder.encode(`data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`)
+        );
       } finally {
         await writer.close();
       }
