@@ -1,73 +1,216 @@
-# Welcome to your Lovable project
+# Neurulae
 
-## Project info
+**AI-powered productivity and time management for complex, variable schedules.**
 
-**URL**: https://lovable.dev/projects/3c2ab4f5-9c43-410c-b631-c04a89a5cb19
+Neurulae is built for students, working professionals, and anyone juggling shifting commitments — classes, shifts, projects, and life. It combines a context-aware AI coach, flexible task/schedule management, focus tools, and a customizable widget dashboard into a single, synced app.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+### 🤖 AI Assistant
+- Context-aware coaching with 3 personality modes: **Supportive**, **Direct**, **Analytical**
+- Understands your schedule, energy levels, and living situation
+- Executes actions directly: creates tasks, schedules blocks, generates playbooks
+- Full conversation history synced to the cloud
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3c2ab4f5-9c43-410c-b631-c04a89a5cb19) and start prompting.
+### 📅 Schedule Management
+- Import schedules from **PDF uploads** (AI parses classes, shifts, deadlines automatically)
+- Define recurring weekly time blocks (classes, work shifts)
+- One-time schedule entries with category tagging
+- Task recommendations that respect your fixed commitments
 
-Changes made via Lovable will be committed automatically to this repo.
+### ✅ Task Management
+- Eisenhower Matrix prioritization (Urgent/Important quadrants)
+- Drag-and-drop scheduling onto the daily timeline
+- Subtasks, notes, color tags, recurring tasks
+- Energy-based task matching and filtering
+- Project grouping with free/premium tier limits
 
-**Use your preferred IDE**
+### ⏱ Focus Tools
+- Multiple timer types: **Pomodoro**, **Flowtime**, **Interval**, **Sequencer**
+- Collapsible timer hub with interrupt tracking
+- Focus Mode overlay for distraction-free sessions
+- Hyperfocus detector with break nudges
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 📖 Playbooks
+- Reusable step-by-step workflow templates
+- AI playbook generation from a description
+- Category filtering, step completion tracking, timer integration
+- Built-in templates for cleaning, house reset, daily routines, and more
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 🧩 Widgets Dashboard
+- **Brain Dump** — Quick thought capture with bulk actions
+- **Mood Garden** — Mood tracking with a plant growth metaphor
+- **Energy Task Harmony** — Matches tasks to current energy level
+- **Future Self Messenger** — Time-delayed messages to yourself
+- **Parallel Universe** — Decision journaling with alternative outcome tracking
+- **Sound Signature** — Sound session tracker + playlist recommendations
+- **Potion Inventory** — Gamified daily health/wellness tracker
+- **Sunlight Anchor** — Visual time-of-day awareness widget
+- **Reminder Widget** — Checklists with configurable reset schedules
 
-Follow these steps:
+### 🎨 Customization
+- Custom theme builder (full color palette control)
+- 10+ preset themes including dark modes
+- Mobile-responsive layout with bottom tab bar
+
+### 💳 Premium
+- Stripe-powered subscriptions and promo code redemption
+- Free tier limits enforced per feature (tasks, projects, playbooks, time blocks)
+- Admin panel for managing users and promo codes
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19 + TypeScript, Vite 5 (SWC) |
+| Styling | Tailwind CSS 3.4, shadcn/ui (30+ Radix UI components) |
+| State | React Context, TanStack Query, localStorage + Supabase sync |
+| Routing | React Router DOM 6 |
+| Forms | react-hook-form + Zod |
+| Rich Text | TipTap |
+| Drag & Drop | @hello-pangea/dnd |
+| Backend | Supabase (PostgreSQL, Auth, Edge Functions on Deno) |
+| AI | Gemini 2.5 Flash via Lovable AI Gateway |
+| Payments | Stripe Checkout & Customer Portal |
+| Deployment | Vercel (frontend) + Supabase Cloud (backend) |
+
+---
+
+## Local Development
+
+### Prerequisites
+- Node.js 18+ and npm
+- (Optional) Supabase CLI for schema/migration work
+
+### Setup
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone <repo-url>
+cd neurulae
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Configure environment
+# Create a .env.local file with:
+VITE_SUPABASE_URL=https://pjypjjcqxlgroohoofua.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<your-anon-key>
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the dev server (runs on http://localhost:8080)
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Available Scripts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run dev          # Vite dev server with HMR (port 8080)
+npm run build        # Production build → dist/
+npm run build:dev    # Dev build (preserves source maps)
+npm run lint         # ESLint
+npm run preview      # Preview production build locally
+```
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+neurulae/
+├── src/
+│   ├── App.tsx                   # Root component, routing, providers
+│   ├── main.tsx                  # Entry point
+│   ├── index.css                 # Global styles + CSS theme tokens
+│   │
+│   ├── pages/
+│   │   ├── Index.tsx             # Main dashboard (central state hub)
+│   │   ├── Landing.tsx           # Public homepage
+│   │   ├── Auth.tsx              # Login / signup
+│   │   ├── Settings.tsx          # User settings + schedule manager
+│   │   ├── Tasks.tsx             # Standalone task view
+│   │   ├── MyAvailability.tsx    # Availability / schedule config
+│   │   ├── MyPlan.tsx            # Plan overview
+│   │   ├── Pricing.tsx           # Pricing / upgrade page
+│   │   ├── AdminPanel.tsx        # Admin panel (admin role only)
+│   │   └── NotFound.tsx          # 404
+│   │
+│   ├── components/               # 65+ components + 20 subdirectories
+│   │   ├── ui/                   # shadcn/ui primitives (36 files)
+│   │   ├── brain-dump/           # Brain dump editor + panel
+│   │   ├── dashboard/            # Dashboard-specific components
+│   │   ├── auth/                 # Auth guards (RequireAuth, PublicOnly)
+│   │   ├── timer-hub/            # Timer implementations
+│   │   ├── premium/              # Premium gate components
+│   │   └── ...                   # Feature-specific subdirectories
+│   │
+│   ├── hooks/                    # 26 custom hooks
+│   │   ├── useSyncedStorage.ts   # localStorage ↔ Supabase bidirectional sync
+│   │   ├── useAIChat.ts          # AI messaging + action execution
+│   │   ├── useGlobalTimer.ts     # Shared timer state
+│   │   └── ...
+│   │
+│   ├── contexts/
+│   │   ├── AuthContext.tsx       # Supabase session + user state
+│   │   ├── PremiumContext.tsx    # Subscription status + role checks
+│   │   └── TimerContext.tsx      # Global timer context
+│   │
+│   ├── services/
+│   │   └── syncService.ts        # Cloud sync queue + conflict resolution
+│   │
+│   ├── types/
+│   │   └── index.ts              # Core TypeScript interfaces
+│   │
+│   ├── data/                     # Static data (playbook templates, presets)
+│   ├── utils/                    # Helper functions (time, color, fuzzy match)
+│   ├── lib/                      # Shared utilities (cn, clsx)
+│   └── integrations/supabase/    # Auto-generated client + DB types
+│
+├── supabase/
+│   ├── functions/                # 14 Deno Edge Functions
+│   │   ├── ai-assistant/         # Main AI chat endpoint
+│   │   ├── organize-tasks/       # AI task scheduling
+│   │   ├── parse-schedule/       # PDF → schedule entries
+│   │   ├── generate-playbook/    # AI playbook generation
+│   │   ├── create-checkout/      # Stripe checkout
+│   │   ├── check-subscription/   # Premium verification
+│   │   └── ...
+│   ├── migrations/               # 35 database migrations
+│   └── config.toml
+│
+├── public/                       # favicon, manifest, robots.txt
+├── CLAUDE.md                     # Comprehensive AI assistant guide
+├── .github/copilot-instructions.md
+└── [config files]                # vite, tsconfig, tailwind, eslint, etc.
+```
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Data Architecture
 
-## How can I deploy this project?
+User data is stored **client-side in localStorage** for instant UI, and automatically synced to Supabase for authenticated users via `useSyncedStorage()`. Conflict resolution uses a `sync_version` counter (server wins).
 
-Simply open [Lovable](https://lovable.dev/projects/3c2ab4f5-9c43-410c-b631-c04a89a5cb19) and click on Share -> Publish.
+**Syncable data types**: tasks, projects, time blocks, playbooks, and all widget types.
 
-## Can I connect a custom domain to my Lovable project?
+**AI calls** are routed through Supabase Edge Functions — never directly from the client. The AI receives full context: schedule, tasks, playbooks, and user profile before responding.
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Deployment
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+The app deploys to **Vercel** (frontend) with environment variables set in the Vercel dashboard. Database migrations must be applied to Supabase before shipping new schema changes.
+
+```sh
+# Apply pending migrations
+supabase db push
+
+# Regenerate TypeScript types after schema changes
+supabase gen types typescript --project-id pjypjjcqxlgroohoofua > src/integrations/supabase/types.ts
+```
+
+---
+
+> For a deep-dive into architecture, data models, code patterns, and AI integration, see [`CLAUDE.md`](./CLAUDE.md).
